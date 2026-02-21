@@ -285,9 +285,9 @@ func ReadInput() InputResult {
 	}
 
 	// processPasteBytes handles raw bytes received during a bracketed paste.
-	// Newlines become new lines (with continuation prompt), tabs expand to
-	// spaces, printable characters are inserted at the cursor, and control
-	// characters are ignored. Each character/line is echoed to stdout.
+	// It writes each completed line directly to stdout (write-forward, no
+	// redraw) and leaves the last incomplete line in currentLine for the
+	// caller to redrawLine() once.
 	processPasteBytes := func(data []byte) {
 		i := 0
 		for i < len(data) {
@@ -295,50 +295,44 @@ func ReadInput() InputResult {
 
 			// CRLF → single newline
 			if ch == '\r' && i+1 < len(data) && data[i+1] == '\n' {
-				// Show the completed line before moving on
-				redrawLine()
-				lineStr := string(currentLine)
-				lines = append(lines, lineStr)
+				// Write the completed line directly (no redraw)
+				rawWrite("\r\033[K")
+				printPrompt()
+				rawWrite(string(currentLine))
+				lines = append(lines, string(currentLine))
 				currentLine = nil
 				cursorPos = 0
 				prevVisualLines = 1
 				first = false
 				rawWrite("\r\n")
-				printPrompt()
 				i += 2
 				continue
 			}
 
 			// CR or LF → newline
 			if ch == '\r' || ch == '\n' {
-				redrawLine()
-				lineStr := string(currentLine)
-				lines = append(lines, lineStr)
+				rawWrite("\r\033[K")
+				printPrompt()
+				rawWrite(string(currentLine))
+				lines = append(lines, string(currentLine))
 				currentLine = nil
 				cursorPos = 0
 				prevVisualLines = 1
 				first = false
 				rawWrite("\r\n")
-				printPrompt()
 				i++
 				continue
 			}
 
 			// Tab → 4 spaces
 			if ch == '\t' {
-				spaces := []byte("    ")
-				bytePos := runeIndex(currentLine, cursorPos)
-				tmp := make([]byte, len(currentLine)+len(spaces))
-				copy(tmp, currentLine[:bytePos])
-				copy(tmp[bytePos:], spaces)
-				copy(tmp[bytePos+len(spaces):], currentLine[bytePos:])
-				currentLine = tmp
+				currentLine = append(currentLine, "    "...)
 				cursorPos += 4
 				i++
 				continue
 			}
 
-			// Skip control characters (except those handled above)
+			// Skip control characters
 			if ch < 32 {
 				i++
 				continue
@@ -350,13 +344,7 @@ func ReadInput() InputResult {
 				i++
 				continue
 			}
-			chunk := data[i : i+size]
-			bytePos := runeIndex(currentLine, cursorPos)
-			tmp := make([]byte, len(currentLine)+size)
-			copy(tmp, currentLine[:bytePos])
-			copy(tmp[bytePos:], chunk)
-			copy(tmp[bytePos+size:], currentLine[bytePos:])
-			currentLine = tmp
+			currentLine = append(currentLine, data[i:i+size]...)
 			cursorPos++
 			i += size
 		}
