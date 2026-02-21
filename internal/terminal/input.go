@@ -109,24 +109,11 @@ func extractImages(input string) (string, []string) {
 	return strings.TrimSpace(strings.Join(textLines, "\n")), images
 }
 
-// runeLen returns the number of runes in a byte slice.
-func runeLen(b []byte) int {
-	return utf8.RuneCount(b)
-}
-
-// runeIndex returns the byte offset of the i-th rune in b.
-func runeIndex(b []byte, i int) int {
-	off := 0
-	for j := 0; j < i; j++ {
-		_, size := utf8.DecodeRune(b[off:])
-		off += size
-	}
-	return off
-}
 
 // ReadInput reads input from the terminal with slash command completion.
 // Single Enter submits. Shift+Enter (or Esc then Enter) adds a newline.
 // Image file paths (dragged/pasted) are detected and returned separately.
+// Multi-line content can be navigated with up/down arrows.
 func ReadInput() InputResult {
 	fd := int(os.Stdin.Fd())
 
@@ -143,40 +130,27 @@ func ReadInput() InputResult {
 		return InputResult{Text: t, Images: imgs}
 	}
 
-	// Enable bracketed paste mode — terminals that support it will wrap
-	// pasted text in ESC[200~ … ESC[201~ markers so we can detect pastes.
-	os.Stdout.WriteString("\033[?2004h")
+	os.Stdout.WriteString("\033[?2004h") // enable bracketed paste
 
 	restore := func() {
-		os.Stdout.WriteString("\033[?2004l") // disable bracketed paste
+		os.Stdout.WriteString("\033[?2004l")
 		term.Restore(fd, oldState)
 	}
 	defer restore()
 
-	var lines []string
-	var currentLine []byte
-	cursorPos := 0 // cursor position in runes
-	first := true
+	// --- Core data model: array of lines ---
+	lines := [][]rune{{}} // start with one empty line
+	row := 0              // current line index
+	col := 0              // cursor column (rune index) within current line
+
 	menuLines := 0
 	selectedIdx := -1
-	escPressed := false // track Esc key for Esc+Enter newline
-	prevVisualLines := 1 // tracks wrapped visual lines for redraw clearing
+	escPressed := false
 
-	// promptWidth returns the visible character width of the prompt.
-	promptWidth := func() int {
-		return 2 // "> " or "  "
-	}
+	// How many terminal rows our content occupied on the last draw.
+	drawnRows := 0
 
-	printPrompt := func() {
-		if first {
-			rawWrite(Bold + "> " + Reset)
-		} else {
-			rawWrite(Dim + "  " + Reset)
-		}
-	}
-
-	// termWidth returns the current terminal width, defaulting to 80.
-	termWidth := func() int {
+	tw := func() int {
 		w, _, err := term.GetSize(fd)
 		if err != nil || w <= 0 {
 			return 80
@@ -184,62 +158,89 @@ func ReadInput() InputResult {
 		return w
 	}
 
-	redrawLine := func() {
-		tw := termWidth()
-
-		// Move cursor up to the first visual line of the previous content
-		if prevVisualLines > 1 {
-			rawWrite(fmt.Sprintf("\033[%dA", prevVisualLines-1))
+	promptStr := func(lineIdx int) string {
+		if lineIdx == 0 {
+			return Bold + "> " + Reset
 		}
-		// Clear from the first visual line downward (clears all wrapped lines)
-		rawWrite("\r\033[J")
-
-		printPrompt()
-		rawWrite(string(currentLine))
-
-		// Update visual line count for next redraw
-		contentLen := promptWidth() + runeLen(currentLine)
-		prevVisualLines = 1
-		if tw > 0 && contentLen > tw {
-			prevVisualLines = (contentLen + tw - 1) / tw
-		}
-
-		// Move cursor to correct position if not at end.
-		// Use absolute row/col positioning since \033[D doesn't cross line wraps.
-		totalRunes := runeLen(currentLine)
-		if cursorPos < totalRunes {
-			cursorAbs := promptWidth() + cursorPos
-			endAbs := promptWidth() + totalRunes
-
-			cursorRow := cursorAbs / tw
-			endRow := endAbs / tw
-			// If endAbs lands exactly on a boundary, the cursor is at col 0 of
-			// the next visual line, but the terminal may not have scrolled yet.
-			if endAbs > 0 && endAbs%tw == 0 {
-				endRow--
-			}
-
-			// Move up from end row to cursor row
-			if endRow > cursorRow {
-				rawWrite(fmt.Sprintf("\033[%dA", endRow-cursorRow))
-			}
-			// Move to exact column
-			col := cursorAbs % tw
-			rawWrite(fmt.Sprintf("\r\033[%dC", col))
-		}
+		return Dim + "  " + Reset
 	}
 
-	// setCursorCol positions the terminal cursor at the right column.
+	// visualRows returns how many terminal rows a line occupies.
+	visualRows := func(lineLen int) int {
+		total := 2 + lineLen // 2 = prompt width
+		w := tw()
+		if total <= w {
+			return 1
+		}
+		return (total + w - 1) / w
+	}
+
+	// totalDrawnRows returns total terminal rows for all lines.
+	totalDrawnRows := func() int {
+		n := 0
+		for _, l := range lines {
+			n += visualRows(len(l))
+		}
+		return n
+	}
+
+	// cursorRowFromTop returns how many terminal rows from the top
+	// of our content to the cursor position.
+	cursorRowFromTop := func() int {
+		n := 0
+		for i := 0; i < row; i++ {
+			n += visualRows(len(lines[i]))
+		}
+		// Add wrapped rows within current line
+		cursorAbs := 2 + col // 2 = prompt width
+		n += cursorAbs / tw()
+		return n
+	}
+
+	// redrawAll redraws all lines from scratch. The cursor is assumed
+	// to be at the first row of our content (row 0, col 0 of terminal).
+	redrawAll := func() {
+		// Move cursor to top of our drawn area
+		curRow := cursorRowFromTop()
+		if curRow > 0 {
+			rawWrite(fmt.Sprintf("\033[%dA", curRow))
+		}
+		rawWrite("\r\033[J") // clear from here to end of screen
+
+		for i, l := range lines {
+			rawWrite(promptStr(i))
+			rawWrite(string(l))
+			if i < len(lines)-1 {
+				rawWrite("\r\n")
+			}
+		}
+
+		drawnRows = totalDrawnRows()
+
+		// Position cursor
+		endRow := drawnRows - 1
+		targetRow := cursorRowFromTop()
+		if endRow > targetRow {
+			rawWrite(fmt.Sprintf("\033[%dA", endRow-targetRow))
+		}
+		targetCol := (2 + col) % tw()
+		rawWrite(fmt.Sprintf("\r\033[%dC", targetCol))
+	}
+
+	isSlashMode := func() bool {
+		return row == 0 && len(lines) == 1 && len(lines[0]) > 0 && lines[0][0] == '/'
+	}
+
 	setCursorCol := func() {
-		col := promptWidth() + cursorPos
-		rawWrite(fmt.Sprintf("\r\033[%dC", col))
+		targetCol := 2 + col
+		rawWrite(fmt.Sprintf("\r\033[%dC", targetCol%tw()))
 	}
 
-	// clearMenuLines wipes all menu lines below the input line.
 	clearMenuLines := func() {
 		if menuLines == 0 {
 			return
 		}
+		// Save position, clear menu, restore
 		for i := 0; i < menuLines; i++ {
 			rawWrite("\r\n\033[K")
 		}
@@ -249,9 +250,8 @@ func ReadInput() InputResult {
 		selectedIdx = -1
 	}
 
-	// drawMenuBelow draws the completion menu below the current input line.
 	drawMenuBelow := func() {
-		prefix := string(currentLine)
+		prefix := string(lines[0])
 		matches := filterCommands(prefix)
 		clearMenuLines()
 		if len(matches) == 0 {
@@ -270,87 +270,106 @@ func ReadInput() InputResult {
 		menuLines = len(matches)
 	}
 
-	isSlashMode := func() bool {
-		return first && len(currentLine) > 0 && currentLine[0] == '/'
-	}
-
 	submitResult := func() InputResult {
-		lineStr := strings.TrimSpace(string(currentLine))
-		if lineStr != "" {
-			lines = append(lines, lineStr)
+		var parts []string
+		for _, l := range lines {
+			parts = append(parts, string(l))
 		}
-		combined := strings.TrimSpace(strings.Join(lines, "\n"))
+		combined := strings.TrimSpace(strings.Join(parts, "\n"))
+		if combined == "" {
+			return InputResult{}
+		}
 		text, imgs := extractImages(combined)
 		return InputResult{Text: text, Images: imgs}
 	}
 
-	// processPasteBytes handles raw bytes received during a bracketed paste.
-	// It writes each completed line directly to stdout (write-forward, no
-	// redraw) and leaves the last incomplete line in currentLine for the
-	// caller to redrawLine() once.
-	processPasteBytes := func(data []byte) {
+	// insertNewline splits the current line at the cursor.
+	insertNewline := func() {
+		clearMenuLines()
+		tail := make([]rune, len(lines[row][col:]))
+		copy(tail, lines[row][col:])
+		lines[row] = lines[row][:col]
+		// Insert new line after current
+		newLines := make([][]rune, len(lines)+1)
+		copy(newLines, lines[:row+1])
+		newLines[row+1] = tail
+		copy(newLines[row+2:], lines[row+1:])
+		lines = newLines
+		row++
+		col = 0
+		redrawAll()
+	}
+
+	// handlePaste processes pasted text, splitting on newlines.
+	handlePaste := func(data []byte) {
+		clearMenuLines()
 		i := 0
 		for i < len(data) {
 			ch := data[i]
 
-			// CRLF → single newline
+			// CRLF
 			if ch == '\r' && i+1 < len(data) && data[i+1] == '\n' {
-				// Write the completed line directly (no redraw)
-				rawWrite("\r\033[K")
-				printPrompt()
-				rawWrite(string(currentLine))
-				lines = append(lines, string(currentLine))
-				currentLine = nil
-				cursorPos = 0
-				prevVisualLines = 1
-				first = false
-				rawWrite("\r\n")
+				tail := make([]rune, len(lines[row][col:]))
+				copy(tail, lines[row][col:])
+				lines[row] = lines[row][:col]
+				newLines := make([][]rune, len(lines)+1)
+				copy(newLines, lines[:row+1])
+				newLines[row+1] = tail
+				copy(newLines[row+2:], lines[row+1:])
+				lines = newLines
+				row++
+				col = 0
 				i += 2
 				continue
 			}
 
-			// CR or LF → newline
+			// CR or LF
 			if ch == '\r' || ch == '\n' {
-				rawWrite("\r\033[K")
-				printPrompt()
-				rawWrite(string(currentLine))
-				lines = append(lines, string(currentLine))
-				currentLine = nil
-				cursorPos = 0
-				prevVisualLines = 1
-				first = false
-				rawWrite("\r\n")
+				tail := make([]rune, len(lines[row][col:]))
+				copy(tail, lines[row][col:])
+				lines[row] = lines[row][:col]
+				newLines := make([][]rune, len(lines)+1)
+				copy(newLines, lines[:row+1])
+				newLines[row+1] = tail
+				copy(newLines[row+2:], lines[row+1:])
+				lines = newLines
+				row++
+				col = 0
 				i++
 				continue
 			}
 
-			// Tab → 4 spaces
+			// Tab → spaces
 			if ch == '\t' {
-				currentLine = append(currentLine, "    "...)
-				cursorPos += 4
+				spaces := []rune("    ")
+				lines[row] = append(lines[row][:col], append(spaces, lines[row][col:]...)...)
+				col += 4
 				i++
 				continue
 			}
 
-			// Skip control characters
+			// Skip control chars
 			if ch < 32 {
 				i++
 				continue
 			}
 
-			// Printable / UTF-8 character
-			_, size := utf8.DecodeRune(data[i:])
+			// Printable / UTF-8
+			r, size := utf8.DecodeRune(data[i:])
 			if size == 0 {
 				i++
 				continue
 			}
-			currentLine = append(currentLine, data[i:i+size]...)
-			cursorPos++
+			lines[row] = append(lines[row][:col], append([]rune{r}, lines[row][col:]...)...)
+			col++
 			i += size
 		}
+		redrawAll()
 	}
 
-	printPrompt()
+	// Initial prompt
+	rawWrite(promptStr(0))
+	drawnRows = 1
 
 	buf := make([]byte, 256)
 
@@ -362,144 +381,81 @@ func ReadInput() InputResult {
 
 		b := buf[:n]
 
-		// Handle escape sequences (arrow keys etc.)
+		// Handle escape sequences
 		if b[0] == 0x1b {
 			if n == 1 {
-				// Single Esc byte — try to read more to distinguish
-				// standalone Esc from the start of an escape sequence.
 				extra := make([]byte, 8)
 				en, _ := os.Stdin.Read(extra)
 				if en > 0 {
 					b = append(b, extra[:en]...)
 					n = len(b)
 				} else {
-					// Standalone Esc — set flag for Esc+Enter
 					escPressed = true
 					continue
 				}
 			}
 
-			// If the byte after Esc is not '[', this is Esc+<key>.
-			// Set escPressed and re-process the remaining bytes as input.
+			// Esc + non-CSI byte → set escPressed, replay byte
 			if n >= 2 && b[1] != '[' {
 				escPressed = true
-				// Feed the non-Esc bytes back into the main switch below
-				remaining := b[1:n]
-				replay := make([]byte, len(remaining))
-				copy(replay, remaining)
+				replay := make([]byte, n-1)
+				copy(replay, b[1:n])
 				copy(buf, replay)
 				b = buf[:len(replay)]
 				n = len(replay)
-				// DO NOT continue — fall through to the main switch
 				goto handleByte
 			}
+
 			if n >= 3 && b[1] == '[' {
 				seq := string(b[2:n])
 
-				// Shift+Enter: ESC[13;2u (kitty) or ESC[27;2;13~ (xterm)
+				// Shift+Enter
 				if seq == "13;2u" || strings.HasPrefix(seq, "27;2;13") {
-					// Insert newline (same as Esc+Enter)
-					clearMenuLines()
-					lineStr := string(currentLine)
-					lines = append(lines, lineStr)
-					currentLine = nil
-					cursorPos = 0
-					prevVisualLines = 1
-					first = false
-					rawWrite("\r\n")
-					printPrompt()
+					insertNewline()
 					continue
 				}
 
-				// Bracketed paste start: ESC[200~
-				// The marker and pasted content may arrive in the same read,
-				// so use HasPrefix and process any trailing bytes as paste data.
+				// Bracketed paste start
 				if strings.HasPrefix(seq, "200~") {
-					clearMenuLines()
-
 					pasteEnd := []byte("\033[201~")
 					pasteBuf := make([]byte, 1024)
-					var trailer []byte // holds partial end-marker bytes across reads
+					var allData []byte
 
-					// Process any bytes that arrived in the same read as the start marker
+					// Overflow from first read
 					overflow := b[2+len("200~") : n]
 					if len(overflow) > 0 {
-						// Check if the end marker is already in this first chunk
 						if idx := bytes.Index(overflow, pasteEnd); idx >= 0 {
-							if idx > 0 {
-								processPasteBytes(overflow[:idx])
-							}
-							redrawLine()
+							handlePaste(overflow[:idx])
 							continue
 						}
-						// Seed the trailer with overflow for the paste loop
-						trailer = make([]byte, len(overflow))
-						copy(trailer, overflow)
+						allData = append(allData, overflow...)
 					}
 
-				pasteLoop:
+					// Read until end marker
 					for {
 						pn, perr := os.Stdin.Read(pasteBuf)
 						if perr != nil || pn == 0 {
 							break
 						}
-
-						// Prepend any trailer from previous read
-						var chunk []byte
-						if len(trailer) > 0 {
-							chunk = append(trailer, pasteBuf[:pn]...)
-							trailer = nil
-						} else {
-							chunk = pasteBuf[:pn]
-						}
-
-						// Scan for end marker ESC[201~
-						if idx := bytes.Index(chunk, pasteEnd); idx >= 0 {
-							// Process everything before the end marker
-							if idx > 0 {
-								processPasteBytes(chunk[:idx])
-							}
-							break pasteLoop
-						}
-
-						// The end marker (6 bytes) might be split across reads.
-						// Keep up to 5 trailing bytes as a trailer for next read.
-						safeLen := len(chunk)
-						trailerSize := len(pasteEnd) - 1 // 5
-						if safeLen > trailerSize {
-							processPasteBytes(chunk[:safeLen-trailerSize])
-							trailer = make([]byte, trailerSize)
-							copy(trailer, chunk[safeLen-trailerSize:])
-						} else {
-							// Entire chunk is shorter than marker; hold it all
-							trailer = make([]byte, len(chunk))
-							copy(trailer, chunk)
+						allData = append(allData, pasteBuf[:pn]...)
+						if idx := bytes.Index(allData, pasteEnd); idx >= 0 {
+							allData = allData[:idx]
+							break
 						}
 					}
-
-					// Process any remaining trailer that wasn't an end marker
-					if len(trailer) > 0 {
-						processPasteBytes(trailer)
-					}
-
-					// If paste produced multiple lines, ensure the last line
-					// shows as a continuation (not the primary prompt).
-					if len(lines) > 0 {
-						first = false
-					}
-					redrawLine()
+					handlePaste(allData)
 					continue
 				}
 
-				// Bracketed paste end (defensive; normally consumed in paste loop)
+				// Bracketed paste end (defensive)
 				if strings.HasPrefix(seq, "201~") {
 					continue
 				}
 
 				switch b[2] {
 				case 'A': // Up arrow
-					if menuLines > 0 {
-						matches := filterCommands(string(currentLine))
+					if menuLines > 0 && isSlashMode() {
+						matches := filterCommands(string(lines[0]))
 						if len(matches) > 0 {
 							if selectedIdx <= 0 {
 								selectedIdx = len(matches) - 1
@@ -508,10 +464,16 @@ func ReadInput() InputResult {
 							}
 							drawMenuBelow()
 						}
+					} else if row > 0 {
+						row--
+						if col > len(lines[row]) {
+							col = len(lines[row])
+						}
+						redrawAll()
 					}
 				case 'B': // Down arrow
-					if menuLines > 0 {
-						matches := filterCommands(string(currentLine))
+					if menuLines > 0 && isSlashMode() {
+						matches := filterCommands(string(lines[0]))
 						if len(matches) > 0 {
 							if selectedIdx >= len(matches)-1 {
 								selectedIdx = 0
@@ -520,36 +482,47 @@ func ReadInput() InputResult {
 							}
 							drawMenuBelow()
 						}
+					} else if row < len(lines)-1 {
+						row++
+						if col > len(lines[row]) {
+							col = len(lines[row])
+						}
+						redrawAll()
 					}
 				case 'C': // Right arrow
-					if cursorPos < runeLen(currentLine) {
-						cursorPos++
-						rawWrite("\033[C")
+					if col < len(lines[row]) {
+						col++
+						redrawAll()
+					} else if row < len(lines)-1 {
+						row++
+						col = 0
+						redrawAll()
 					}
 				case 'D': // Left arrow
-					if cursorPos > 0 {
-						cursorPos--
-						rawWrite("\033[D")
+					if col > 0 {
+						col--
+						redrawAll()
+					} else if row > 0 {
+						row--
+						col = len(lines[row])
+						redrawAll()
 					}
 				case 'H': // Home
-					cursorPos = 0
-					setCursorCol()
+					col = 0
+					redrawAll()
 				case 'F': // End
-					cursorPos = runeLen(currentLine)
-					setCursorCol()
-				case '3': // Delete key (ESC [ 3 ~)
+					col = len(lines[row])
+					redrawAll()
+				case '3': // Delete key
 					if n >= 4 && b[3] == '~' {
-						totalRunes := runeLen(currentLine)
-						if cursorPos < totalRunes {
-							bytePos := runeIndex(currentLine, cursorPos)
-							_, size := utf8.DecodeRune(currentLine[bytePos:])
-							currentLine = append(currentLine[:bytePos], currentLine[bytePos+size:]...)
-							redrawLine()
-							if isSlashMode() {
-								drawMenuBelow()
-							} else {
-								clearMenuLines()
-							}
+						if col < len(lines[row]) {
+							lines[row] = append(lines[row][:col], lines[row][col+1:]...)
+							redrawAll()
+						} else if row < len(lines)-1 {
+							// Join with next line
+							lines[row] = append(lines[row], lines[row+1]...)
+							lines = append(lines[:row+1], lines[row+2:]...)
+							redrawAll()
 						}
 					}
 				}
@@ -560,10 +533,10 @@ func ReadInput() InputResult {
 
 	handleByte:
 		switch b[0] {
-		case 1: // Ctrl+A — move to beginning of line
+		case 1: // Ctrl+A
 			escPressed = false
-			cursorPos = 0
-			setCursorCol()
+			col = 0
+			redrawAll()
 
 		case 3: // Ctrl+C
 			clearMenuLines()
@@ -576,29 +549,24 @@ func ReadInput() InputResult {
 			rawWrite("\r\n")
 			return InputResult{}
 
-		case 5: // Ctrl+E — move to end of line
+		case 5: // Ctrl+E
 			escPressed = false
-			cursorPos = runeLen(currentLine)
-			setCursorCol()
+			col = len(lines[row])
+			redrawAll()
 
-		case 11: // Ctrl+K — kill from cursor to end of line
+		case 11: // Ctrl+K — kill to end of line
 			escPressed = false
-			if cursorPos < runeLen(currentLine) {
-				bytePos := runeIndex(currentLine, cursorPos)
-				currentLine = currentLine[:bytePos]
-				redrawLine()
-				if isSlashMode() {
-					drawMenuBelow()
-				} else {
-					clearMenuLines()
-				}
+			if col < len(lines[row]) {
+				lines[row] = lines[row][:col]
+				redrawAll()
 			}
 
 		case 12: // Ctrl+L — clear screen
 			escPressed = false
 			clearMenuLines()
-			rawWrite("\033[2J\033[H") // clear screen and move to top
-			redrawLine()
+			rawWrite("\033[2J\033[H")
+			drawnRows = 0
+			redrawAll()
 			if isSlashMode() {
 				drawMenuBelow()
 			}
@@ -606,40 +574,29 @@ func ReadInput() InputResult {
 		case 21: // Ctrl+U — clear line
 			escPressed = false
 			clearMenuLines()
-			currentLine = nil
-			cursorPos = 0
-			redrawLine()
+			lines[row] = nil
+			col = 0
+			redrawAll()
 
 		case 23: // Ctrl+W — delete word backward
 			escPressed = false
-			if cursorPos > 0 {
-				// Work backward from cursor: skip trailing spaces, then delete to next space
-				runes := []rune(string(currentLine))
-				newPos := cursorPos
-				// Skip spaces
-				for newPos > 0 && runes[newPos-1] == ' ' {
-					newPos--
+			if col > 0 {
+				newCol := col
+				for newCol > 0 && lines[row][newCol-1] == ' ' {
+					newCol--
 				}
-				// Skip non-spaces
-				for newPos > 0 && runes[newPos-1] != ' ' {
-					newPos--
+				for newCol > 0 && lines[row][newCol-1] != ' ' {
+					newCol--
 				}
-				// Remove runes from newPos to cursorPos
-				runes = append(runes[:newPos], runes[cursorPos:]...)
-				currentLine = []byte(string(runes))
-				cursorPos = newPos
-				redrawLine()
-				if isSlashMode() {
-					drawMenuBelow()
-				} else {
-					clearMenuLines()
-				}
+				lines[row] = append(lines[row][:newCol], lines[row][col:]...)
+				col = newCol
+				redrawAll()
 			}
 
 		case 9: // Tab — accept completion
 			escPressed = false
-			if menuLines > 0 {
-				matches := filterCommands(string(currentLine))
+			if menuLines > 0 && isSlashMode() {
+				matches := filterCommands(string(lines[0]))
 				if len(matches) == 0 {
 					continue
 				}
@@ -648,43 +605,33 @@ func ReadInput() InputResult {
 					idx = 0
 				}
 				clearMenuLines()
-				currentLine = []byte(matches[idx].Name)
+				lines[0] = []rune(matches[idx].Name)
 				if matches[idx].Name == "/model" || matches[idx].Name == "/simulator" {
-					currentLine = append(currentLine, ' ')
+					lines[0] = append(lines[0], ' ')
 				}
-				cursorPos = runeLen(currentLine)
-				redrawLine()
+				col = len(lines[0])
+				redrawAll()
 				if isSlashMode() {
 					drawMenuBelow()
 				}
 			}
 
 		case 13, 10: // Enter
-			// Esc+Enter → insert newline (multi-line mode)
 			if escPressed {
 				escPressed = false
-				clearMenuLines()
-				lineStr := string(currentLine)
-				lines = append(lines, lineStr)
-				currentLine = nil
-				cursorPos = 0
-				prevVisualLines = 1
-				first = false
-				rawWrite("\r\n")
-				printPrompt()
+				insertNewline()
 				continue
 			}
 
-			lineStr := strings.TrimSpace(string(currentLine))
-
-			// Slash commands: submit on single Enter
-			if strings.HasPrefix(lineStr, "/") && first {
+			// Slash commands
+			if isSlashMode() {
+				lineStr := strings.TrimSpace(string(lines[0]))
 				if menuLines > 0 {
-					matches := filterCommands(string(currentLine))
+					matches := filterCommands(string(lines[0]))
 					if len(matches) > 0 {
 						idx := selectedIdx
 						if idx < 0 {
-							idx = 0 // auto-select first match
+							idx = 0
 						}
 						if idx < len(matches) {
 							lineStr = matches[idx].Name
@@ -698,64 +645,70 @@ func ReadInput() InputResult {
 
 			clearMenuLines()
 
-			// Empty Enter with no accumulated text — just re-prompt
-			if lineStr == "" && len(lines) == 0 {
+			// Empty input — re-prompt
+			result := submitResult()
+			if result.Text == "" && len(result.Images) == 0 {
 				rawWrite("\r\n")
-				first = true
-				currentLine = nil
-				cursorPos = 0
-				prevVisualLines = 1
-				printPrompt()
+				lines = [][]rune{{}}
+				row = 0
+				col = 0
+				drawnRows = 0
+				redrawAll()
 				continue
 			}
 
-			// Submit on Enter (single Enter submits)
 			rawWrite("\r\n")
-			return submitResult()
+			return result
 
 		case 127, 8: // Backspace
 			escPressed = false
-			if cursorPos > 0 {
-				bytePos := runeIndex(currentLine, cursorPos)
-				_, size := utf8.DecodeLastRune(currentLine[:bytePos])
-				currentLine = append(currentLine[:bytePos-size], currentLine[bytePos:]...)
-				cursorPos--
-				redrawLine()
+			if col > 0 {
+				lines[row] = append(lines[row][:col-1], lines[row][col:]...)
+				col--
+				redrawAll()
 				if isSlashMode() {
 					drawMenuBelow()
 				} else {
 					clearMenuLines()
 				}
+			} else if row > 0 {
+				// Join with previous line
+				col = len(lines[row-1])
+				lines[row-1] = append(lines[row-1], lines[row]...)
+				lines = append(lines[:row], lines[row+1:]...)
+				row--
+				redrawAll()
 			}
 
 		default:
 			escPressed = false
 			if b[0] >= 32 {
-				// Insert at cursor position, not just append
-				bytePos := runeIndex(currentLine, cursorPos)
-				insert := make([]byte, len(currentLine)+n)
-				copy(insert, currentLine[:bytePos])
-				copy(insert[bytePos:], b[:n])
-				copy(insert[bytePos+n:], currentLine[bytePos:])
-				currentLine = insert
-				cursorPos += utf8.RuneCount(b[:n])
-				redrawLine()
-
-				if isSlashMode() {
-					drawMenuBelow()
-				} else if menuLines > 0 {
-					clearMenuLines()
+				r, size := utf8.DecodeRune(b[:n])
+				if size > 0 {
+					lines[row] = append(lines[row][:col], append([]rune{r}, lines[row][col:]...)...)
+					col++
+					// Handle remaining runes in the buffer
+					for off := size; off < n; {
+						r2, s2 := utf8.DecodeRune(b[off:])
+						if s2 == 0 {
+							break
+						}
+						lines[row] = append(lines[row][:col], append([]rune{r2}, lines[row][col:]...)...)
+						col++
+						off += s2
+					}
+					redrawAll()
+					if isSlashMode() {
+						drawMenuBelow()
+					} else if menuLines > 0 {
+						clearMenuLines()
+					}
 				}
 			}
 		}
 	}
 
-	if len(currentLine) > 0 {
-		lines = append(lines, strings.TrimSpace(string(currentLine)))
-	}
-	combined := strings.TrimSpace(strings.Join(lines, "\n"))
-	text, imgs := extractImages(combined)
-	return InputResult{Text: text, Images: imgs}
+	return submitResult()
 }
 
 // filterCommands returns commands matching the given prefix.
