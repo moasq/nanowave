@@ -390,7 +390,7 @@ func (p *Pipeline) analyze(ctx context.Context, prompt string, spinner *terminal
 	resp, err := p.claude.GenerateStreaming(ctx, prompt, claude.GenerateOpts{
 		SystemPrompt: systemPrompt,
 		MaxTurns:     3,
-		Model:        "haiku",
+		Model:        "sonnet",
 	}, func(ev claude.StreamEvent) {
 		switch ev.Type {
 		case "assistant":
@@ -409,6 +409,10 @@ func (p *Pipeline) analyze(ctx context.Context, prompt string, spinner *terminal
 
 	if resultText == "" && resp != nil {
 		resultText = resp.Result
+	}
+
+	if strings.TrimSpace(resultText) == "" {
+		return nil, fmt.Errorf("analysis returned empty response — the model may have failed to generate output")
 	}
 
 	return parseAnalysis(resultText)
