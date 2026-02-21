@@ -1,0 +1,53 @@
+version: 2
+
+project_name: nanowave
+
+builds:
+  - id: nanowave
+    main: ./cmd/nanowave
+    binary: nanowave
+    goos:
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X github.com/moasq/nanowave/internal/commands.Version={{.Version}}
+
+universal_binaries:
+  - id: nanowave-universal
+    ids:
+      - nanowave
+    replace: true
+    name_template: nanowave
+
+archives:
+  - id: default
+    format: tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^ci:"
+
+brews:
+  - name: nanowave
+    repository:
+      owner: moasq
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    homepage: https://github.com/moasq/nanowave
+    description: Autonomous Apple platform app builder
+    license: MIT
+    install: |
+      bin.install "nanowave"
+    test: |
+      system "#{bin}/nanowave", "--version"

@@ -1,0 +1,520 @@
+package terminal
+
+import (
+	"fmt"
+	"strings"
+	"sync"
+	"time"
+)
+
+// Phase represents the current build phase.
+type Phase int
+
+const (
+	PhaseBuildingCode Phase = iota
+	PhaseGenerating
+	PhaseCompiling
+	PhaseFixing
+	PhaseEditing
+)
+
+func (p Phase) label() string {
+	switch p {
+	case PhaseBuildingCode:
+		return "Building code"
+	case PhaseGenerating:
+		return "Generating Xcode project"
+	case PhaseCompiling:
+		return "Compiling"
+	case PhaseFixing:
+		return "Fixing errors"
+	case PhaseEditing:
+		return "Editing"
+	default:
+		return "Working"
+	}
+}
+
+func (p Phase) number() int {
+	switch p {
+	case PhaseBuildingCode:
+		return 1
+	case PhaseGenerating:
+		return 2
+	case PhaseCompiling:
+		return 3
+	case PhaseFixing:
+		return 4
+	case PhaseEditing:
+		return 1
+	default:
+		return 1
+	}
+}
+
+// activity represents a single logged action.
+type activity struct {
+	text string
+	done bool
+}
+
+// ProgressDisplay provides a rich, phase-aware terminal progress UI.
+type ProgressDisplay struct {
+	mu           sync.Mutex
+	phase        Phase
+	totalFiles   int
+	filesWritten int
+	activities   []activity
+	statusText   string // dimmed assistant text
+	running      bool
+	done         chan struct{}
+	mode         string // "build", "edit", "fix"
+	totalPhases  int
+	buildFailed  bool
+	fixAttempts  int
+}
+
+const maxActivities = 4
+
+// NewProgressDisplay creates a progress display for the given mode.
+// totalFiles is used for the build progress bar (0 if unknown).
+func NewProgressDisplay(mode string, totalFiles int) *ProgressDisplay {
+	totalPhases := 3 // build: code → generate → compile
+	if mode == "edit" || mode == "fix" {
+		totalPhases = 0 // no numbered phases for edit/fix
+	}
+
+	startPhase := PhaseBuildingCode
+	if mode == "edit" {
+		startPhase = PhaseEditing
+	} else if mode == "fix" {
+		startPhase = PhaseCompiling
+	}
+
+	return &ProgressDisplay{
+		phase:       startPhase,
+		totalFiles:  totalFiles,
+		mode:        mode,
+		totalPhases: totalPhases,
+		done:        make(chan struct{}),
+	}
+}
+
+// Start begins the rendering loop.
+func (pd *ProgressDisplay) Start() {
+	pd.mu.Lock()
+	if pd.running {
+		pd.mu.Unlock()
+		return
+	}
+	pd.running = true
+	pd.mu.Unlock()
+
+	go pd.renderLoop()
+}
+
+// Stop stops the progress display and clears the output area.
+func (pd *ProgressDisplay) Stop() {
+	pd.mu.Lock()
+	if !pd.running {
+		pd.mu.Unlock()
+		return
+	}
+	pd.running = false
+	pd.mu.Unlock()
+
+	close(pd.done)
+	pd.clearDisplay()
+}
+
+// StopWithSuccess stops and prints a success message.
+func (pd *ProgressDisplay) StopWithSuccess(msg string) {
+	pd.Stop()
+	fmt.Printf("  %s%s✓%s %s\n", Bold, Green, Reset, msg)
+}
+
+// StopWithError stops and prints an error message.
+func (pd *ProgressDisplay) StopWithError(msg string) {
+	pd.Stop()
+	fmt.Printf("  %s%s✗%s %s\n", Bold, Red, Reset, msg)
+}
+
+// SetPhase explicitly transitions to a new phase.
+func (pd *ProgressDisplay) SetPhase(phase Phase) {
+	pd.mu.Lock()
+	defer pd.mu.Unlock()
+	pd.phase = phase
+}
+
+// AddActivity adds a new activity line to the display.
+func (pd *ProgressDisplay) AddActivity(text string) {
+	pd.mu.Lock()
+	defer pd.mu.Unlock()
+	pd.addActivity(text)
+}
+
+func (pd *ProgressDisplay) addActivity(text string) {
+	// Mark previous last activity as done
+	if len(pd.activities) > 0 {
+		pd.activities[len(pd.activities)-1].done = true
+	}
+	pd.activities = append(pd.activities, activity{text: text, done: false})
+	// Trim to max
+	if len(pd.activities) > maxActivities {
+		pd.activities = pd.activities[len(pd.activities)-maxActivities:]
+	}
+}
+
+// SetStatus sets the dimmed status text (from assistant messages).
+func (pd *ProgressDisplay) SetStatus(text string) {
+	pd.mu.Lock()
+	defer pd.mu.Unlock()
+	pd.statusText = text
+}
+
+// IncrementFiles increments the files written counter.
+func (pd *ProgressDisplay) IncrementFiles() {
+	pd.mu.Lock()
+	defer pd.mu.Unlock()
+	pd.filesWritten++
+	if pd.filesWritten > pd.totalFiles && pd.totalFiles > 0 {
+		pd.totalFiles = pd.filesWritten
+	}
+}
+
+// ResetForRetry resets transient display state for a new completion pass
+// while preserving cumulative counters (filesWritten) and totalFiles.
+func (pd *ProgressDisplay) ResetForRetry() {
+	pd.mu.Lock()
+	defer pd.mu.Unlock()
+	pd.activities = nil
+	pd.statusText = ""
+	pd.phase = PhaseBuildingCode
+	pd.buildFailed = false
+	pd.fixAttempts = 0
+}
+
+// SetTotalFiles updates the total expected file count.
+// If the new total is less than files already written, it's raised to filesWritten.
+func (pd *ProgressDisplay) SetTotalFiles(total int) {
+	pd.mu.Lock()
+	defer pd.mu.Unlock()
+	pd.totalFiles = total
+	if pd.totalFiles < pd.filesWritten {
+		pd.totalFiles = pd.filesWritten
+	}
+}
+
+// OnToolUse processes a tool_use event and updates the display state.
+func (pd *ProgressDisplay) OnToolUse(toolName string, inputGetter func(key string) string) {
+	pd.mu.Lock()
+	defer pd.mu.Unlock()
+
+	switch toolName {
+	case "Write":
+		path := inputGetter("file_path")
+		if path != "" {
+			short := shortPath(path)
+			if pd.mode == "build" {
+				pd.phase = PhaseBuildingCode
+			}
+			pd.filesWritten++
+			if pd.filesWritten > pd.totalFiles && pd.totalFiles > 0 {
+				pd.totalFiles = pd.filesWritten
+			}
+			pd.addActivity(fmt.Sprintf("Writing %s", short))
+		}
+	case "Edit":
+		path := inputGetter("file_path")
+		if path != "" {
+			short := shortPath(path)
+			if pd.buildFailed {
+				pd.phase = PhaseFixing
+			} else if pd.mode == "edit" {
+				pd.phase = PhaseEditing
+			}
+			pd.addActivity(fmt.Sprintf("Editing %s", short))
+		}
+	case "Read":
+		path := inputGetter("file_path")
+		if path != "" {
+			short := shortPath(path)
+			pd.addActivity(fmt.Sprintf("Reading %s", short))
+		}
+	case "Bash":
+		command := inputGetter("command")
+		if strings.Contains(command, "xcodegen") {
+			pd.phase = PhaseGenerating
+			pd.addActivity("Generating Xcode project")
+		} else if strings.Contains(command, "xcodebuild") {
+			pd.phase = PhaseCompiling
+			pd.addActivity("Compiling project")
+		} else if strings.Contains(command, "git") {
+			pd.addActivity("Updating repository")
+		} else if command != "" {
+			short := command
+			if len(short) > 35 {
+				short = short[:35] + "..."
+			}
+			pd.addActivity(short)
+		}
+	case "Glob":
+		pd.addActivity("Searching files...")
+	case "Grep":
+		pd.addActivity("Searching code...")
+	case "WebFetch", "WebSearch":
+		pd.addActivity("Searching web...")
+	default:
+		if label := friendlyToolName(toolName, inputGetter); label != "" {
+			pd.addActivity(label)
+		}
+	}
+}
+
+// OnAssistantText processes assistant text content.
+func (pd *ProgressDisplay) OnAssistantText(text string) {
+	pd.mu.Lock()
+	defer pd.mu.Unlock()
+
+	// Detect build failure mentions to transition phase
+	lower := strings.ToLower(text)
+	if strings.Contains(lower, "build failed") || strings.Contains(lower, "compilation error") ||
+		strings.Contains(lower, "build error") {
+		pd.buildFailed = true
+	}
+	if pd.buildFailed && (strings.Contains(lower, "fix") || strings.Contains(lower, "correct") ||
+		strings.Contains(lower, "let me") || strings.Contains(lower, "i'll")) {
+		pd.phase = PhaseFixing
+		pd.fixAttempts++
+	}
+
+	// Extract a short meaningful status from assistant text
+	status := extractStatus(text)
+	if status != "" {
+		pd.statusText = status
+	}
+}
+
+// renderLoop runs the rendering goroutine.
+func (pd *ProgressDisplay) renderLoop() {
+	frame := 0
+	for {
+		select {
+		case <-pd.done:
+			return
+		default:
+			pd.render(frame)
+			frame++
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
+}
+
+// render draws the current state to the terminal.
+func (pd *ProgressDisplay) render(frame int) {
+	pd.mu.Lock()
+	phase := pd.phase
+	totalFiles := pd.totalFiles
+	filesWritten := pd.filesWritten
+	activities := make([]activity, len(pd.activities))
+	copy(activities, pd.activities)
+	statusText := pd.statusText
+	totalPhases := pd.totalPhases
+	buildFailed := pd.buildFailed
+	pd.mu.Unlock()
+
+	spinChar := spinnerFrames[frame%len(spinnerFrames)]
+	var lines []string
+
+	// Phase header with progress bar
+	phaseHeader := pd.buildPhaseHeader(phase, totalPhases, totalFiles, filesWritten, buildFailed, spinChar)
+	lines = append(lines, phaseHeader)
+
+	// Activity tree
+	for i, act := range activities {
+		prefix := "  ├─ "
+		if i == len(activities)-1 {
+			prefix = "  └─ "
+		}
+		marker := spinChar
+		color := Cyan
+		if act.done {
+			marker = "✓"
+			color = Green
+		}
+		lines = append(lines, fmt.Sprintf("%s%s%s%s %s%s", Dim, prefix, color, marker, Reset+act.text, Reset))
+	}
+
+	// Status text (assistant thinking)
+	if statusText != "" {
+		lines = append(lines, fmt.Sprintf("  %s%s%s", Dim, statusText, Reset))
+	}
+
+	// Pad to fixed height to avoid flicker
+	for len(lines) < maxActivities+3 {
+		lines = append(lines, "")
+	}
+
+	// Move cursor up and overwrite
+	totalLines := len(lines)
+	if frame > 0 {
+		fmt.Printf("\033[%dA", totalLines) // move up
+	}
+	for _, line := range lines {
+		// Clear line and print
+		fmt.Printf("\r\033[K%s\n", line)
+	}
+}
+
+// buildPhaseHeader builds the header line with optional progress bar.
+func (pd *ProgressDisplay) buildPhaseHeader(phase Phase, totalPhases, totalFiles, filesWritten int, buildFailed bool, spinChar string) string {
+	var sb strings.Builder
+	sb.WriteString("  ")
+
+	// Phase number (only for build mode with numbered phases)
+	if totalPhases > 0 {
+		phaseNum := phase.number()
+		if buildFailed && phase == PhaseFixing {
+			sb.WriteString(fmt.Sprintf("%s%s %s...%s", Yellow, spinChar, phase.label(), Reset))
+		} else {
+			sb.WriteString(fmt.Sprintf("%sPhase %d/%d:%s %s%s %s...%s",
+				Dim, phaseNum, totalPhases, Reset, Cyan, spinChar, phase.label(), Reset))
+		}
+	} else {
+		sb.WriteString(fmt.Sprintf("%s%s %s...%s", Cyan, spinChar, phase.label(), Reset))
+	}
+
+	// Progress bar for building code phase
+	if phase == PhaseBuildingCode && totalFiles > 0 {
+		sb.WriteString("  ")
+		sb.WriteString(buildProgressBar(filesWritten, totalFiles))
+		sb.WriteString(fmt.Sprintf(" %s%d/%d files%s", Dim, filesWritten, totalFiles, Reset))
+	}
+
+	return sb.String()
+}
+
+// clearDisplay clears the progress display area.
+func (pd *ProgressDisplay) clearDisplay() {
+	total := maxActivities + 3
+	for i := 0; i < total; i++ {
+		fmt.Printf("\033[K\n") // clear line and move down
+	}
+	fmt.Printf("\033[%dA", total) // move back up
+}
+
+// buildProgressBar creates a progress bar string.
+func buildProgressBar(current, total int) string {
+	if total <= 0 {
+		return ""
+	}
+	width := 16
+	filled := (current * width) / total
+	if filled > width {
+		filled = width
+	}
+	bar := strings.Repeat("█", filled) + strings.Repeat("░", width-filled)
+	return fmt.Sprintf("%s[%s]%s", Dim, bar, Reset)
+}
+
+// shortPath extracts a meaningful short path from a full file path.
+func shortPath(fullPath string) string {
+	// Find the app source directory and show relative path
+	parts := strings.Split(fullPath, "/")
+	// Show last 2 components (e.g., "Models/Habit.swift")
+	if len(parts) >= 2 {
+		return parts[len(parts)-2] + "/" + parts[len(parts)-1]
+	}
+	if len(parts) >= 1 {
+		return parts[len(parts)-1]
+	}
+	return fullPath
+}
+
+// friendlyToolName maps MCP tool names to human-readable activity labels.
+func friendlyToolName(toolName string, inputGetter func(key string) string) string {
+	switch toolName {
+	// Apple docs
+	case "mcp__apple-docs__search_apple_docs":
+		if q := inputGetter("query"); q != "" {
+			return truncateActivity("Researching " + q)
+		}
+		return "Researching Apple docs"
+	case "mcp__apple-docs__get_apple_doc_content":
+		return "Reading documentation"
+	case "mcp__apple-docs__search_framework_symbols":
+		if fw := inputGetter("framework"); fw != "" {
+			return truncateActivity("Looking up " + fw + " symbols")
+		}
+		return "Looking up framework symbols"
+	case "mcp__apple-docs__get_sample_code":
+		return "Reading sample code"
+	case "mcp__apple-docs__get_related_apis":
+		return "Finding related APIs"
+	case "mcp__apple-docs__find_similar_apis":
+		return "Finding similar APIs"
+	case "mcp__apple-docs__get_platform_compatibility":
+		return "Checking platform compatibility"
+
+	// XcodeGen project config
+	case "mcp__xcodegen__add_permission":
+		if key := inputGetter("key"); key != "" {
+			return truncateActivity("Adding permission: " + key)
+		}
+		return "Adding permission"
+	case "mcp__xcodegen__add_extension":
+		if kind := inputGetter("kind"); kind != "" {
+			return truncateActivity("Adding " + kind + " extension")
+		}
+		return "Adding extension"
+	case "mcp__xcodegen__add_entitlement":
+		return "Adding entitlement"
+	case "mcp__xcodegen__add_localization":
+		if lang := inputGetter("language"); lang != "" {
+			return truncateActivity("Adding " + lang + " localization")
+		}
+		return "Adding localization"
+	case "mcp__xcodegen__set_build_setting":
+		return "Updating build settings"
+	case "mcp__xcodegen__get_project_config":
+		return "Reading project config"
+	case "mcp__xcodegen__regenerate_project":
+		return "Regenerating Xcode project"
+	}
+
+	return ""
+}
+
+// truncateActivity truncates an activity label to fit the display.
+func truncateActivity(s string) string {
+	const maxWidth = 45
+	if len(s) > maxWidth {
+		return s[:maxWidth] + "..."
+	}
+	return s
+}
+
+// extractStatus extracts a short, meaningful status from assistant text.
+func extractStatus(text string) string {
+	// Take the first sentence, truncated
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return ""
+	}
+
+	// Find first sentence boundary
+	for i, ch := range text {
+		if ch == '.' || ch == '\n' {
+			text = text[:i]
+			break
+		}
+	}
+
+	// Truncate to max width
+	const maxWidth = 70
+	if len(text) > maxWidth {
+		text = text[:maxWidth] + "..."
+	}
+
+	return text
+}

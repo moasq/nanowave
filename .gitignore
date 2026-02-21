@@ -1,0 +1,18 @@
+# Build output
+bin/
+dist/
+
+# Binaries
+nanowave
+
+# OS files
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Test output
+coverage.out

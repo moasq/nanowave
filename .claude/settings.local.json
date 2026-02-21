@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(tail:*)",
+      "Bash(gh repo:*)",
+      "Bash(git check-ignore:*)",
+      "Bash(git ls-tree:*)",
+      "WebSearch",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(go build:*)"
+    ]
+  },
+  "disabledMcpjsonServers": [
+    "MCP_DOCKER"
+  ]
+}
