@@ -374,8 +374,8 @@ func ReadInput() InputResult {
 		// Handle escape sequences (arrow keys etc.)
 		if b[0] == 0x1b {
 			if n == 1 {
-				// Could be standalone Esc or start of escape sequence.
-				// Set escPressed flag — if next byte is Enter, insert newline.
+				// Single Esc byte — try to read more to distinguish
+				// standalone Esc from the start of an escape sequence.
 				extra := make([]byte, 8)
 				en, _ := os.Stdin.Read(extra)
 				if en > 0 {
@@ -386,6 +386,21 @@ func ReadInput() InputResult {
 					escPressed = true
 					continue
 				}
+			}
+
+			// If the byte after Esc is not '[', this is Esc+<key>.
+			// Set escPressed and re-process the remaining bytes as input.
+			if n >= 2 && b[1] != '[' {
+				escPressed = true
+				// Feed the non-Esc bytes back into the main switch below
+				remaining := b[1:n]
+				replay := make([]byte, len(remaining))
+				copy(replay, remaining)
+				copy(buf, replay)
+				b = buf[:len(replay)]
+				n = len(replay)
+				// DO NOT continue — fall through to the main switch
+				goto handleByte
 			}
 			if n >= 3 && b[1] == '[' {
 				seq := string(b[2:n])
@@ -547,6 +562,7 @@ func ReadInput() InputResult {
 			continue
 		}
 
+	handleByte:
 		switch b[0] {
 		case 1: // Ctrl+A — move to beginning of line
 			escPressed = false
