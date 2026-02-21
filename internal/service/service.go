@@ -16,6 +16,8 @@ import (
 	"time"
 	"unicode"
 
+	"os/user"
+
 	"github.com/moasq/nanowave/internal/claude"
 	"github.com/moasq/nanowave/internal/config"
 	"github.com/moasq/nanowave/internal/orchestration"
@@ -69,7 +71,7 @@ func NewService(cfg *config.Config, opts ...ServiceOpts) (*Service, error) {
 	}, nil
 }
 
-// Send auto-routes to build (no project) or edit (project exists).
+// Send auto-routes to build (no project), question (detected question), or edit.
 // images is an optional list of absolute paths to image files to include.
 func (s *Service) Send(ctx context.Context, prompt string, images []string) error {
 	if !s.config.HasProject() {
@@ -259,15 +261,34 @@ func (s *Service) build(ctx context.Context, prompt string, images []string) err
 		}
 		s.projectStore.Save(proj)
 		s.historyStore.Append(storage.HistoryMessage{Role: "user", Content: prompt})
+		buildSummary := fmt.Sprintf("Built %s (%d files)", result.AppName, result.CompletedFiles)
+		if result.Description != "" {
+			buildSummary += " — " + result.Description
+		}
 		s.historyStore.Append(storage.HistoryMessage{
 			Role:    "assistant",
-			Content: fmt.Sprintf("Built %s with %d files", result.AppName, result.FileCount),
+			Content: buildSummary,
 		})
 	}
 
 	// Print results
 	fmt.Println()
 	terminal.Success(fmt.Sprintf("%s is ready!", result.AppName))
+	if result.Description != "" {
+		fmt.Printf("  %s%s%s\n", terminal.Dim, result.Description, terminal.Reset)
+	}
+	fmt.Println()
+	if len(result.Features) > 0 {
+		for _, f := range result.Features {
+			fmt.Printf("  %s•%s %s%s%s", terminal.Bold, terminal.Reset, terminal.Bold, f.Name, terminal.Reset)
+			if f.Description != "" {
+				fmt.Printf(" %s— %s%s", terminal.Dim, f.Description, terminal.Reset)
+			}
+			fmt.Println()
+		}
+		fmt.Println()
+	}
+	terminal.Detail("Files", fmt.Sprintf("%d", result.CompletedFiles))
 	terminal.Detail("Location", result.ProjectDir)
 
 	appNamePascal := SanitizeToPascalCase(result.AppName)
@@ -307,10 +328,17 @@ func (s *Service) edit(ctx context.Context, prompt string, images []string) erro
 		s.projectStore.Save(project)
 	}
 
+	// Show summary of what was done
+	printSummary(result.Summary)
+
 	s.historyStore.Append(storage.HistoryMessage{Role: "user", Content: prompt})
+	summary := truncateStr(result.Summary, 200)
+	if summary == "" {
+		summary = fmt.Sprintf("Applied edit: %s", truncateStr(prompt, 50))
+	}
 	s.historyStore.Append(storage.HistoryMessage{
 		Role:    "assistant",
-		Content: fmt.Sprintf("Applied edit: %s", truncateStr(prompt, 50)),
+		Content: summary,
 	})
 
 	return nil
@@ -452,7 +480,7 @@ func (s *Service) Run(ctx context.Context) error {
 	// Install and launch the app
 	bundleID := project.BundleID
 	if bundleID == "" {
-		bundleID = fmt.Sprintf("com.nanowave.%s", strings.ToLower(scheme))
+		bundleID = fmt.Sprintf("com.%s.%s", sanitizeBundleID(currentUsername()), strings.ToLower(scheme))
 	}
 
 	// Find the built .app in DerivedData
@@ -546,6 +574,147 @@ func (s *Service) Open() error {
 // HasProject returns whether the service has a loaded project.
 func (s *Service) HasProject() bool {
 	return s.config.HasProject()
+}
+
+// isQuestion returns true if the prompt looks like a pure question rather than an edit request.
+// Conservative: only matches clear questions. Ambiguous prompts go through the edit pipeline.
+func isQuestion(prompt string) bool {
+	trimmed := strings.TrimSpace(prompt)
+	if trimmed == "" {
+		return false
+	}
+
+	lower := strings.ToLower(trimmed)
+
+	// If it contains action words, it's an edit request even if phrased as a question
+	actionWords := []string{
+		"fix ", "add ", "change ", "update ", "remove ", "delete ",
+		"make ", "create ", "implement ", "replace ", "move ",
+		"refactor ", "please ", "let us ", "let's ",
+	}
+	for _, a := range actionWords {
+		if strings.Contains(lower, a) {
+			return false
+		}
+	}
+
+	// Must end with ? to be detected as a question via prefix matching
+	if !strings.HasSuffix(trimmed, "?") {
+		return false
+	}
+
+	// Only match clear question-word prefixes (with trailing ?)
+	prefixes := []string{
+		"what ", "how ", "why ", "where ", "which ",
+		"is ", "are ", "does ", "do ", "can ", "could ",
+		"should ", "would ", "tell me ", "explain ", "describe ",
+		"show me ", "list ", "how many ", "how much ",
+	}
+	for _, p := range prefixes {
+		if strings.HasPrefix(lower, p) {
+			return true
+		}
+	}
+	return false
+}
+
+// question runs a cheap Q&A path using haiku with read-only tools.
+func (s *Service) question(ctx context.Context, prompt, projectDir, sessionID string) (*claude.Response, error) {
+	systemPrompt := `You are a helpful assistant answering questions about an iOS app project.
+You have read-only access to the project files. Browse the codebase to answer accurately.
+Be concise and direct. Do not modify any files.`
+
+	readOnlyTools := []string{"Read", "Glob", "Grep"}
+
+	var resp *claude.Response
+	var err error
+
+	resp, err = s.claude.GenerateStreaming(ctx, prompt, claude.GenerateOpts{
+		SystemPrompt: systemPrompt,
+		MaxTurns:     5,
+		Model:        "haiku",
+		WorkDir:      projectDir,
+		AllowedTools: readOnlyTools,
+		SessionID:    sessionID,
+	}, func(ev claude.StreamEvent) {
+		if ev.Type == "content_block_delta" && ev.Text != "" {
+			fmt.Print(ev.Text)
+		}
+	})
+
+	// End the streamed output with a newline
+	fmt.Println()
+
+	return resp, err
+}
+
+// ask is the internal method for answering questions with usage/history recording.
+func (s *Service) ask(ctx context.Context, prompt string) error {
+	project, err := s.projectStore.Load()
+	if err != nil || project == nil {
+		return fmt.Errorf("no active project found")
+	}
+
+	fmt.Println()
+
+	resp, err := s.question(ctx, prompt, project.ProjectPath, project.SessionID)
+	if err != nil {
+		return fmt.Errorf("question failed: %w", err)
+	}
+
+	if resp != nil {
+		s.usageStore.RecordUsage(resp.TotalCostUSD, resp.Usage.InputTokens, resp.Usage.OutputTokens, resp.Usage.CacheReadInputTokens, resp.Usage.CacheCreationInputTokens)
+		if resp.SessionID != "" {
+			project.SessionID = resp.SessionID
+			s.projectStore.Save(project)
+		}
+	}
+
+	s.historyStore.Append(storage.HistoryMessage{Role: "user", Content: prompt})
+	answer := ""
+	if resp != nil {
+		answer = truncateStr(resp.Result, 200)
+	}
+	s.historyStore.Append(storage.HistoryMessage{Role: "assistant", Content: answer})
+
+	return nil
+}
+
+// Ask is the public method for the /ask command.
+func (s *Service) Ask(ctx context.Context, prompt string) error {
+	return s.ask(ctx, prompt)
+}
+
+// printSummary prints a short dimmed summary of what Claude did.
+// Extracts the first meaningful sentence, skipping noise.
+func printSummary(summary string) {
+	summary = strings.TrimSpace(summary)
+	if summary == "" {
+		return
+	}
+	// Take just the first line that isn't a markdown header, bullet, or empty
+	var line string
+	for _, l := range strings.Split(summary, "\n") {
+		l = strings.TrimSpace(l)
+		if l == "" || strings.HasPrefix(l, "#") || strings.HasPrefix(l, "```") || strings.HasPrefix(l, "---") {
+			continue
+		}
+		// Strip leading markdown bullets/numbers
+		l = strings.TrimLeft(l, "-*•0123456789. ")
+		l = strings.TrimPrefix(l, "**")
+		l = strings.TrimSuffix(l, "**")
+		if l != "" {
+			line = l
+			break
+		}
+	}
+	if line == "" {
+		return
+	}
+	if len(line) > 120 {
+		line = line[:120] + "..."
+	}
+	fmt.Printf("\n  %s%s%s\n", terminal.Dim, line, terminal.Reset)
 }
 
 // ---- Helpers ----
@@ -710,6 +879,28 @@ func streamSimulatorLogs(ctx context.Context, processName, bundleID string, dura
 	}
 
 	return nil
+}
+
+func currentUsername() string {
+	u, err := user.Current()
+	if err != nil || u.Username == "" {
+		return "app"
+	}
+	return u.Username
+}
+
+func sanitizeBundleID(s string) string {
+	var b strings.Builder
+	for _, r := range strings.ToLower(s) {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			b.WriteRune(r)
+		}
+	}
+	result := b.String()
+	if result == "" {
+		return "app"
+	}
+	return result
 }
 
 func streamLogReader(r io.Reader, isErr bool, wg *sync.WaitGroup) {

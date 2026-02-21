@@ -3,11 +3,38 @@ package orchestration
 import (
 	"encoding/json"
 	"fmt"
+	"os/user"
 	"strings"
+	"unicode"
 
 	"github.com/moasq/nanowave/internal/claude"
 	"github.com/moasq/nanowave/internal/terminal"
 )
+
+// bundleIDPrefix returns a user-specific bundle ID prefix derived from the macOS username.
+// Example: "mohammedal-quraini" → "com.mohammedalquraini"
+func bundleIDPrefix() string {
+	u, err := user.Current()
+	if err != nil || u.Username == "" {
+		return "com.app"
+	}
+	name := sanitizeBundleID(u.Username)
+	if name == "" {
+		return "com.app"
+	}
+	return "com." + name
+}
+
+// sanitizeBundleID strips non-alphanumeric characters from a string for use in a bundle ID.
+func sanitizeBundleID(s string) string {
+	var b strings.Builder
+	for _, r := range strings.ToLower(s) {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
+}
 
 // parseAnalysis parses the analyzer JSON response.
 func parseAnalysis(result string) (*AnalysisResult, error) {
@@ -42,20 +69,26 @@ func parsePlan(result string) (*PlannerResult, error) {
 }
 
 // extractJSON finds and extracts the first JSON object from a string.
+// Handles responses that contain thinking text before/after a ```json code block.
 func extractJSON(s string) string {
 	s = strings.TrimSpace(s)
 
-	// Remove markdown code fences
-	if strings.HasPrefix(s, "```") {
-		lines := strings.Split(s, "\n")
-		var filtered []string
-		for _, line := range lines {
-			if strings.HasPrefix(strings.TrimSpace(line), "```") {
-				continue
+	// Try to extract content from a markdown code fence first.
+	// This handles: text...\n```json\n{...}\n```\nmore text...
+	if idx := strings.Index(s, "```"); idx >= 0 {
+		// Find the opening fence line end
+		fenceStart := idx
+		lineEnd := strings.Index(s[fenceStart:], "\n")
+		if lineEnd >= 0 {
+			contentStart := fenceStart + lineEnd + 1
+			// Find the closing fence
+			closingFence := strings.Index(s[contentStart:], "```")
+			if closingFence >= 0 {
+				s = s[contentStart : contentStart+closingFence]
+			} else {
+				s = s[contentStart:]
 			}
-			filtered = append(filtered, line)
 		}
-		s = strings.Join(filtered, "\n")
 	}
 
 	// Find the first { and last }
@@ -106,6 +139,10 @@ func newProgressCallback(progress *terminal.ProgressDisplay) func(claude.StreamE
 				progress.OnToolUse(ev.ToolName, func(key string) string {
 					return extractToolInputString(ev.ToolInput, key)
 				})
+			}
+		case "content_block_delta":
+			if ev.Text != "" {
+				progress.OnStreamingText(ev.Text)
 			}
 		case "assistant":
 			if ev.Text != "" {

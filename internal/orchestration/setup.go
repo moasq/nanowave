@@ -339,7 +339,7 @@ func writeAssetCatalog(projectDir, appName string) error {
 // writeProjectConfig writes project_config.json from the PlannerResult.
 // This is the source of truth that the xcodegen MCP server reads/writes.
 func writeProjectConfig(projectDir string, plan *PlannerResult, appName string) error {
-	bundleID := fmt.Sprintf("com.nanowave.%s", strings.ToLower(appName))
+	bundleID := fmt.Sprintf("%s.%s", bundleIDPrefix(), strings.ToLower(appName))
 
 	type permission struct {
 		Key         string `json:"key"`

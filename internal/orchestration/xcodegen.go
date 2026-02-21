@@ -11,7 +11,7 @@ import (
 func generateProjectYAML(appName string, plan *PlannerResult) string {
 	var b strings.Builder
 
-	bundleID := fmt.Sprintf("com.nanowave.%s", strings.ToLower(appName))
+	bundleID := fmt.Sprintf("%s.%s", bundleIDPrefix(), strings.ToLower(appName))
 	hasExtensions := plan != nil && len(plan.Extensions) > 0
 	// Check if any extension needs data sharing (app groups)
 	needsAppGroups := false
@@ -29,7 +29,7 @@ func generateProjectYAML(appName string, plan *PlannerResult) string {
 
 	fmt.Fprintf(&b, "name: %s\n", appName)
 	b.WriteString("options:\n")
-	b.WriteString("  bundleIdPrefix: com.nanowave\n")
+	fmt.Fprintf(&b, "  bundleIdPrefix: %s\n", bundleIDPrefix())
 	b.WriteString("  deploymentTarget:\n")
 	b.WriteString("    iOS: \"26.0\"\n")
 	b.WriteString("  xcodeVersion: \"16.0\"\n")

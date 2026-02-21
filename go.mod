@@ -4,6 +4,7 @@ go 1.25.5
 
 require (
 	github.com/modelcontextprotocol/go-sdk v1.3.1
+	github.com/reeflective/readline v1.1.4
 	github.com/spf13/cobra v1.8.1
 	golang.org/x/term v0.40.0
 )
@@ -11,6 +12,7 @@ require (
 require (
 	github.com/google/jsonschema-go v0.4.2 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
+	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/segmentio/asm v1.1.3 // indirect
 	github.com/segmentio/encoding v0.5.3 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect

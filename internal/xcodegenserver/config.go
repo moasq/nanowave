@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/user"
 	"path/filepath"
 	"strings"
+	"unicode"
 )
 
 // ProjectConfig is the source of truth for Xcode project configuration.
@@ -91,7 +93,7 @@ func generateProjectYAML(cfg *ProjectConfig) string {
 
 	fmt.Fprintf(&b, "name: %s\n", appName)
 	b.WriteString("options:\n")
-	b.WriteString("  bundleIdPrefix: com.nanowave\n")
+	fmt.Fprintf(&b, "  bundleIdPrefix: %s\n", bundleIDPrefix())
 	b.WriteString("  deploymentTarget:\n")
 	b.WriteString("    iOS: \"26.0\"\n")
 	b.WriteString("  xcodeVersion: \"16.0\"\n")
@@ -339,6 +341,24 @@ func mergeEntitlementDefaults(kind string, planValues map[string]any, mainBundle
 		m[k] = v
 	}
 	return m
+}
+
+func bundleIDPrefix() string {
+	u, err := user.Current()
+	if err != nil || u.Username == "" {
+		return "com.app"
+	}
+	var b strings.Builder
+	for _, r := range strings.ToLower(u.Username) {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			b.WriteRune(r)
+		}
+	}
+	name := b.String()
+	if name == "" {
+		return "com.app"
+	}
+	return "com." + name
 }
 
 func yamlQuote(s string) string {

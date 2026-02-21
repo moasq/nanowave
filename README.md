@@ -85,6 +85,15 @@ All projects are stored in `~/nanowave/projects/`.
   ✓ Plan ready (12 files, 3 models)
   ✓ Build complete — 12 files
   ✓ HabitGrid is ready!
+  A minimal habit tracker with weekly grid view and streak tracking
+
+  • Habit List — Browse and manage your daily habits
+  • Weekly Grid — Visual grid showing completion across the week
+  • Streak Counter — Track consecutive days of habit completion
+  • Haptic Feedback — Satisfying tactile response on completion
+
+  Files    12
+  Location ~/nanowave/projects/HabitGrid
   ✓ Launched on iPhone 17 Pro
 ```
 
@@ -96,6 +105,21 @@ Select a project from the picker, then describe changes:
 > Add a dark mode toggle to the settings screen
 
   ✓ Changes applied!
+
+  Added an appearance setting to SettingsView with system/light/dark
+  options, wired to @AppStorage and applied via preferredColorScheme
+  on the root view.
+```
+
+### Ask about your project
+
+Use `/ask` to ask questions without triggering a full edit (uses Haiku, read-only tools, much cheaper):
+
+```
+> /ask how many views do I have?
+
+  You have 8 SwiftUI views across 5 feature modules...
+  $0.0012
 ```
 
 ### Slash commands
@@ -104,6 +128,7 @@ Select a project from the picker, then describe changes:
 |---|---|
 | `/run` | Build and launch in simulator |
 | `/fix` | Auto-fix compilation errors |
+| `/ask <question>` | Ask about your project (cheap, read-only) |
 | `/open` | Open project in Xcode |
 | `/projects` | Switch to another project |
 | `/model [name]` | Switch model (`sonnet`, `opus`, `haiku`) |
@@ -144,13 +169,15 @@ Nanowave runs a multi-phase pipeline:
 describe → analyze → plan → build → fix → run
 ```
 
-1. **Analyze** — Extracts the app name, features, core flow, and deferred items from your description (Claude Haiku).
+1. **Analyze** — Extracts the app name, features, core flow, and deferred items from your description (Claude Sonnet).
 2. **Plan** — Produces a file-level build plan: data models, file layout, color palette, navigation structure (Claude Sonnet).
 3. **Build** — Generates Swift source files, `project.yml`, asset catalog, and runs XcodeGen to produce the `.xcodeproj` (Claude Sonnet, agentic mode with up to 6 completion passes).
 4. **Fix** — Compiles with `xcodebuild`, reads errors, and auto-repairs until the build succeeds.
 5. **Run** — Boots the iOS Simulator, installs the app, and launches it.
 
-Edits follow the same pattern: Claude reads the existing project, applies changes, rebuilds, and auto-fixes.
+Edits follow the same pattern: Claude reads the existing project, applies changes, rebuilds, and auto-fixes. After each edit, a summary of what was changed is displayed.
+
+The `/ask` command provides a lightweight Q&A path using Claude Haiku with read-only tools (Read, Glob, Grep) — useful for exploring your project without incurring full edit costs.
 
 ## Project structure
 
@@ -218,4 +245,3 @@ internal/
 ## License
 
 MIT
-# nanowave

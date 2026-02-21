@@ -78,19 +78,19 @@ func (p *Pipeline) Build(ctx context.Context, prompt string, images []string) (*
 	spinner.StopWithMessage(fmt.Sprintf("%s%s✓%s Workspace ready", terminal.Bold, terminal.Green, terminal.Reset))
 
 	// Phase 2: Analyze
-	spinner = terminal.NewSpinner("Analyzing your request...")
-	spinner.Start()
+	analyzeProgress := terminal.NewProgressDisplay("analyze", 0)
+	analyzeProgress.Start()
 
-	analysis, err := p.analyze(ctx, prompt, spinner)
+	analysis, err := p.analyze(ctx, prompt, analyzeProgress)
 	if err != nil {
-		spinner.Stop()
+		analyzeProgress.StopWithError("Analysis failed")
 		return nil, fmt.Errorf("analysis failed: %w", err)
 	}
 
 	appName = sanitizeToPascalCase(analysis.AppName)
 	projectDir = filepath.Join(p.config.ProjectDir, appName)
 
-	spinner.StopWithMessage(fmt.Sprintf("%s%s✓%s Analyzed: %s", terminal.Bold, terminal.Green, terminal.Reset, analysis.AppName))
+	analyzeProgress.StopWithSuccess(fmt.Sprintf("Analyzed: %s", analysis.AppName))
 
 	var featureNames []string
 	for _, f := range analysis.Features {
@@ -104,17 +104,16 @@ func (p *Pipeline) Build(ctx context.Context, prompt string, images []string) (*
 	}
 
 	// Phase 3: Plan
-	spinner = terminal.NewSpinner("Planning architecture...")
-	spinner.Start()
+	planProgress := terminal.NewProgressDisplay("plan", 0)
+	planProgress.Start()
 
-	plan, err := p.plan(ctx, analysis, spinner)
+	plan, err := p.plan(ctx, analysis, planProgress)
 	if err != nil {
-		spinner.Stop()
+		planProgress.StopWithError("Planning failed")
 		return nil, fmt.Errorf("planning failed: %w", err)
 	}
 
-	spinner.StopWithMessage(fmt.Sprintf("%s%s✓%s Plan ready (%d files, %d models)",
-		terminal.Bold, terminal.Green, terminal.Reset, len(plan.Files), len(plan.Models)))
+	planProgress.StopWithSuccess(fmt.Sprintf("Plan ready (%d files, %d models)", len(plan.Files), len(plan.Models)))
 
 	terminal.Detail("Design", fmt.Sprintf("%s palette, %s font, %s mood",
 		plan.Design.Palette.Primary, plan.Design.FontDesign, plan.Design.AppMood))
@@ -250,9 +249,10 @@ func (p *Pipeline) Build(ctx context.Context, prompt string, images []string) (*
 
 	return &BuildResult{
 		AppName:          analysis.AppName,
+		Description:      analysis.Description,
 		ProjectDir:       projectDir,
-		BundleID:         fmt.Sprintf("com.nanowave.%s", strings.ToLower(appName)),
-		Features:         featureNames,
+		BundleID:         fmt.Sprintf("%s.%s", bundleIDPrefix(), strings.ToLower(appName)),
+		Features:         analysis.Features,
 		FileCount:        len(plan.Files),
 		PlannedFiles:     len(plan.Files),
 		CompletedFiles:   report.ValidCount,
@@ -268,6 +268,7 @@ func (p *Pipeline) Build(ctx context.Context, prompt string, images []string) (*
 
 // EditResult holds the output of an Edit operation.
 type EditResult struct {
+	Summary      string
 	SessionID    string
 	TotalCostUSD float64
 	InputTokens  int
@@ -317,6 +318,7 @@ After making changes:
 	showCost(resp)
 
 	return &EditResult{
+		Summary:      resp.Result,
 		SessionID:    resp.SessionID,
 		TotalCostUSD: resp.TotalCostUSD,
 		InputTokens:  resp.Usage.InputTokens,
@@ -328,6 +330,7 @@ After making changes:
 
 // FixResult holds the output of a Fix operation.
 type FixResult struct {
+	Summary      string
 	SessionID    string
 	TotalCostUSD float64
 	InputTokens  int
@@ -373,6 +376,7 @@ func (p *Pipeline) Fix(ctx context.Context, projectDir, sessionID string) (*FixR
 	showCost(resp)
 
 	return &FixResult{
+		Summary:      resp.Result,
 		SessionID:    resp.SessionID,
 		TotalCostUSD: resp.TotalCostUSD,
 		InputTokens:  resp.Usage.InputTokens,
@@ -383,31 +387,46 @@ func (p *Pipeline) Fix(ctx context.Context, projectDir, sessionID string) (*FixR
 }
 
 // analyze runs Phase 2: prompt → AnalysisResult.
-func (p *Pipeline) analyze(ctx context.Context, prompt string, spinner *terminal.Spinner) (*AnalysisResult, error) {
+func (p *Pipeline) analyze(ctx context.Context, prompt string, progress *terminal.ProgressDisplay) (*AnalysisResult, error) {
 	systemPrompt := analyzerPrompt + "\n\n" + planningConstraints
 
-	var resultText string
+	progress.AddActivity("Sending request to Claude")
+
+	gotFirstDelta := false
 	resp, err := p.claude.GenerateStreaming(ctx, prompt, claude.GenerateOpts{
 		SystemPrompt: systemPrompt,
 		MaxTurns:     3,
 		Model:        "sonnet",
 	}, func(ev claude.StreamEvent) {
 		switch ev.Type {
+		case "system":
+			progress.AddActivity("Connected to Claude")
+		case "content_block_delta":
+			if ev.Text != "" {
+				if !gotFirstDelta {
+					gotFirstDelta = true
+					progress.AddActivity("Identifying features and requirements")
+				}
+				progress.OnStreamingText(ev.Text)
+			}
 		case "assistant":
 			if ev.Text != "" {
-				if s := extractSpinnerStatus(ev.Text); s != "" {
-					spinner.Update(s)
-				}
+				progress.OnAssistantText(ev.Text)
 			}
-		case "result":
-			resultText = ev.Result
+		case "tool_use":
+			if ev.ToolName != "" {
+				progress.OnToolUse(ev.ToolName, func(key string) string {
+					return extractToolInputString(ev.ToolInput, key)
+				})
+			}
 		}
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	if resultText == "" && resp != nil {
+	resultText := ""
+	if resp != nil {
 		resultText = resp.Result
 	}
 
@@ -419,7 +438,7 @@ func (p *Pipeline) analyze(ctx context.Context, prompt string, spinner *terminal
 }
 
 // plan runs Phase 3: analysis → PlannerResult.
-func (p *Pipeline) plan(ctx context.Context, analysis *AnalysisResult, spinner *terminal.Spinner) (*PlannerResult, error) {
+func (p *Pipeline) plan(ctx context.Context, analysis *AnalysisResult, progress *terminal.ProgressDisplay) (*PlannerResult, error) {
 	systemPrompt := plannerPrompt + "\n\n" + planningConstraints
 
 	// Marshal the analysis as the user message
@@ -430,28 +449,43 @@ func (p *Pipeline) plan(ctx context.Context, analysis *AnalysisResult, spinner *
 
 	userMsg := fmt.Sprintf("Create a file-level build plan for this app spec:\n\n%s", string(analysisJSON))
 
-	var resultText string
+	progress.AddActivity("Sending analysis to Claude")
+
+	gotFirstDelta := false
 	resp, err := p.claude.GenerateStreaming(ctx, userMsg, claude.GenerateOpts{
 		SystemPrompt: systemPrompt,
 		MaxTurns:     3,
 		Model:        "sonnet",
 	}, func(ev claude.StreamEvent) {
 		switch ev.Type {
+		case "system":
+			progress.AddActivity("Connected to Claude")
+		case "content_block_delta":
+			if ev.Text != "" {
+				if !gotFirstDelta {
+					gotFirstDelta = true
+					progress.AddActivity("Designing file structure and models")
+				}
+				progress.OnStreamingText(ev.Text)
+			}
 		case "assistant":
 			if ev.Text != "" {
-				if s := extractSpinnerStatus(ev.Text); s != "" {
-					spinner.Update(s)
-				}
+				progress.OnAssistantText(ev.Text)
 			}
-		case "result":
-			resultText = ev.Result
+		case "tool_use":
+			if ev.ToolName != "" {
+				progress.OnToolUse(ev.ToolName, func(key string) string {
+					return extractToolInputString(ev.ToolInput, key)
+				})
+			}
 		}
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	if resultText == "" && resp != nil {
+	resultText := ""
+	if resp != nil {
 		resultText = resp.Result
 	}
 

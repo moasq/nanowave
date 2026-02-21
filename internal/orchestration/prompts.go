@@ -49,6 +49,15 @@ DEFERRAL RULES:
 - Reserve "deferred" for things like: complex drag-drop reordering, real-time server sync, push notification server setup, advanced audio processing, complex gesture interactions.
 - The deferred array must ONLY contain features the user explicitly mentioned that you chose not to implement yet. NEVER populate it with things you think the app should have. If nothing was explicitly mentioned and deferred, return an empty array.
 
+HARD SCOPE LIMITS — APPLE-ONLY [TEMPORARY]:
+- Apps must work 100% offline using ONLY Apple's built-in frameworks. No external services of any kind.
+- NEVER include features that require: external APIs, cloud backends, REST calls, WebSocket connections, third-party web services, server-side processing, authentication services, payment processing, analytics, or any network call to non-Apple servers.
+- NEVER include API keys, secrets, or tokens of any kind in generated code — this is a critical security violation.
+- NEVER use external LLM/AI APIs (Anthropic, OpenAI, Google AI, Hugging Face, etc.). For AI features, use Apple's on-device Foundation Models framework only.
+- NEVER use third-party Swift packages (SPM, CocoaPods, Carthage). Only Apple frameworks.
+- If the user asks for a feature that requires external services, scope it to a local-only implementation (on-device data, mock UI, or Apple on-device APIs). Note the limitation but do NOT wire up external calls.
+- This restriction is TEMPORARY and will be relaxed in the future when backend services are available.
+
 NON-DEFERRABLE REQUIREMENTS:
 The following features are NEVER deferred when the user explicitly asks for them:
 - Settings / preferences screen
@@ -309,8 +318,14 @@ const planningConstraints = `PLATFORM & SCOPE:
 - SwiftUI-first architecture. UIKit/AppKit bridges are allowed only when a feature has no viable SwiftUI API.
 - No Storyboard/XIB.
 
-DEPENDENCIES:
-- Built-in Apple frameworks only. No external packages.
+DEPENDENCIES & SERVICES — APPLE-ONLY [TEMPORARY]:
+- Built-in Apple frameworks only. No third-party Swift packages (SPM, CocoaPods, Carthage).
+- No external services of any kind: no REST APIs, no cloud backends, no WebSocket connections, no third-party web services.
+- No API keys, secrets, or tokens in generated code — this is a critical security violation.
+- No external LLM/AI APIs (Anthropic, OpenAI, Google AI, etc.). For AI features, use Apple's on-device Foundation Models only.
+- All app functionality must work 100% offline using local data and on-device Apple frameworks.
+- If a feature implies external services (auth, cloud sync, payments, push server), design a local mock and note the limitation.
+- This restriction is TEMPORARY and will be relaxed when backend services are available.
 
 STORAGE DEFAULTS:
 - Default: in-memory models + sample data.
@@ -330,8 +345,14 @@ PLATFORM & SCOPE:
 - Prefer SwiftUI. UIKit/AppKit bridges are allowed only when required by specific APIs or unavailable SwiftUI equivalents.
 - No Storyboard/XIB.
 
-DEPENDENCIES:
-- Built-in Apple frameworks only. No third-party packages.
+DEPENDENCIES & SERVICES — APPLE-ONLY [TEMPORARY]:
+- Built-in Apple frameworks only. No third-party Swift packages (SPM, CocoaPods, Carthage).
+- No external services: no REST APIs, no cloud backends, no WebSocket connections, no third-party web services, no analytics, no authentication services.
+- NEVER include API keys, secrets, or tokens in generated code — critical security violation.
+- NEVER import or use external AI SDKs (anthropic-swift, openai-kit, etc.). For AI features, use Apple's on-device Foundation Models only.
+- NEVER use URLSession to call non-Apple servers. All data must be local (in-memory, @AppStorage, SwiftData, on-device frameworks).
+- If a feature implies external services, use a local mock — do NOT wire up real external calls.
+- This restriction is TEMPORARY and will be relaxed when backend services are available.
 
 ARCHITECTURE:
 - App structure: @main App -> RootView -> MainView -> content.
@@ -421,4 +442,11 @@ BUTTON HIERARCHY:
 - ONE primary button per screen/section. Use Button(), not .onTapGesture, for tappable elements.
 
 REDUCE MOTION:
-- Respect @Environment(\.accessibilityReduceMotion). Replace spring/slide with .opacity when enabled.`
+- Respect @Environment(\.accessibilityReduceMotion). Replace spring/slide with .opacity when enabled.
+
+SWIFTUI ANIMATION SAFETY — ASYNCRENDERER CRASH PREVENTION:
+- NEVER use .symbolEffect(.bounce, value:) where the value changes at the same time as preferredColorScheme. This triggers concurrent animations on SwiftUI's AsyncRenderer thread and the main thread simultaneously, causing EXC_BREAKPOINT.
+- NEVER apply .transaction { $0.disablesAnimations = true } at the root level while child views have explicit .animation() modifiers or .symbolEffect() triggers. disablesAnimations only suppresses implicit animations — explicit .animation() and symbolEffect run anyway, creating conflicting animation contexts.
+- When switching appearance (dark/light mode): do NOT trigger .symbolEffect, .animation(.spring), or other explicit animations on the same state change that drives preferredColorScheme. If you need a visual bounce on mode selection, use a separate @State trigger that fires AFTER the scheme transition settles (e.g. via DispatchQueue.main.asyncAfter or .onChange with a delay).
+- Avoid stacking multiple .animation() modifiers on the same view — consolidate into one, or use withAnimation {} at the call site instead.
+- Safe pattern for appearance switching: change the @Published mode property, let preferredColorScheme update, and keep the selection UI animation-free or use withAnimation on a separate local @State boolean.`

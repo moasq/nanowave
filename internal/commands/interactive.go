@@ -469,6 +469,32 @@ func handleSlashCommand(input string, cfg *config.Config, svc *service.Service, 
 		fmt.Println()
 		return true
 
+	case "/ask":
+		if !cfg.HasProject() {
+			terminal.Error("No project found. Build an app first.")
+			fmt.Println()
+			return true
+		}
+		if arg == "" {
+			terminal.Warning("Usage: /ask <question>")
+			fmt.Println()
+			return true
+		}
+		ctx, cancel := context.WithCancel(cmd.Context())
+		defer cancel()
+		usageBefore := svc.Usage()
+		if err := svc.Ask(ctx, arg); err != nil {
+			terminal.Error(fmt.Sprintf("Ask failed: %v", err))
+		} else {
+			usageAfter := svc.Usage()
+			if usageAfter.Requests > usageBefore.Requests {
+				costDelta := usageAfter.TotalCostUSD - usageBefore.TotalCostUSD
+				fmt.Printf("  %s$%.4f%s\n", terminal.Dim, costDelta, terminal.Reset)
+			}
+		}
+		fmt.Println()
+		return true
+
 	case "/open":
 		if !cfg.HasProject() {
 			terminal.Error("No project found. Build an app first.")
@@ -670,6 +696,7 @@ func printHelp() {
 	fmt.Printf("  %s/simulator [name]%s Select simulator device%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
 	fmt.Printf("  %s/model [name]%s     Show or switch model (sonnet, opus, haiku)%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
 	fmt.Printf("  %s/fix%s              Auto-fix build errors%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
+	fmt.Printf("  %s/ask <question>%s  Ask about your project (cheap, read-only)%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
 	fmt.Printf("  %s/open%s             Open project in Xcode%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
 	fmt.Printf("  %s/projects%s         Switch to another project%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
 	fmt.Printf("  %s/info%s             Show project info%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)

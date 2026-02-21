@@ -3,9 +3,10 @@ package orchestration
 // BuildResult is the final output of a successful Build pipeline.
 type BuildResult struct {
 	AppName          string
+	Description      string
 	ProjectDir       string
 	BundleID         string
-	Features         []string
+	Features         []Feature
 	FileCount        int
 	PlannedFiles     int
 	CompletedFiles   int
