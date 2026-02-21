@@ -1,6 +1,7 @@
 package terminal
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -142,7 +143,12 @@ func ReadInput() InputResult {
 		return InputResult{Text: t, Images: imgs}
 	}
 
+	// Enable bracketed paste mode — terminals that support it will wrap
+	// pasted text in ESC[200~ … ESC[201~ markers so we can detect pastes.
+	os.Stdout.WriteString("\033[?2004h")
+
 	restore := func() {
+		os.Stdout.WriteString("\033[?2004l") // disable bracketed paste
 		term.Restore(fd, oldState)
 	}
 	defer restore()
@@ -234,9 +240,82 @@ func ReadInput() InputResult {
 		return InputResult{Text: text, Images: imgs}
 	}
 
+	// processPasteBytes handles raw bytes received during a bracketed paste.
+	// Newlines become new lines (with continuation prompt), tabs expand to
+	// spaces, printable characters are inserted at the cursor, and control
+	// characters are ignored.
+	processPasteBytes := func(data []byte) {
+		i := 0
+		for i < len(data) {
+			ch := data[i]
+
+			// CRLF → single newline
+			if ch == '\r' && i+1 < len(data) && data[i+1] == '\n' {
+				lineStr := string(currentLine)
+				lines = append(lines, lineStr)
+				currentLine = nil
+				cursorPos = 0
+				first = false
+				rawWrite("\r\n")
+				printPrompt()
+				i += 2
+				continue
+			}
+
+			// CR or LF → newline
+			if ch == '\r' || ch == '\n' {
+				lineStr := string(currentLine)
+				lines = append(lines, lineStr)
+				currentLine = nil
+				cursorPos = 0
+				first = false
+				rawWrite("\r\n")
+				printPrompt()
+				i++
+				continue
+			}
+
+			// Tab → 4 spaces
+			if ch == '\t' {
+				spaces := []byte("    ")
+				bytePos := runeIndex(currentLine, cursorPos)
+				tmp := make([]byte, len(currentLine)+len(spaces))
+				copy(tmp, currentLine[:bytePos])
+				copy(tmp[bytePos:], spaces)
+				copy(tmp[bytePos+len(spaces):], currentLine[bytePos:])
+				currentLine = tmp
+				cursorPos += 4
+				i++
+				continue
+			}
+
+			// Skip control characters (except those handled above)
+			if ch < 32 {
+				i++
+				continue
+			}
+
+			// Printable / UTF-8 character
+			_, size := utf8.DecodeRune(data[i:])
+			if size == 0 {
+				i++
+				continue
+			}
+			chunk := data[i : i+size]
+			bytePos := runeIndex(currentLine, cursorPos)
+			tmp := make([]byte, len(currentLine)+size)
+			copy(tmp, currentLine[:bytePos])
+			copy(tmp[bytePos:], chunk)
+			copy(tmp[bytePos+size:], currentLine[bytePos:])
+			currentLine = tmp
+			cursorPos++
+			i += size
+		}
+	}
+
 	printPrompt()
 
-	buf := make([]byte, 4)
+	buf := make([]byte, 256)
 
 	for {
 		n, readErr := os.Stdin.Read(buf)
@@ -276,6 +355,68 @@ func ReadInput() InputResult {
 					first = false
 					rawWrite("\r\n")
 					printPrompt()
+					continue
+				}
+
+				// Bracketed paste start: ESC[200~
+				if seq == "200~" {
+					clearMenuLines()
+
+					pasteEnd := []byte("\033[201~")
+					pasteBuf := make([]byte, 1024)
+					var trailer []byte // holds partial end-marker bytes across reads
+
+				pasteLoop:
+					for {
+						pn, perr := os.Stdin.Read(pasteBuf)
+						if perr != nil || pn == 0 {
+							break
+						}
+
+						// Prepend any trailer from previous read
+						var chunk []byte
+						if len(trailer) > 0 {
+							chunk = append(trailer, pasteBuf[:pn]...)
+							trailer = nil
+						} else {
+							chunk = pasteBuf[:pn]
+						}
+
+						// Scan for end marker ESC[201~
+						if idx := bytes.Index(chunk, pasteEnd); idx >= 0 {
+							// Process everything before the end marker
+							if idx > 0 {
+								processPasteBytes(chunk[:idx])
+							}
+							break pasteLoop
+						}
+
+						// The end marker (6 bytes) might be split across reads.
+						// Keep up to 5 trailing bytes as a trailer for next read.
+						safeLen := len(chunk)
+						trailerSize := len(pasteEnd) - 1 // 5
+						if safeLen > trailerSize {
+							processPasteBytes(chunk[:safeLen-trailerSize])
+							trailer = make([]byte, trailerSize)
+							copy(trailer, chunk[safeLen-trailerSize:])
+						} else {
+							// Entire chunk is shorter than marker; hold it all
+							trailer = make([]byte, len(chunk))
+							copy(trailer, chunk)
+						}
+					}
+
+					// Process any remaining trailer that wasn't an end marker
+					if len(trailer) > 0 {
+						processPasteBytes(trailer)
+					}
+
+					redrawLine()
+					continue
+				}
+
+				// Bracketed paste end (defensive; normally consumed in paste loop)
+				if seq == "201~" {
 					continue
 				}
 
