@@ -3,7 +3,7 @@ bin/
 dist/
 
 # Binaries
-nanowave
+/nanowave
 
 # OS files
 .DS_Store

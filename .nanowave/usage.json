@@ -1,9 +1,0 @@
-{
-  "started_at": "2026-02-21T14:18:08.581484+04:00",
-  "total_cost_usd": 0,
-  "input_tokens": 325,
-  "output_tokens": 27115,
-  "cache_read_input_tokens": 2853486,
-  "cache_creation_input_tokens": 107734,
-  "requests": 1
-}
