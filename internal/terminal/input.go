@@ -160,6 +160,7 @@ func ReadInput() InputResult {
 	menuLines := 0
 	selectedIdx := -1
 	escPressed := false // track Esc key for Esc+Enter newline
+	prevVisualLines := 1 // tracks wrapped visual lines for redraw clearing
 
 	// promptWidth returns the visible character width of the prompt.
 	promptWidth := func() int {
@@ -174,14 +175,57 @@ func ReadInput() InputResult {
 		}
 	}
 
+	// termWidth returns the current terminal width, defaulting to 80.
+	termWidth := func() int {
+		w, _, err := term.GetSize(fd)
+		if err != nil || w <= 0 {
+			return 80
+		}
+		return w
+	}
+
 	redrawLine := func() {
-		rawWrite("\r\033[K")
+		tw := termWidth()
+
+		// Move cursor up to the first visual line of the previous content
+		if prevVisualLines > 1 {
+			rawWrite(fmt.Sprintf("\033[%dA", prevVisualLines-1))
+		}
+		// Clear from the first visual line downward (clears all wrapped lines)
+		rawWrite("\r\033[J")
+
 		printPrompt()
 		rawWrite(string(currentLine))
-		// Move cursor to correct position if not at end
+
+		// Update visual line count for next redraw
+		contentLen := promptWidth() + runeLen(currentLine)
+		prevVisualLines = 1
+		if tw > 0 && contentLen > tw {
+			prevVisualLines = (contentLen + tw - 1) / tw
+		}
+
+		// Move cursor to correct position if not at end.
+		// Use absolute row/col positioning since \033[D doesn't cross line wraps.
 		totalRunes := runeLen(currentLine)
 		if cursorPos < totalRunes {
-			rawWrite(fmt.Sprintf("\033[%dD", totalRunes-cursorPos))
+			cursorAbs := promptWidth() + cursorPos
+			endAbs := promptWidth() + totalRunes
+
+			cursorRow := cursorAbs / tw
+			endRow := endAbs / tw
+			// If endAbs lands exactly on a boundary, the cursor is at col 0 of
+			// the next visual line, but the terminal may not have scrolled yet.
+			if endAbs > 0 && endAbs%tw == 0 {
+				endRow--
+			}
+
+			// Move up from end row to cursor row
+			if endRow > cursorRow {
+				rawWrite(fmt.Sprintf("\033[%dA", endRow-cursorRow))
+			}
+			// Move to exact column
+			col := cursorAbs % tw
+			rawWrite(fmt.Sprintf("\r\033[%dC", col))
 		}
 	}
 
@@ -255,6 +299,7 @@ func ReadInput() InputResult {
 				lines = append(lines, lineStr)
 				currentLine = nil
 				cursorPos = 0
+				prevVisualLines = 1
 				first = false
 				rawWrite("\r\n")
 				printPrompt()
@@ -268,6 +313,7 @@ func ReadInput() InputResult {
 				lines = append(lines, lineStr)
 				currentLine = nil
 				cursorPos = 0
+				prevVisualLines = 1
 				first = false
 				rawWrite("\r\n")
 				printPrompt()
@@ -352,6 +398,7 @@ func ReadInput() InputResult {
 					lines = append(lines, lineStr)
 					currentLine = nil
 					cursorPos = 0
+					prevVisualLines = 1
 					first = false
 					rawWrite("\r\n")
 					printPrompt()
@@ -609,6 +656,7 @@ func ReadInput() InputResult {
 				lines = append(lines, lineStr)
 				currentLine = nil
 				cursorPos = 0
+				prevVisualLines = 1
 				first = false
 				rawWrite("\r\n")
 				printPrompt()
@@ -644,6 +692,7 @@ func ReadInput() InputResult {
 				first = true
 				currentLine = nil
 				cursorPos = 0
+				prevVisualLines = 1
 				printPrompt()
 				continue
 			}
