@@ -17,6 +17,7 @@ import (
 	"github.com/moasq/nanowave/internal/service"
 	"github.com/moasq/nanowave/internal/storage"
 	"github.com/moasq/nanowave/internal/terminal"
+	"github.com/moasq/nanowave/internal/update"
 	"github.com/spf13/cobra"
 )
 
@@ -121,6 +122,12 @@ func runInteractive(cmd *cobra.Command) error {
 	// Print welcome banner first (before config load which may fail)
 	terminal.Banner(Version)
 
+	// Check for updates in the background (non-blocking)
+	updateCh := make(chan *update.Result, 1)
+	go func() {
+		updateCh <- update.Check("moasq", "nanowave", Version)
+	}()
+
 	// Print tool status
 	var claudeVersion string
 	var claudePath string
@@ -150,6 +157,17 @@ func runInteractive(cmd *cobra.Command) error {
 		toolOpts.AuthPlan = authStatus.SubscriptionType
 	}
 	terminal.ToolStatus(toolOpts)
+
+	// Show update warning if a newer version is available
+	select {
+	case res := <-updateCh:
+		if res.NeedsUpdate() {
+			terminal.Warning(fmt.Sprintf("Update available: v%s → v%s  —  run `brew upgrade nanowave`", res.Current, res.Latest))
+			fmt.Println()
+		}
+	case <-time.After(3 * time.Second):
+		// Don't block startup if the check is slow
+	}
 
 	// Auto-run setup on first launch if critical dependencies are missing
 	if needsSetup() {
