@@ -494,6 +494,11 @@ func ReadInput() InputResult {
 						processPasteBytes(trailer)
 					}
 
+					// If paste produced multiple lines, ensure the last line
+					// shows as a continuation (not the primary prompt).
+					if len(lines) > 0 {
+						first = false
+					}
 					redrawLine()
 					continue
 				}
