@@ -359,12 +359,30 @@ func ReadInput() InputResult {
 				}
 
 				// Bracketed paste start: ESC[200~
-				if seq == "200~" {
+				// The marker and pasted content may arrive in the same read,
+				// so use HasPrefix and process any trailing bytes as paste data.
+				if strings.HasPrefix(seq, "200~") {
 					clearMenuLines()
 
 					pasteEnd := []byte("\033[201~")
 					pasteBuf := make([]byte, 1024)
 					var trailer []byte // holds partial end-marker bytes across reads
+
+					// Process any bytes that arrived in the same read as the start marker
+					overflow := b[2+len("200~") : n]
+					if len(overflow) > 0 {
+						// Check if the end marker is already in this first chunk
+						if idx := bytes.Index(overflow, pasteEnd); idx >= 0 {
+							if idx > 0 {
+								processPasteBytes(overflow[:idx])
+							}
+							redrawLine()
+							continue
+						}
+						// Seed the trailer with overflow for the paste loop
+						trailer = make([]byte, len(overflow))
+						copy(trailer, overflow)
+					}
 
 				pasteLoop:
 					for {
@@ -416,7 +434,7 @@ func ReadInput() InputResult {
 				}
 
 				// Bracketed paste end (defensive; normally consumed in paste loop)
-				if seq == "201~" {
+				if strings.HasPrefix(seq, "201~") {
 					continue
 				}
 
