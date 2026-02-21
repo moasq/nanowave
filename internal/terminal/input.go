@@ -287,7 +287,7 @@ func ReadInput() InputResult {
 	// processPasteBytes handles raw bytes received during a bracketed paste.
 	// Newlines become new lines (with continuation prompt), tabs expand to
 	// spaces, printable characters are inserted at the cursor, and control
-	// characters are ignored.
+	// characters are ignored. Each character/line is echoed to stdout.
 	processPasteBytes := func(data []byte) {
 		i := 0
 		for i < len(data) {
@@ -295,6 +295,8 @@ func ReadInput() InputResult {
 
 			// CRLF → single newline
 			if ch == '\r' && i+1 < len(data) && data[i+1] == '\n' {
+				// Show the completed line before moving on
+				redrawLine()
 				lineStr := string(currentLine)
 				lines = append(lines, lineStr)
 				currentLine = nil
@@ -309,6 +311,7 @@ func ReadInput() InputResult {
 
 			// CR or LF → newline
 			if ch == '\r' || ch == '\n' {
+				redrawLine()
 				lineStr := string(currentLine)
 				lines = append(lines, lineStr)
 				currentLine = nil
