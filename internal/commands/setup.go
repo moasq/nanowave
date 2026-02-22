@@ -204,8 +204,12 @@ func runSetup() error {
 		mcpCmd := exec.Command("claude", "mcp", "add", "XcodeBuildMCP", "-s", "user",
 			"-e", "XCODEBUILDMCP_SENTRY_DISABLED=true",
 			"--", "npx", "-y", "xcodebuildmcp@latest", "mcp")
-		if err := mcpCmd.Run(); err != nil {
-			terminal.Warning(fmt.Sprintf("could not add: %v", err))
+		if output, err := mcpCmd.CombinedOutput(); err != nil {
+			if strings.Contains(string(output), "already exists") {
+				terminal.Success("already configured")
+			} else {
+				terminal.Warning(fmt.Sprintf("could not add: %v", err))
+			}
 		} else {
 			terminal.Success("configured")
 		}
@@ -213,8 +217,12 @@ func runSetup() error {
 		fmt.Print("  Setting up Apple Docs MCP... ")
 		docsCmd := exec.Command("claude", "mcp", "add", "apple-docs", "-s", "user",
 			"--", "npx", "-y", "@anthropic-ai/apple-docs-mcp@latest")
-		if err := docsCmd.Run(); err != nil {
-			terminal.Warning(fmt.Sprintf("could not add: %v", err))
+		if output, err := docsCmd.CombinedOutput(); err != nil {
+			if strings.Contains(string(output), "already exists") {
+				terminal.Success("already configured")
+			} else {
+				terminal.Warning(fmt.Sprintf("could not add: %v", err))
+			}
 		} else {
 			terminal.Success("configured")
 		}

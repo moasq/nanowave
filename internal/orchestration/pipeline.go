@@ -130,7 +130,7 @@ func (p *Pipeline) Build(ctx context.Context, prompt string, images []string) (*
 		return nil, fmt.Errorf("workspace setup failed: %w", err)
 	}
 
-	if err := writeInitialCLAUDEMD(projectDir, appName); err != nil {
+	if err := writeInitialCLAUDEMD(projectDir, appName, plan.GetDeviceFamily()); err != nil {
 		return nil, fmt.Errorf("failed to write CLAUDE.md: %w", err)
 	}
 
@@ -138,8 +138,30 @@ func (p *Pipeline) Build(ctx context.Context, prompt string, images []string) (*
 		return nil, fmt.Errorf("failed to enrich CLAUDE.md: %w", err)
 	}
 
-	if err := writeSkills(projectDir); err != nil {
-		return nil, fmt.Errorf("failed to write skills: %w", err)
+	if err := writeCoreRules(projectDir); err != nil {
+		return nil, fmt.Errorf("failed to write core rules: %w", err)
+	}
+
+	if err := writeAlwaysSkills(projectDir); err != nil {
+		return nil, fmt.Errorf("failed to write always skills: %w", err)
+	}
+
+	// Auto-inject adaptive_layout skill for iPad/universal apps
+	if family := plan.GetDeviceFamily(); family == "ipad" || family == "universal" {
+		hasAdaptive := false
+		for _, k := range plan.RuleKeys {
+			if k == "adaptive_layout" {
+				hasAdaptive = true
+				break
+			}
+		}
+		if !hasAdaptive {
+			plan.RuleKeys = append(plan.RuleKeys, "adaptive_layout")
+		}
+	}
+
+	if err := writeConditionalSkills(projectDir, plan.RuleKeys); err != nil {
+		return nil, fmt.Errorf("failed to write conditional skills: %w", err)
 	}
 
 	if err := writeMCPConfig(projectDir); err != nil {
@@ -252,6 +274,7 @@ func (p *Pipeline) Build(ctx context.Context, prompt string, images []string) (*
 		Description:      analysis.Description,
 		ProjectDir:       projectDir,
 		BundleID:         fmt.Sprintf("%s.%s", bundleIDPrefix(), strings.ToLower(appName)),
+		DeviceFamily:     plan.GetDeviceFamily(),
 		Features:         analysis.Features,
 		FileCount:        len(plan.Files),
 		PlannedFiles:     len(plan.Files),

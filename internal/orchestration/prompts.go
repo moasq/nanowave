@@ -112,13 +112,6 @@ Design — every app MUST look unique:
 - surfaces: "glass" = modern/translucent, "material" = depth/layers, "solid" = clean/opaque, "flat" = minimal/no shadows.
 - Adaptive appearance caution: choose AppTheme palette colors that stay legible in both light and dark appearance; avoid making brand colors depend on system-adaptive materials.
 - app_mood: one-word feel (e.g. "calm", "energetic", "playful", "elegant", "bold", "cozy", "minimal").
-- SF Symbols for all icons/buttons/empty states. ContentUnavailableView for empty lists.
-- Animations: withAnimation(.spring) for toggles, .transition(.opacity.combined(with: .scale)) for list changes.
-- Prefer card-style rows (background, cornerRadius, shadow) over plain List rows.
-- Sheet sizing: Always specify presentationDetents in components. Small option pickers = .height(N), medium forms = .medium, complex = .large.
-- Overflow-safe: Horizontal button bars with 4+ items → note "scrollable" in components. Grids/collections with variable count → wrap in ScrollView.
-- Single-screen apps may use toolbar buttons. Each tab wraps its own NavigationStack only if it needs drill-down.
-- Use .sheet/.fullScreenCover for creation forms.
 
 Shared services:
 - ONE instance per system manager (CLLocationManager, CMMotionManager, AVCaptureSession, etc.) in Features/Common/. All features depend on the shared service.
@@ -144,6 +137,7 @@ Output ONLY valid JSON. No markdown, no explanation. Structure:
  "permissions": [{"key": "NSXxxUsageDescription", "description": "app-specific reason", "framework": "FrameworkName"}],
  "extensions": [{"kind": "widget", "name": "MyAppWidget", "purpose": "Shows daily summary on home screen"}],
  "localizations": ["en", "ar", "es"],
+ "device_family": "iphone",
  "rule_keys": ["localization", "dark_mode"],
  "build_order": ["Models/...", "Theme/...", "Features/...", "App/..."]}
 
@@ -157,22 +151,27 @@ File rules:
 Directory structure (MANDATORY):
 - Models/ → structs with sampleData. Theme/ → AppTheme only. Features/<Name>/ → View + ViewModel co-located. Features/Common/ → shared views/services. App/ → @main entry + RootView + MainView.
 - App/ MUST contain three files: the @main App (applies app-wide modifiers on RootView), RootView (flow controller — hosts MainView, designed for future onboarding/auth flows), and MainView (TabView or NavigationStack with actual content).
+- For iPad/universal apps: MainView MUST use NavigationSplitView for any list-detail flow. Use TabView only for top-level sections, with NavigationSplitView inside each tab. Use LazyVGrid with GridItem(.adaptive(minimum:)) for grids. Never hardcode column counts or frame widths.
 - NEVER use flat Views/, ViewModels/, or Components/ directories.
 
-Theme/AppTheme.swift MUST:
-- Define a Color(hex:) extension (init from hex string)
-- Define AppTheme enum with nested Colors, Spacing, and Style structs that reference palette hex values
+Theme/AppTheme.swift: The design-system skill has full rules. Key points for planning:
 - List every static property name and type in components (builder's sole reference)
-- Use the design palette values, NOT hardcoded SwiftUI colors like .blue or .orange
-- Keep brand/surface tokens explicit in AppTheme; do not depend on adaptive system colors for core palette identity.
-- When the app has appearance switching (dark/light/system): also define Color(light:dark:) extension and use it for ALL palette colors with TWO hex values (light and dark variants). When no appearance switching: use plain Color(hex:).
+- When the app has appearance switching: include Color(light:dark:) extension in components
 
 Permissions: include only if system frameworks need runtime permission. Omit if none needed.
 
 Localizations: include only when user asks for multi-language support, localization, or translation. List language codes (e.g. ["en", "ar", "es"]). Always include "en" as first. The builder will generate {lang}.lproj/Localizable.strings files for each language at the app root (NOT inside a Resources/ subdirectory).
 
 rule_keys: Feature keys that this app needs implementation rules for. The builder will load detailed implementation guides for these features. Include a key if ANY file uses that feature.
-Available keys: notifications, localization, dark_mode, app_review, website_links, haptics, timers, charts, camera, maps, biometrics, healthkit, speech, widgets, live_activities, apple_translation, siri_intents, share_extension, notification_service, app_clips, safari_extension, foundation_models, view_complexity, typography, color_contrast, spacing_layout, components, accessibility, gestures, feedback_states.
+Note: design-system, navigation, layout, components, and swiftui patterns are always loaded — do NOT include them.
+Available keys by category:
+  Features: notifications, localization, dark_mode, app_review, website_links, haptics, timers, charts, camera, maps, biometrics, healthkit, speech, storage, apple_translation, siri_intents, foundation_models
+  UI refinement: view_complexity, typography, color_contrast, spacing_layout, feedback_states, view-composition, accessibility, gestures, adaptive_layout, liquid_glass, animations
+  Extensions: widgets, live_activities, share_extension, notification_service, safari_extension, app_clips
+
+device_family: Target devices — "iphone" (default), "ipad" (tablet-focused apps), "universal" (both).
+ALWAYS default to "iphone". Only use "ipad" or "universal" if the user EXPLICITLY mentions iPad, tablet, or universal in their request. Never infer iPad from the app concept alone.
+When device_family is "ipad" or "universal", you MUST include "adaptive_layout" in rule_keys.
 
 Before returning, verify:
 1. All files have ALL mandatory fields (path, type_name, purpose, components, data_access, depends_on) — none empty
@@ -190,12 +189,9 @@ Before returning, verify:
 13. Extension bundle identifiers MUST NOT contain underscores (they're invalid in UTI identifiers). Use camelCase or lowercase: "liveactivity" not "live_activity".
 14. For APIs that run in @concurrent contexts (e.g. TranslationSession.translate), do not design actor-isolated call sites that pass non-Sendable actor state directly into those calls.
 15. Models that are passed between ViewModels or across async boundaries must conform to Sendable. Structs with only Sendable stored properties are preferred. If a model uses reference types, ensure they are Sendable-safe.
-16. If the app has custom colors or dark mode, include 'color_contrast' rule_key.
-17. If the app has lists with user actions (delete/edit/favorite), include 'gestures' rule_key.
-18. If the app has form input or data creation, include 'components' and 'feedback_states' rule_keys.
-19. If the app has complex visual hierarchy or editorial content, include 'typography' rule_key.
-20. If the app uses cards, dense layouts, or custom spacing, include 'spacing_layout' rule_key.
-21. If the app targets accessibility or has complex interactions, include 'accessibility' rule_key.`
+16. Include relevant rule_keys: color_contrast (custom colors/dark mode), gestures (list actions), feedback_states (forms/data creation), typography (editorial content), spacing_layout (cards/dense layouts), accessibility (complex interactions), animations (any view with transitions, animated insertions, spring/bounce effects, or phase/keyframe animations).
+17. When iOS 26+ target, include liquid_glass in rule_keys to enforce Liquid Glass material usage on key UI surfaces.
+18. When any file uses transitions, animated content inside cards/rows/containers, or spring animations, include animations in rule_keys to enforce containment and safe animation patterns.`
 
 // coderPrompt is the unified prompt for build, edit, and fix phases.
 // It replaces the separate builderPrompt, editPrompt, fixerPrompt, and editProjectYMLGuidance.
@@ -243,24 +239,17 @@ SWIFT CODE RULES:
 6. Use SF Symbols for all icons/buttons/empty states. Add subtle animations.
 7. Every list/collection MUST have an empty state (ContentUnavailableView or styled VStack).
 8. If the plan includes a shared system service (LocationManager, etc.), use it.
-9. Screen-aware layouts: iPhone screens are ~393pt wide. Use ScrollView for overflow.
+9. Screen-aware layouts: Use adaptive layouts for different screen sizes. Use ScrollView for overflow.
 10. Sheet sizing: ALWAYS use .presentationDetents on .sheet.
-11. Use Color(hex:) with palette values in AppTheme — NEVER hardcoded SwiftUI colors.
-12. Apply .fontDesign() on outermost container. It cascades.
-13. Use density-appropriate spacing via AppTheme.Spacing.
-14. Surfaces: glass → .ultraThinMaterial, material → .regularMaterial, solid → opaque Color, flat → no shadows.
-15. Keep brand colors explicit in AppTheme tokens so appearance changes do not unintentionally shift core palette identity.
-16. Button hierarchy: .borderedProminent (primary), .bordered (secondary), .borderless (tertiary). ONE primary button per screen. .controlSize(.large) for full-width primary buttons.
-17. Loading states: show ProgressView for actions > 300ms. Disable triggering button while loading. Use .redacted(reason: .placeholder) for skeleton loading.
-18. Error states: inline validation below fields (red text + icon), .alert() for blocking errors, banner HStack for non-blocking. Always provide retry path.
 
-SWIFT 6 STRICT CONCURRENCY MODE:
-- All projects use SWIFT_STRICT_CONCURRENCY=complete. Every data race is a compile error.
-- ViewModels: always @MainActor @Observable class. Never use ObservableObject.
-- Models shared across isolation: must be Sendable (struct preferred, or final class with let-only Sendable fields).
-- Closures passed to Task {}, .task {}, or any async API that crosses isolation: must not capture mutable actor-isolated state. Snapshot first.
-- Common error "cannot pass argument of non-sendable type": make the type Sendable or snapshot its data into a Sendable local.
-- Common error "main actor-isolated property cannot be referenced from nonisolated context": add @MainActor to the calling context, or use await MainActor.run {}.
+ADAPTIVE LAYOUT (iPad / universal apps):
+- Use NavigationSplitView for any list-detail flow — it auto-collapses to NavigationStack on iPhone.
+- Use @Environment(\.horizontalSizeClass) for screen-level layout changes, ViewThatFits for component-level.
+- Use LazyVGrid with GridItem(.adaptive(minimum:)) — never hardcode column counts.
+- Use .popover() for contextual actions — auto-adapts to sheet on iPhone.
+- NEVER use UIDevice.current.userInterfaceIdiom, UIScreen.main.bounds, or #if targetEnvironment for layout.
+- NEVER hardcode frame widths. Use .frame(maxWidth:) or containerRelativeFrame.
+- Always provide a detail placeholder in NavigationSplitView for iPad empty state.
 
 EDITING EXISTING CODE:
 - Read files before editing — understand existing patterns
@@ -298,23 +287,12 @@ INVESTIGATION STRATEGY:
 2. INVESTIGATE before fixing — read related files, understand the codebase
 3. FIX based on evidence — never guess
 
-VIEW BODY COMPLEXITY:
-If a View body exceeds ~30 lines, extract into computed properties. This prevents "unable to type-check" errors.
-
 OUTPUT EFFICIENCY:
-Minimize generated tokens — NO doc comments, NO // MARK:, NO blank lines between properties.
-
-EXTENSION TARGETS:
-- Extension source files go in Targets/{ExtensionName}/. Shared types in Shared/.
-- Every extension MUST have a @main entry point.
-- MANDATORY for widgets: (1) Bundle.swift (@main WidgetBundle), (2) Provider.swift, (3) WidgetView.swift.
-- MANDATORY for live activities: (1) Bundle.swift (@main WidgetBundle), (2) LiveActivityWidget.swift.
-- AppIntent static properties MUST be "static let" (not "static var").
-- Extensions that share data use App Groups (configured via add_entitlement tool).`
+Minimize generated tokens — NO doc comments, NO // MARK:, NO blank lines between properties.`
 
 // planningConstraints limits scope for analyzer/planner phases.
 const planningConstraints = `PLATFORM & SCOPE:
-- Target: iPhone ONLY (iOS 26+, Swift 6). No iPad/macOS/watchOS/tvOS/visionOS output.
+- Target: iOS 26+, Swift 6. Default to iPhone only. iPad/universal only if the user explicitly requests it. No macOS/watchOS/tvOS/visionOS.
 - SwiftUI-first architecture. UIKit/AppKit bridges are allowed only when a feature has no viable SwiftUI API.
 - No Storyboard/XIB.
 
@@ -336,12 +314,13 @@ PRODUCT SCOPE:
 - If request is vague, choose a pragmatic MVP and keep it minimal.`
 
 // sharedConstraints provides universal rules for all code generation.
+// Domain-specific rules (concurrency, accessibility, typography, spacing, etc.) come from skill files.
 const sharedConstraints = `USER STYLING OVERRIDES:
 - All design rules below are DEFAULTS. If the user explicitly requested a different style, color, layout, or approach, follow their request instead.
 - Only apply default rules for aspects the user did NOT specify.
 
 PLATFORM & SCOPE:
-- iPhone ONLY (iOS 26+, Swift 6).
+- iOS 26+, Swift 6.
 - Prefer SwiftUI. UIKit/AppKit bridges are allowed only when required by specific APIs or unavailable SwiftUI equivalents.
 - No Storyboard/XIB.
 
@@ -362,10 +341,6 @@ ARCHITECTURE:
 - Any @AppStorage value written in child views must be read and applied in @main app on RootView.
 - A toggle without visible app-wide effect is a bug.
 
-NAVIGATION:
-- Use NavigationStack, not NavigationView.
-- For multi-feature apps, prefer TabView for top-level navigation.
-
 LAYOUT DIRECTION:
 - Use .leading/.trailing (never .left/.right).
 - Directional icons should support RTL flips when semantically directional.
@@ -376,7 +351,6 @@ FORMATTING:
 THEME:
 - Use AppTheme tokens and semantic colors; avoid hardcoded ad-hoc colors in feature views.
 - Choose AppTheme colors with both light and dark appearance in mind.
-- Avoid relying on adaptive system colors/materials for brand surfaces unless explicit dark-mode tokens are defined.
 
 SAFE AREAS & OVERLAYS:
 - Full-screen backgrounds (Map, gradient fills, background images) use .ignoresSafeArea() to extend edge-to-edge.
@@ -391,62 +365,8 @@ COMMON API PITFALLS:
 - String(localized:) ignores .environment(\.locale) — uses system locale. For in-view text, use direct string literals: Text("Settings"). For computed strings, use LocalizedStringKey.
 - .environment(\.locale) does NOT set layoutDirection — must ALSO set .environment(\.layoutDirection, .rightToLeft) for RTL languages.
 
-NOTIFICATION PERMISSION STATES:
-- .notDetermined: Show "Enable Notifications" button → requestAuthorization()
-- .authorized/.provisional: Read-only enabled indicator
-- .denied: "Open Settings" button → UIApplication.openSettingsURLString
-- NEVER use writable Toggle for notification permissions.
-
-EXTENSION TARGETS:
-- Extensions that share data with the main app use App Groups (auto-configured).
-- Shared types between app and extension (e.g. ActivityAttributes) go in the Shared/ directory at the project root. Both the main app and all extension targets compile this directory. NEVER define shared types in the main app's Models/ — extensions cannot see them.
-- Extension source files go in Targets/{ExtensionName}/ — never in the main app directory.
-- Every extension MUST have a @main entry point (WidgetBundle or Widget). Without it, the extension binary has no entry point and CodeSign fails.
-
-SWIFT 6 STRICT CONCURRENCY:
-Swift 6 enables strict concurrency by default — all data races are compile-time errors.
-- Sendable: All types crossing isolation boundaries MUST conform to Sendable. Value types with Sendable stored properties are implicitly Sendable. Classes must be final with immutable Sendable properties, or use @unchecked Sendable with manual thread safety.
-- @MainActor: ViewModels and services that update UI state MUST be @MainActor on the class declaration (not individual methods). SwiftUI Views are implicitly @MainActor.
-- nonisolated: Computed properties returning Sendable values that don't access mutable actor state should be nonisolated. Protocol conformances (Hashable, CustomStringConvertible) on @MainActor types must be nonisolated.
-- Global state: Use "static let" for shared constants — "static var" is a mutable global and violates strict concurrency. AppIntent static properties MUST be "static let".
-- Crossing isolation: Do NOT pass @MainActor-isolated values directly into @concurrent APIs. Snapshot into local Sendable variables first, await the concurrent call, then update state back on MainActor.
-- Actor re-entrancy: Do not assume state is unchanged after an await inside an actor. Re-read state after suspension points.
-- @preconcurrency import: Use for frameworks not yet annotated for Sendable to silence warnings without losing safety for your own code.
-- Translation framework: Do NOT call session.translate(...) inside @MainActor-isolated methods. Perform translation off main actor, hop back to MainActor only for UI state updates.
-
-ACCESSIBILITY:
-- All interactive elements need meaningful .accessibilityLabel().
-- Images need .accessibilityLabel() or .accessibilityHidden(true) for decorative images.
-- Use Dynamic Type — never hardcode font sizes, use .font(.title), .font(.body) etc.
-- Ensure minimum 44x44pt tap targets for all interactive elements.
-- Support VoiceOver: use .accessibilityHint() for non-obvious actions.
-
-TYPOGRAPHY:
-- Use system text styles (.largeTitle, .title, .headline, .body, .caption, etc.) for all text.
-- NEVER hardcode font sizes with .font(.system(size:)). System styles provide automatic Dynamic Type.
-- One .largeTitle per screen. .headline for row titles, .body for content, .subheadline/.caption for metadata.
-- Avoid .ultraLight, .thin, .light font weights — poor readability.
-
-SPACING & LAYOUT:
-- Follow 8pt grid: spacing values must be multiples of 4pt (4, 8, 12, 16, 24, 32, 48).
-- Standard outer margins: 16pt. Card padding: 16pt. Section spacing: 24pt.
-- Use AppTheme.Spacing tokens consistently — no ad-hoc magic numbers.
-
-COLOR & CONTRAST:
-- Minimum 4.5:1 contrast ratio for text. 3:1 for large text (20pt+ regular or 14pt+ bold).
-- Don't rely on color alone — always pair with icons, text, or shapes.
-- Semantic colors for status: red = destructive, green = success, orange = warning.
-
-BUTTON HIERARCHY:
-- .borderedProminent for primary actions, .bordered for secondary, .borderless for tertiary.
-- ONE primary button per screen/section. Use Button(), not .onTapGesture, for tappable elements.
-
-REDUCE MOTION:
-- Respect @Environment(\.accessibilityReduceMotion). Replace spring/slide with .opacity when enabled.
-
 SWIFTUI ANIMATION SAFETY — ASYNCRENDERER CRASH PREVENTION:
-- NEVER use .symbolEffect(.bounce, value:) where the value changes at the same time as preferredColorScheme. This triggers concurrent animations on SwiftUI's AsyncRenderer thread and the main thread simultaneously, causing EXC_BREAKPOINT.
-- NEVER apply .transaction { $0.disablesAnimations = true } at the root level while child views have explicit .animation() modifiers or .symbolEffect() triggers. disablesAnimations only suppresses implicit animations — explicit .animation() and symbolEffect run anyway, creating conflicting animation contexts.
-- When switching appearance (dark/light mode): do NOT trigger .symbolEffect, .animation(.spring), or other explicit animations on the same state change that drives preferredColorScheme. If you need a visual bounce on mode selection, use a separate @State trigger that fires AFTER the scheme transition settles (e.g. via DispatchQueue.main.asyncAfter or .onChange with a delay).
-- Avoid stacking multiple .animation() modifiers on the same view — consolidate into one, or use withAnimation {} at the call site instead.
-- Safe pattern for appearance switching: change the @Published mode property, let preferredColorScheme update, and keep the selection UI animation-free or use withAnimation on a separate local @State boolean.`
+- NEVER use .symbolEffect(.bounce, value:) where the value changes at the same time as preferredColorScheme.
+- NEVER apply .transaction { $0.disablesAnimations = true } at the root level while child views have explicit .animation() modifiers or .symbolEffect() triggers.
+- When switching appearance (dark/light mode): do NOT trigger .symbolEffect, .animation(.spring), or other explicit animations on the same state change that drives preferredColorScheme.
+- Avoid stacking multiple .animation() modifiers on the same view — consolidate into one, or use withAnimation {} at the call site instead.`

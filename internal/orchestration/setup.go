@@ -18,6 +18,7 @@ var skillsFS embed.FS
 func setupWorkspace(projectDir string) error {
 	dirs := []string{
 		projectDir,
+		filepath.Join(projectDir, ".claude", "rules"),
 		filepath.Join(projectDir, ".claude", "skills"),
 	}
 	for _, d := range dirs {
@@ -28,12 +29,22 @@ func setupWorkspace(projectDir string) error {
 	return nil
 }
 
-// writeInitialCLAUDEMD writes the CLAUDE.md with SharedConstraints only (before plan exists).
-func writeInitialCLAUDEMD(projectDir, appName string) error {
+// writeInitialCLAUDEMD writes the CLAUDE.md with project-specific info only (before plan exists).
+// Architecture, concurrency, UI, and design rules come from .claude/rules/ and .claude/skills/.
+func writeInitialCLAUDEMD(projectDir, appName, deviceFamily string) error {
+	var platformLine string
+	switch deviceFamily {
+	case "ipad":
+		platformLine = "iPad only, iOS 26+, Swift 6"
+	case "universal":
+		platformLine = "iPhone and iPad, iOS 26+, Swift 6"
+	default:
+		platformLine = "iPhone only, iOS 26+, Swift 6"
+	}
 	content := fmt.Sprintf(`# %s — iOS Project Rules
 
 ## Platform
-- iPhone only, iOS 26+, Swift 6
+- %s
 - SwiftUI + SwiftData only. No UIKit (except when required), no third-party packages.
 
 ## Architecture
@@ -45,30 +56,6 @@ func writeInitialCLAUDEMD(projectDir, appName string) error {
 - Any @AppStorage value written in child views MUST be read in RootView
 - A toggle without visible app-wide effect is a bug
 
-## Navigation
-- NavigationStack, not NavigationView
-- TabView for multi-feature top-level navigation
-
-## Theme
-- Use AppTheme tokens and semantic colors
-- Never use hardcoded .blue/.orange
-- Choose AppTheme colors that remain legible in both light and dark appearance
-- Do not rely on adaptive system materials/colors for brand surfaces unless explicit dark-mode palette tokens are defined
-
-## Safe Areas & Overlays
-- Full-screen backgrounds use .ignoresSafeArea()
-- Overlays use .safeAreaInset(edge:), NOT manual padding
-- Never place interactive content in Dynamic Island zone
-
-## View Complexity
-- View body > 30 lines -> extract to computed properties
-- This prevents "unable to type-check" compiler errors
-
-## Swift 6 Concurrency
-- Do not pass main-actor-isolated values directly into APIs that execute in @concurrent contexts
-- Capture Sendable snapshots first, perform concurrent work off MainActor, then hop back to MainActor for UI state updates
-- Translation rule: for .translationTask { session in ... }, do not call session.translate(...) inside @MainActor-isolated service methods
-
 ## Build Command
 `+"```"+`
 xcodebuild -project %s.xcodeproj -scheme %s \
@@ -77,15 +64,9 @@ xcodebuild -project %s.xcodeproj -scheme %s \
 
 ## Project Configuration
 - Use the xcodegen MCP tools to manage project configuration
-- add_permission: Add iOS permissions (camera, location, etc.)
-- add_extension: Add widgets, live activities, share sheets, etc.
-- add_entitlement: Add App Groups, push notifications, HealthKit, etc.
-- add_localization: Add language support
-- set_build_setting: Set Xcode build settings
-- get_project_config: Read current configuration
-- regenerate_project: Regenerate .xcodeproj from project.yml
+- add_permission, add_extension, add_entitlement, add_localization, set_build_setting, get_project_config, regenerate_project
 - NEVER manually edit project.yml or .xcodeproj files
-`, appName, appName, appName)
+`, appName, platformLine, appName, appName)
 
 	return os.WriteFile(filepath.Join(projectDir, ".claude", "CLAUDE.md"), []byte(content), 0o644)
 }
@@ -149,53 +130,239 @@ func enrichCLAUDEMD(projectDir string, plan *PlannerResult, appName string) erro
 		enrichment.WriteString("\nExtension source files go in Targets/{ExtensionName}/. Shared types (e.g. ActivityAttributes) go in the Shared/ directory — both targets compile it.\n")
 	}
 
+	enrichment.WriteString(`
+## Extending Rules & Skills
+
+This project uses a scalable skill system. Rules live in ` + "`.claude/`" + `:
+- ` + "`.claude/rules/`" + ` — always loaded (core architecture rules)
+- ` + "`.claude/skills/<name>/`" + ` — lazy loaded (SKILL.md with description + implementation rules)
+
+### Adding a new feature domain (e.g., payments, auth, Firebase)
+1. Create ` + "`.claude/skills/<name>/SKILL.md`" + ` with frontmatter and implementation rules
+2. Claude will load it automatically when working on that feature
+
+### Skill format
+Each SKILL.md uses frontmatter:
+  name: <skill-name>
+  description: "<when to use this skill>"
+  user-invocable: false
+The body contains the implementation rules and code examples.
+`)
+
 	enriched := string(existing) + enrichment.String()
 	return os.WriteFile(claudeMDPath, []byte(enriched), 0o644)
 }
 
-// writeSkills copies embedded skill files to projectDir/.claude/skills/.
-func writeSkills(projectDir string) error {
-	skillsDir := filepath.Join(projectDir, ".claude", "skills")
+// conditionalCategories lists embedded directories searched for conditional skill keys.
+var conditionalCategories = []string{"features", "ui", "extensions"}
 
-	return fs.WalkDir(skillsFS, "skills", func(path string, d fs.DirEntry, err error) error {
+// writeCoreRules copies skills/core/*.md to projectDir/.claude/rules/ (always loaded eagerly).
+func writeCoreRules(projectDir string) error {
+	rulesDir := filepath.Join(projectDir, ".claude", "rules")
+
+	entries, err := fs.ReadDir(skillsFS, "skills/core")
+	if err != nil {
+		return fmt.Errorf("failed to read embedded core rules: %w", err)
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+			continue
+		}
+
+		content, err := skillsFS.ReadFile("skills/core/" + entry.Name())
 		if err != nil {
+			return fmt.Errorf("failed to read embedded rule %s: %w", entry.Name(), err)
+		}
+
+		if err := os.WriteFile(filepath.Join(rulesDir, entry.Name()), content, 0o644); err != nil {
 			return err
 		}
-
-		// path is relative to the embed root, e.g. "skills/swiftui/animations.md"
-		// We want to write to .claude/skills/swiftui/animations.md
-		relPath := path // already starts with "skills/"
-		destPath := filepath.Join(skillsDir, strings.TrimPrefix(relPath, "skills/"))
-
-		if d.IsDir() {
-			return os.MkdirAll(destPath, 0o755)
-		}
-
-		content, err := skillsFS.ReadFile(path)
-		if err != nil {
-			return fmt.Errorf("failed to read embedded skill %s: %w", path, err)
-		}
-
-		return os.WriteFile(destPath, content, 0o644)
-	})
+	}
+	return nil
 }
 
-// loadRuleContent reads the skill file for a given rule_key from the embedded FS.
-// Returns the file content stripped of YAML frontmatter, or empty string if not found.
-func loadRuleContent(ruleKey string) string {
-	path := fmt.Sprintf("skills/rules/%s.md", ruleKey)
-	data, err := skillsFS.ReadFile(path)
+// writeAlwaysSkills copies all skills/always/* to .claude/skills/*/ (lazy, always present).
+// Handles both flat .md files and multi-file directories (e.g., swiftui/).
+func writeAlwaysSkills(projectDir string) error {
+	skillsDir := filepath.Join(projectDir, ".claude", "skills")
+
+	entries, err := fs.ReadDir(skillsFS, "skills/always")
 	if err != nil {
-		return ""
+		return fmt.Errorf("failed to read embedded always skills: %w", err)
 	}
-	content := string(data)
-	// Strip YAML frontmatter (--- ... ---)
-	if strings.HasPrefix(content, "---") {
-		if end := strings.Index(content[3:], "---"); end >= 0 {
-			content = strings.TrimSpace(content[end+6:])
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			// Multi-file skill (e.g., swiftui/) — copy directory
+			srcPath := "skills/always/" + entry.Name()
+			dstPath := filepath.Join(skillsDir, entry.Name())
+			if err := writeSkillDir(srcPath, dstPath); err != nil {
+				return err
+			}
+		} else if strings.HasSuffix(entry.Name(), ".md") {
+			// Single-file skill — wrap in a directory with the file as SKILL.md
+			skillName := strings.TrimSuffix(entry.Name(), ".md")
+			dstDir := filepath.Join(skillsDir, skillName)
+			if err := os.MkdirAll(dstDir, 0o755); err != nil {
+				return fmt.Errorf("failed to create dir %s: %w", dstDir, err)
+			}
+			content, err := skillsFS.ReadFile("skills/always/" + entry.Name())
+			if err != nil {
+				return fmt.Errorf("failed to read %s: %w", entry.Name(), err)
+			}
+			if err := os.WriteFile(filepath.Join(dstDir, "SKILL.md"), content, 0o644); err != nil {
+				return err
+			}
 		}
 	}
-	return content
+	return nil
+}
+
+// writeConditionalSkills copies matching skills from features/, ui/, extensions/
+// to .claude/skills/<key>/ for each key in ruleKeys.
+// Handles both directories and flat .md files.
+func writeConditionalSkills(projectDir string, ruleKeys []string) error {
+	skillsDir := filepath.Join(projectDir, ".claude", "skills")
+
+	for _, key := range ruleKeys {
+		for _, cat := range conditionalCategories {
+			// Try as directory first
+			srcPath := fmt.Sprintf("skills/%s/%s", cat, key)
+			if _, err := fs.ReadDir(skillsFS, srcPath); err == nil {
+				dstPath := filepath.Join(skillsDir, key)
+				if err := writeSkillDir(srcPath, dstPath); err != nil {
+					return err
+				}
+				break // found and written
+			}
+
+			// Try as flat file
+			filePath := fmt.Sprintf("skills/%s/%s.md", cat, key)
+			if data, err := skillsFS.ReadFile(filePath); err == nil {
+				dstDir := filepath.Join(skillsDir, key)
+				if err := os.MkdirAll(dstDir, 0o755); err != nil {
+					return fmt.Errorf("failed to create dir %s: %w", dstDir, err)
+				}
+				if err := os.WriteFile(filepath.Join(dstDir, "SKILL.md"), data, 0o644); err != nil {
+					return err
+				}
+				break // found and written
+			}
+		}
+	}
+	return nil
+}
+
+// writeSkillDir copies all files from an embedded directory to an output directory.
+func writeSkillDir(embeddedPath, outputDir string) error {
+	entries, err := fs.ReadDir(skillsFS, embeddedPath)
+	if err != nil {
+		return fmt.Errorf("failed to read embedded dir %s: %w", embeddedPath, err)
+	}
+
+	if err := os.MkdirAll(outputDir, 0o755); err != nil {
+		return fmt.Errorf("failed to create dir %s: %w", outputDir, err)
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+
+		content, err := skillsFS.ReadFile(embeddedPath + "/" + entry.Name())
+		if err != nil {
+			return fmt.Errorf("failed to read %s/%s: %w", embeddedPath, entry.Name(), err)
+		}
+
+		if err := os.WriteFile(filepath.Join(outputDir, entry.Name()), content, 0o644); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// extractFrontmatter splits YAML frontmatter from markdown content.
+// Returns the description value from frontmatter and the body after the closing ---.
+func extractFrontmatter(content string) (description string, body string) {
+	if !strings.HasPrefix(content, "---") {
+		return "", content
+	}
+	end := strings.Index(content[3:], "---")
+	if end < 0 {
+		return "", content
+	}
+
+	frontmatter := content[3 : end+3]
+	body = strings.TrimSpace(content[end+6:])
+
+	// Extract description from frontmatter
+	for _, line := range strings.Split(frontmatter, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "description:") {
+			desc := strings.TrimPrefix(line, "description:")
+			desc = strings.TrimSpace(desc)
+			desc = strings.Trim(desc, "\"'")
+			return desc, body
+		}
+	}
+	return "", body
+}
+
+// loadRuleContent reads content for a given rule_key from the embedded FS.
+// It searches core/, always/, features/, ui/, extensions/ for the key.
+// Handles both flat .md files and directories with content files.
+// Returns content stripped of YAML frontmatter, or empty string if not found.
+func loadRuleContent(ruleKey string) string {
+	// Try core/ first (single file)
+	corePath := fmt.Sprintf("skills/core/%s.md", ruleKey)
+	if data, err := skillsFS.ReadFile(corePath); err == nil {
+		_, body := extractFrontmatter(string(data))
+		return body
+	}
+
+	// Search categorized: always/, features/, ui/, extensions/
+	categories := []string{"always", "features", "ui", "extensions"}
+	for _, cat := range categories {
+		// Try as flat file first
+		filePath := fmt.Sprintf("skills/%s/%s.md", cat, ruleKey)
+		if data, err := skillsFS.ReadFile(filePath); err == nil {
+			_, body := extractFrontmatter(string(data))
+			if body != "" {
+				return body
+			}
+		}
+
+		// Try as directory
+		dirPath := fmt.Sprintf("skills/%s/%s", cat, ruleKey)
+		entries, err := fs.ReadDir(skillsFS, dirPath)
+		if err != nil {
+			continue
+		}
+
+		// Load all .md files except SKILL.md
+		var combined strings.Builder
+		for _, entry := range entries {
+			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") || entry.Name() == "SKILL.md" {
+				continue
+			}
+			data, err := skillsFS.ReadFile(dirPath + "/" + entry.Name())
+			if err != nil {
+				continue
+			}
+			_, body := extractFrontmatter(string(data))
+			if body != "" {
+				if combined.Len() > 0 {
+					combined.WriteString("\n\n")
+				}
+				combined.WriteString(body)
+			}
+		}
+		if combined.Len() > 0 {
+			return combined.String()
+		}
+	}
+	return ""
 }
 
 // writeMCPConfig writes .mcp.json at the project root to give Claude Code access to Apple docs and xcodegen tools.
@@ -357,6 +524,7 @@ func writeProjectConfig(projectDir string, plan *PlannerResult, appName string) 
 	type projectConfig struct {
 		AppName       string            `json:"app_name"`
 		BundleID      string            `json:"bundle_id"`
+		DeviceFamily  string            `json:"device_family,omitempty"`
 		Permissions   []permission      `json:"permissions,omitempty"`
 		Extensions    []extensionPlan   `json:"extensions,omitempty"`
 		Localizations []string          `json:"localizations,omitempty"`
@@ -364,8 +532,9 @@ func writeProjectConfig(projectDir string, plan *PlannerResult, appName string) 
 	}
 
 	cfg := projectConfig{
-		AppName:  appName,
-		BundleID: bundleID,
+		AppName:      appName,
+		BundleID:     bundleID,
+		DeviceFamily: plan.GetDeviceFamily(),
 	}
 
 	if plan != nil {

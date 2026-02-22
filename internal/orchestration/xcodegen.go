@@ -8,6 +8,43 @@ import (
 // generateProjectYAML produces the full project.yml content for XcodeGen.
 // When no extensions are present, generates a single-target project.
 // With extensions, generates multi-target YAML with proper dependencies.
+// deviceFamilyBuildSettings returns TARGETED_DEVICE_FAMILY and orientation settings for the given device family.
+func deviceFamilyBuildSettings(b *strings.Builder, family string) {
+	switch family {
+	case "ipad":
+		b.WriteString("        TARGETED_DEVICE_FAMILY: \"2\"\n")
+		b.WriteString("        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight\n")
+	case "universal":
+		b.WriteString("        TARGETED_DEVICE_FAMILY: \"1,2\"\n")
+		b.WriteString("        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait\n")
+		b.WriteString("        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight\n")
+	default: // "iphone"
+		b.WriteString("        TARGETED_DEVICE_FAMILY: \"1\"\n")
+		b.WriteString("        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait\n")
+	}
+}
+
+// writeIOSDestinationSettings constrains Xcode "Supported Destinations" for iOS apps.
+// supportedDestinations removes Mac/Vision "Designed for iPad" defaults, while
+// destinationFilters narrows iOS devices (iPhone/iPad) based on the planned family.
+func writeIOSDestinationSettings(b *strings.Builder, family string) {
+	b.WriteString("    platform: iOS\n")
+	b.WriteString("    supportedDestinations:\n")
+	b.WriteString("      - iOS\n")
+	switch family {
+	case "ipad":
+		b.WriteString("    destinationFilters:\n")
+		b.WriteString("      - device: iPad\n")
+	case "universal":
+		b.WriteString("    destinationFilters:\n")
+		b.WriteString("      - device: iPhone\n")
+		b.WriteString("      - device: iPad\n")
+	default: // "iphone"
+		b.WriteString("    destinationFilters:\n")
+		b.WriteString("      - device: iPhone\n")
+	}
+}
+
 func generateProjectYAML(appName string, plan *PlannerResult) string {
 	var b strings.Builder
 
@@ -51,7 +88,7 @@ func generateProjectYAML(appName string, plan *PlannerResult) string {
 	// Main app target
 	fmt.Fprintf(&b, "  %s:\n", appName)
 	b.WriteString("    type: application\n")
-	b.WriteString("    platform: iOS\n")
+	writeIOSDestinationSettings(&b, plan.GetDeviceFamily())
 	b.WriteString("    sources:\n")
 	fmt.Fprintf(&b, "      - path: %s\n", appName)
 	b.WriteString("        type: syncedFolder\n")
@@ -74,7 +111,7 @@ func generateProjectYAML(appName string, plan *PlannerResult) string {
 	b.WriteString("        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES\n")
 	b.WriteString("        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES\n")
 	b.WriteString("        INFOPLIST_KEY_UILaunchScreen_Generation: YES\n")
-	b.WriteString("        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait\n")
+	deviceFamilyBuildSettings(&b, plan.GetDeviceFamily())
 	b.WriteString("        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon\n")
 	b.WriteString("        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor\n")
 	b.WriteString("        ENABLE_PREVIEWS: YES\n")

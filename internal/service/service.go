@@ -25,8 +25,17 @@ import (
 	"github.com/moasq/nanowave/internal/terminal"
 )
 
-// defaultSimulatorPreference is the preferred simulator name when auto-detecting.
-var defaultSimulatorPreference = []string{"iPhone 17 Pro", "iPhone 17", "iPhone 16 Pro", "iPhone 16", "iPhone Air"}
+// simulatorPreference returns the preferred simulator names for the given device family.
+func simulatorPreference(family string) []string {
+	switch family {
+	case "ipad":
+		return []string{"iPad Pro 13-inch (M4)", "iPad Air 13-inch (M3)", "iPad Pro 11-inch (M4)", "iPad Air 11-inch (M3)", "iPad (A16)"}
+	case "universal":
+		return []string{"iPhone 17 Pro", "iPad Pro 13-inch (M4)", "iPhone 17", "iPad Air 13-inch (M3)", "iPhone 16 Pro", "iPad Pro 11-inch (M4)"}
+	default: // "iphone"
+		return []string{"iPhone 17 Pro", "iPhone 17", "iPhone 16 Pro", "iPhone 16", "iPhone Air"}
+	}
+}
 
 const defaultRunLogWatchSeconds = 30
 
@@ -143,11 +152,21 @@ func (s *Service) CurrentSimulator() string {
 	return project.Simulator
 }
 
-// detectDefaultSimulator picks the best available iPhone simulator.
+// currentDeviceFamily reads the device family from the current project, defaulting to "iphone".
+func (s *Service) currentDeviceFamily() string {
+	project, err := s.projectStore.Load()
+	if err != nil || project == nil || project.DeviceFamily == "" {
+		return "iphone"
+	}
+	return project.DeviceFamily
+}
+
+// detectDefaultSimulator picks the best available simulator for the current device family.
 func (s *Service) detectDefaultSimulator() string {
+	family := s.currentDeviceFamily()
 	devices, err := s.ListSimulators()
 	if err != nil || len(devices) == 0 {
-		return "iPhone 17 Pro"
+		return simulatorPreference(family)[0]
 	}
 
 	// Try preferred names in order
@@ -155,13 +174,13 @@ func (s *Service) detectDefaultSimulator() string {
 	for _, d := range devices {
 		available[d.Name] = true
 	}
-	for _, name := range defaultSimulatorPreference {
+	for _, name := range simulatorPreference(family) {
 		if available[name] {
 			return name
 		}
 	}
 
-	// Fall back to first available iPhone
+	// Fall back to first available
 	return devices[0].Name
 }
 
@@ -194,9 +213,21 @@ func (s *Service) ListSimulators() ([]SimulatorDevice, error) {
 			if !d.IsAvailable {
 				continue
 			}
-			// Only include iPhones for simplicity
-			if !strings.HasPrefix(d.Name, "iPhone") {
-				continue
+			// Filter by device family
+			family := s.currentDeviceFamily()
+			switch family {
+			case "ipad":
+				if !strings.HasPrefix(d.Name, "iPad") {
+					continue
+				}
+			case "universal":
+				if !strings.HasPrefix(d.Name, "iPhone") && !strings.HasPrefix(d.Name, "iPad") {
+					continue
+				}
+			default: // "iphone"
+				if !strings.HasPrefix(d.Name, "iPhone") {
+					continue
+				}
 			}
 			devices = append(devices, SimulatorDevice{
 				Name:    d.Name,
@@ -228,6 +259,21 @@ func (s *Service) ListSimulators() ([]SimulatorDevice, error) {
 	return unique, nil
 }
 
+// resolveSimulatorUDID looks up the UDID for a simulator by name.
+// Returns "" if the simulator cannot be found.
+func (s *Service) resolveSimulatorUDID(name string) string {
+	devices, err := s.ListSimulators()
+	if err != nil {
+		return ""
+	}
+	for _, d := range devices {
+		if d.Name == name {
+			return d.UDID
+		}
+	}
+	return ""
+}
+
 // build creates a new app from a prompt using the multi-phase pipeline.
 func (s *Service) build(ctx context.Context, prompt string, images []string) error {
 	terminal.Header("Nanowave Build")
@@ -252,12 +298,13 @@ func (s *Service) build(ctx context.Context, prompt string, images []string) err
 	if err := s.config.EnsureNanowaveDir(); err == nil {
 		appName := result.AppName
 		proj := &storage.Project{
-			ID:          1,
-			Name:        &appName,
-			Status:      "active",
-			ProjectPath: result.ProjectDir,
-			BundleID:    result.BundleID,
-			SessionID:   result.SessionID,
+			ID:           1,
+			Name:         &appName,
+			Status:       "active",
+			ProjectPath:  result.ProjectDir,
+			BundleID:     result.BundleID,
+			DeviceFamily: result.DeviceFamily,
+			SessionID:    result.SessionID,
 		}
 		s.projectStore.Save(proj)
 		s.historyStore.Append(storage.HistoryMessage{Role: "user", Content: prompt})
@@ -403,7 +450,16 @@ func (s *Service) Run(ctx context.Context) error {
 
 	scheme := strings.TrimSuffix(xcodeprojName, ".xcodeproj")
 	simulator := s.CurrentSimulator()
-	destination := fmt.Sprintf("platform=iOS Simulator,name=%s", simulator)
+
+	// Resolve simulator name to UDID for a precise destination match,
+	// avoiding OS version mismatch when xcodebuild defaults to OS:latest.
+	simUDID := s.resolveSimulatorUDID(simulator)
+	var destination string
+	if simUDID != "" {
+		destination = fmt.Sprintf("platform=iOS Simulator,id=%s", simUDID)
+	} else {
+		destination = fmt.Sprintf("platform=iOS Simulator,name=%s", simulator)
+	}
 
 	terminal.Detail("Simulator", simulator)
 
@@ -471,8 +527,12 @@ func (s *Service) Run(ctx context.Context) error {
 	spinner = terminal.NewSpinner(fmt.Sprintf("Launching %s...", simulator))
 	spinner.Start()
 
-	// Boot the simulator by name
-	_ = exec.CommandContext(ctx, "xcrun", "simctl", "boot", simulator).Run()
+	// Boot the simulator by UDID (falls back to name)
+	bootTarget := simulator
+	if simUDID != "" {
+		bootTarget = simUDID
+	}
+	_ = exec.CommandContext(ctx, "xcrun", "simctl", "boot", bootTarget).Run()
 
 	// Open Simulator.app
 	_ = exec.CommandContext(ctx, "open", "-a", "Simulator").Run()

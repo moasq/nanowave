@@ -6,6 +6,7 @@ type BuildResult struct {
 	Description      string
 	ProjectDir       string
 	BundleID         string
+	DeviceFamily     string
 	Features         []Feature
 	FileCount        int
 	PlannedFiles     int
@@ -37,6 +38,7 @@ type Feature struct {
 // PlannerResult is the parsed output from the planner phase.
 type PlannerResult struct {
 	Design        DesignSystem    `json:"design"`
+	DeviceFamily  string          `json:"device_family"`
 	Files         []FilePlan      `json:"files"`
 	Models        []ModelPlan     `json:"models"`
 	Permissions   []Permission    `json:"permissions"`
@@ -44,6 +46,14 @@ type PlannerResult struct {
 	Localizations []string        `json:"localizations"`
 	RuleKeys      []string        `json:"rule_keys"`
 	BuildOrder    []string        `json:"build_order"`
+}
+
+// GetDeviceFamily returns the device family, defaulting to "iphone".
+func (p *PlannerResult) GetDeviceFamily() string {
+	if p == nil || p.DeviceFamily == "" {
+		return "iphone"
+	}
+	return p.DeviceFamily
 }
 
 // ExtensionPlan describes a secondary Xcode target (widget, live activity, etc.)
