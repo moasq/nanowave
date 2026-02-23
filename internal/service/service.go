@@ -31,6 +31,18 @@ import (
 func rankSimulator(deviceTypeID, family, platform string) int {
 	lower := strings.ToLower(deviceTypeID)
 
+	if platform == "tvos" {
+		if !strings.Contains(lower, "apple-tv") {
+			return -1
+		}
+		switch {
+		case strings.Contains(lower, "4k"):
+			return 100
+		default:
+			return 60
+		}
+	}
+
 	if platform == "watchos" {
 		if !strings.Contains(lower, "watch") {
 			return -1
@@ -114,10 +126,10 @@ const defaultRunLogWatchSeconds = 30
 
 // SimulatorDevice represents an available simulator.
 type SimulatorDevice struct {
-	Name           string
-	UDID           string
-	Runtime        string // e.g. "iOS 18.1"
-	DeviceTypeID   string // e.g. "com.apple.CoreSimulator.SimDeviceType.iPhone-16-Pro"
+	Name         string
+	UDID         string
+	Runtime      string // e.g. "iOS 18.1"
+	DeviceTypeID string // e.g. "com.apple.CoreSimulator.SimDeviceType.iPhone-16-Pro"
 }
 
 // Service coordinates app generation for CLI usage.
@@ -291,8 +303,11 @@ func (s *Service) ListSimulators() ([]SimulatorDevice, error) {
 
 	// Filter runtimes by platform
 	runtimeFilter := "iOS"
-	if platform == "watchos" {
+	switch platform {
+	case "watchos":
 		runtimeFilter = "watchOS"
+	case "tvos":
+		runtimeFilter = "tvOS"
 	}
 
 	var devices []SimulatorDevice
@@ -391,6 +406,7 @@ func (s *Service) build(ctx context.Context, prompt string, images []string) err
 			ProjectPath:  result.ProjectDir,
 			BundleID:     result.BundleID,
 			Platform:     result.Platform,
+			Platforms:     result.Platforms,
 			DeviceFamily: result.DeviceFamily,
 			SessionID:    result.SessionID,
 		}
@@ -542,8 +558,11 @@ func (s *Service) Run(ctx context.Context) error {
 
 	// Platform-aware simulator destination
 	simPlatform := "iOS Simulator"
-	if platform == "watchos" {
+	switch platform {
+	case "watchos":
 		simPlatform = "watchOS Simulator"
+	case "tvos":
+		simPlatform = "tvOS Simulator"
 	}
 
 	// Resolve simulator name to UDID for a precise destination match,
@@ -558,6 +577,11 @@ func (s *Service) Run(ctx context.Context) error {
 
 	terminal.Detail("Simulator", simulator)
 
+	derivedDataPath := projectDerivedDataPath(project.ProjectPath)
+	if err := os.MkdirAll(derivedDataPath, 0o755); err != nil {
+		return fmt.Errorf("failed to prepare derived data path %s: %w", derivedDataPath, err)
+	}
+
 	// Build for simulator
 	spinner := terminal.NewSpinner("Building for simulator...")
 	spinner.Start()
@@ -565,6 +589,7 @@ func (s *Service) Run(ctx context.Context) error {
 	buildCmd := exec.CommandContext(ctx, "xcodebuild",
 		"-project", xcodeprojName,
 		"-scheme", scheme,
+		"-derivedDataPath", derivedDataPath,
 		"-destination", destination,
 		"-quiet",
 		"build",
@@ -599,6 +624,7 @@ func (s *Service) Run(ctx context.Context) error {
 		retryCmd := exec.CommandContext(ctx, "xcodebuild",
 			"-project", xcodeprojName,
 			"-scheme", scheme,
+			"-derivedDataPath", derivedDataPath,
 			"-destination", destination,
 			"-quiet",
 			"build",
@@ -627,10 +653,17 @@ func (s *Service) Run(ctx context.Context) error {
 	if simUDID != "" {
 		bootTarget = simUDID
 	}
-	_ = exec.CommandContext(ctx, "xcrun", "simctl", "boot", bootTarget).Run()
+	bootCmd := exec.CommandContext(ctx, "xcrun", "simctl", "boot", bootTarget)
+	if bootOutput, bootErr := bootCmd.CombinedOutput(); bootErr != nil && !isAlreadyBootedSimError(bootErr, bootOutput) {
+		spinner.Stop()
+		return fmt.Errorf("failed to boot simulator %s: %w%s", simulator, bootErr, commandOutputSuffix(bootOutput))
+	}
 
 	// Open Simulator.app
-	_ = exec.CommandContext(ctx, "open", "-a", "Simulator").Run()
+	openCmd := exec.CommandContext(ctx, "open", "-a", "Simulator")
+	if openOutput, openErr := openCmd.CombinedOutput(); openErr != nil {
+		terminal.Warning(fmt.Sprintf("Could not open Simulator.app: %v%s", openErr, commandOutputSuffix(openOutput)))
+	}
 
 	// Install and launch the app
 	bundleID := project.BundleID
@@ -638,11 +671,23 @@ func (s *Service) Run(ctx context.Context) error {
 		bundleID = fmt.Sprintf("com.%s.%s", sanitizeBundleID(currentUsername()), strings.ToLower(scheme))
 	}
 
-	// Find the built .app in DerivedData
-	appPath := findBuiltApp(project.ProjectPath, scheme, platform)
-	if appPath != "" {
-		_ = exec.CommandContext(ctx, "xcrun", "simctl", "install", "booted", appPath).Run()
-		_ = exec.CommandContext(ctx, "xcrun", "simctl", "launch", "booted", bundleID).Run()
+	// Find the built .app in the per-project derived data path.
+	appPath, err := findBuiltAppInDerivedData(derivedDataPath, scheme, platform)
+	if err != nil {
+		spinner.Stop()
+		return err
+	}
+
+	installCmd := exec.CommandContext(ctx, "xcrun", "simctl", "install", "booted", appPath)
+	if installOutput, installErr := installCmd.CombinedOutput(); installErr != nil {
+		spinner.Stop()
+		return fmt.Errorf("failed to install app on simulator: %w%s", installErr, commandOutputSuffix(installOutput))
+	}
+
+	launchCmd := exec.CommandContext(ctx, "xcrun", "simctl", "launch", "booted", bundleID)
+	if launchOutput, launchErr := launchCmd.CombinedOutput(); launchErr != nil {
+		spinner.Stop()
+		return fmt.Errorf("failed to launch app %s on simulator: %w%s", bundleID, launchErr, commandOutputSuffix(launchOutput))
 	}
 
 	spinner.Stop()
@@ -679,6 +724,11 @@ func (s *Service) Info() error {
 	terminal.Detail("Status", project.Status)
 	terminal.Detail("Path", project.ProjectPath)
 	terminal.Detail("Bundle ID", project.BundleID)
+	if len(project.Platforms) > 1 {
+		terminal.Detail("Platforms", strings.Join(project.Platforms, ", "))
+	} else if project.Platform != "" {
+		terminal.Detail("Platform", project.Platform)
+	}
 	terminal.Detail("Simulator", s.CurrentSimulator())
 
 	history, _ := s.historyStore.List()
@@ -922,41 +972,64 @@ func parseRuntimeName(runtime string) string {
 	return name
 }
 
-// findBuiltApp looks for the built .app bundle in DerivedData.
-func findBuiltApp(projectDir, scheme, platform string) string {
-	// xcodebuild typically puts builds in DerivedData
-	home, _ := os.UserHomeDir()
-	derivedData := filepath.Join(home, "Library", "Developer", "Xcode", "DerivedData")
+func projectDerivedDataPath(projectPath string) string {
+	return filepath.Join(projectPath, ".nanowave", "DerivedData")
+}
 
-	entries, err := os.ReadDir(derivedData)
+// findBuiltAppInDerivedData looks for the expected .app bundle in a specific DerivedData path.
+func findBuiltAppInDerivedData(derivedDataPath, scheme, platform string) (string, error) {
+	productsSubdir := "Debug-iphonesimulator"
+	switch platform {
+	case "watchos":
+		productsSubdir = "Debug-watchsimulator"
+	case "tvos":
+		productsSubdir = "Debug-appletvsimulator"
+	}
+
+	productsDir := filepath.Join(derivedDataPath, "Build", "Products", productsSubdir)
+	entries, err := os.ReadDir(productsDir)
 	if err != nil {
-		return ""
+		return "", fmt.Errorf("failed to read build products in %s: %w", productsDir, err)
 	}
 
-	// Platform-aware products directory
-	productsDir := "Debug-iphonesimulator"
-	if platform == "watchos" {
-		productsDir = "Debug-watchsimulator"
-	}
-
-	// Find the matching DerivedData directory
+	expectedApp := scheme + ".app"
+	var foundApps []string
 	for _, entry := range entries {
-		if !entry.IsDir() || !strings.HasPrefix(entry.Name(), scheme+"-") {
-			continue
-		}
-		appDir := filepath.Join(derivedData, entry.Name(), "Build", "Products", productsDir)
-		appEntries, err := os.ReadDir(appDir)
-		if err != nil {
-			continue
-		}
-		for _, ae := range appEntries {
-			if strings.HasSuffix(ae.Name(), ".app") {
-				return filepath.Join(appDir, ae.Name())
+		if entry.IsDir() && strings.HasSuffix(entry.Name(), ".app") {
+			foundApps = append(foundApps, entry.Name())
+			if entry.Name() == expectedApp {
+				return filepath.Join(productsDir, entry.Name()), nil
 			}
 		}
 	}
 
-	return ""
+	if len(foundApps) == 0 {
+		return "", fmt.Errorf("no .app bundle found in %s (derived data path: %s)", productsDir, derivedDataPath)
+	}
+
+	sort.Strings(foundApps)
+	return "", fmt.Errorf("expected %s in %s but found %d app bundle(s): %s", expectedApp, productsDir, len(foundApps), strings.Join(foundApps, ", "))
+}
+
+func isAlreadyBootedSimError(err error, output []byte) bool {
+	if err == nil {
+		return false
+	}
+	text := strings.ToLower(err.Error())
+	if len(output) > 0 {
+		text += " " + strings.ToLower(string(output))
+	}
+	return strings.Contains(text, "already booted") ||
+		strings.Contains(text, "current state: booted") ||
+		strings.Contains(text, "unable to boot device in current state: booted")
+}
+
+func commandOutputSuffix(output []byte) string {
+	trimmed := strings.TrimSpace(string(output))
+	if trimmed == "" {
+		return ""
+	}
+	return "\n" + trimmed
 }
 
 func runLogWatchDuration() time.Duration {

@@ -2,19 +2,11 @@ package commands
 
 import (
 	"fmt"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"strings"
 
 	"github.com/moasq/nanowave/internal/config"
-	"github.com/moasq/nanowave/internal/storage"
+	"github.com/moasq/nanowave/internal/service"
 	"github.com/moasq/nanowave/internal/terminal"
 )
-
-func loadConfig() (*config.Config, error) {
-	return config.Load()
-}
 
 // loadConfigWithProject loads config and selects the most recent project.
 // Returns an error if no projects exist in the catalog.
@@ -34,28 +26,15 @@ func loadConfigWithProject() (*config.Config, error) {
 	return cfg, nil
 }
 
-func openProject(cfg *config.Config) error {
-	store := storage.NewProjectStore(cfg.NanowaveDir)
-	project, err := store.Load()
-	if err != nil || project == nil {
-		return fmt.Errorf("no project found")
-	}
-
-	// Find .xcodeproj
-	entries, err := os.ReadDir(project.ProjectPath)
+func loadProjectService(opts ...service.ServiceOpts) (*service.Service, error) {
+	cfg, err := loadConfigWithProject()
 	if err != nil {
-		return fmt.Errorf("failed to read project directory: %w", err)
+		return nil, err
 	}
+	return service.NewService(cfg, opts...)
+}
 
-	for _, entry := range entries {
-		if strings.HasSuffix(entry.Name(), ".xcodeproj") {
-			xcodeprojPath := filepath.Join(project.ProjectPath, entry.Name())
-			terminal.Info(fmt.Sprintf("Opening %s...", entry.Name()))
-			return exec.Command("open", xcodeprojPath).Run()
-		}
-	}
-
-	// Fallback: open the directory
-	terminal.Info(fmt.Sprintf("Opening %s...", project.ProjectPath))
-	return exec.Command("open", project.ProjectPath).Run()
+func printNoProjectFoundCreateFirst() {
+	terminal.Error("No project found.")
+	terminal.Info("Run `nanowave` first to create a project.")
 }

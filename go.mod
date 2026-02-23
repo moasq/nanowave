@@ -1,6 +1,6 @@
 module github.com/moasq/nanowave
 
-go 1.25.5
+go 1.26
 
 require (
 	github.com/modelcontextprotocol/go-sdk v1.3.1

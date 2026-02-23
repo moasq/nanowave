@@ -9,7 +9,9 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -34,6 +36,33 @@ var chatCmd = &cobra.Command{
 type imageCache struct {
 	dir    string            // temp directory for cached images
 	cached map[string]string // original path → cached path
+}
+
+// cancelHolder safely shares the active operation cancel func across goroutines.
+type cancelHolder struct {
+	mu sync.Mutex
+	fn context.CancelFunc
+}
+
+func (h *cancelHolder) Set(fn context.CancelFunc) {
+	h.mu.Lock()
+	h.fn = fn
+	h.mu.Unlock()
+}
+
+// Take returns and clears the current cancel func atomically.
+func (h *cancelHolder) Take() context.CancelFunc {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	fn := h.fn
+	h.fn = nil
+	return fn
+}
+
+func (h *cancelHolder) Clear() {
+	h.mu.Lock()
+	h.fn = nil
+	h.mu.Unlock()
 }
 
 func newImageCache() (*imageCache, error) {
@@ -162,7 +191,7 @@ func runInteractive(cmd *cobra.Command) error {
 	select {
 	case res := <-updateCh:
 		if res.NeedsUpdate() {
-			terminal.Warning(fmt.Sprintf("Update available: v%s → v%s  —  run `brew upgrade nanowave`", res.Current, res.Latest))
+			terminal.Warning(fmt.Sprintf("Update available: v%s → v%s", res.Current, res.Latest))
 			fmt.Println()
 		}
 	case <-time.After(3 * time.Second):
@@ -233,15 +262,14 @@ func runInteractive(cmd *cobra.Command) error {
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
 	// Track whether an operation is in progress
-	var cancelOp context.CancelFunc
+	var activeCancel cancelHolder
 
 	// Handle signals in background
 	go func() {
 		for range sigChan {
-			if cancelOp != nil {
+			if cancel := activeCancel.Take(); cancel != nil {
 				// Cancel the running operation
-				cancelOp()
-				cancelOp = nil
+				cancel()
 				fmt.Println()
 				terminal.Warning("Operation cancelled.")
 				fmt.Println()
@@ -339,7 +367,7 @@ func runInteractive(cmd *cobra.Command) error {
 
 		// Create cancellable context for this operation
 		ctx, cancel := context.WithCancel(cmd.Context())
-		cancelOp = cancel
+		activeCancel.Set(cancel)
 
 		// Capture usage before operation for delta
 		usageBefore := svc.Usage()
@@ -385,8 +413,9 @@ func runInteractive(cmd *cobra.Command) error {
 		}
 		svc.UpdateConfig(cfg)
 
-		cancelOp = nil
-		cancel()
+		if cleanupCancel := activeCancel.Take(); cleanupCancel != nil {
+			cleanupCancel()
+		}
 		fmt.Println()
 	}
 
@@ -438,14 +467,10 @@ func handleSlashCommand(input string, cfg *config.Config, svc *service.Service, 
 		return true
 
 	case "/run":
-		if !cfg.HasProject() {
-			terminal.Error("No project found. Build an app first.")
-			fmt.Println()
+		if !requireProjectForSlashCommand(cfg) {
 			return true
 		}
-		ctx, cancel := context.WithCancel(cmd.Context())
-		defer cancel()
-		if err := svc.Run(ctx); err != nil {
+		if err := runWithSlashCommandContext(cmd, svc.Run); err != nil {
 			terminal.Error(fmt.Sprintf("Run failed: %v", err))
 		}
 		fmt.Println()
@@ -456,23 +481,17 @@ func handleSlashCommand(input string, cfg *config.Config, svc *service.Service, 
 		return true
 
 	case "/fix":
-		if !cfg.HasProject() {
-			terminal.Error("No project found. Build an app first.")
-			fmt.Println()
+		if !requireProjectForSlashCommand(cfg) {
 			return true
 		}
-		ctx, cancel := context.WithCancel(cmd.Context())
-		defer cancel()
-		if err := svc.Fix(ctx); err != nil {
+		if err := runWithSlashCommandContext(cmd, svc.Fix); err != nil {
 			terminal.Error(fmt.Sprintf("Fix failed: %v", err))
 		}
 		fmt.Println()
 		return true
 
 	case "/ask":
-		if !cfg.HasProject() {
-			terminal.Error("No project found. Build an app first.")
-			fmt.Println()
+		if !requireProjectForSlashCommand(cfg) {
 			return true
 		}
 		if arg == "" {
@@ -480,10 +499,10 @@ func handleSlashCommand(input string, cfg *config.Config, svc *service.Service, 
 			fmt.Println()
 			return true
 		}
-		ctx, cancel := context.WithCancel(cmd.Context())
-		defer cancel()
 		usageBefore := svc.Usage()
-		if err := svc.Ask(ctx, arg); err != nil {
+		if err := runWithSlashCommandContext(cmd, func(ctx context.Context) error {
+			return svc.Ask(ctx, arg)
+		}); err != nil {
 			terminal.Error(fmt.Sprintf("Ask failed: %v", err))
 		} else {
 			usageAfter := svc.Usage()
@@ -496,9 +515,7 @@ func handleSlashCommand(input string, cfg *config.Config, svc *service.Service, 
 		return true
 
 	case "/open":
-		if !cfg.HasProject() {
-			terminal.Error("No project found. Build an app first.")
-			fmt.Println()
+		if !requireProjectForSlashCommand(cfg) {
 			return true
 		}
 		if err := svc.Open(); err != nil {
@@ -534,7 +551,9 @@ func handleSlashCommand(input string, cfg *config.Config, svc *service.Service, 
 		return false // sentinel — handled in main loop
 
 	case "/setup":
-		setupCmd.RunE(cmd, nil)
+		if err := setupCmd.RunE(cmd, nil); err != nil {
+			terminal.Error(fmt.Sprintf("Setup failed: %v", err))
+		}
 		fmt.Println()
 		return true
 
@@ -543,6 +562,21 @@ func handleSlashCommand(input string, cfg *config.Config, svc *service.Service, 
 		fmt.Println()
 		return true
 	}
+}
+
+func requireProjectForSlashCommand(cfg *config.Config) bool {
+	if cfg.HasProject() {
+		return true
+	}
+	terminal.Error("No project found. Build an app first.")
+	fmt.Println()
+	return false
+}
+
+func runWithSlashCommandContext(cmd *cobra.Command, fn func(context.Context) error) error {
+	ctx, cancel := context.WithCancel(cmd.Context())
+	defer cancel()
+	return fn(ctx)
 }
 
 // handleSimulatorCommand processes the /simulator command.
@@ -578,9 +612,7 @@ func handleSimulatorCommand(arg string, svc *service.Service) {
 	}
 
 	// Try to match by number
-	if idx, err := fmt.Sscanf(arg, "%d", new(int)); idx == 1 && err == nil {
-		var n int
-		fmt.Sscanf(arg, "%d", &n)
+	if n, err := strconv.Atoi(arg); err == nil {
 		if n >= 1 && n <= len(devices) {
 			selected := devices[n-1].Name
 			svc.SetSimulator(selected)

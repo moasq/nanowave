@@ -19,7 +19,24 @@
       "WebFetch(domain:stratigrafia.org)",
       "WebFetch(domain:icab.de)",
       "Bash(gh search:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(head:*)",
+      "Bash(cd /Users/mohammedal-quraini/nanowave/projects/NanoNotes && ./scripts/claude/check-no-placeholders.sh 2>&1)",
+      "Bash(cd /Users/mohammedal-quraini/nanowave/projects/NanoNotes && xcodebuild -project NanoNotes.xcodeproj -scheme NanoNotes -destination 'generic/platform=iOS Simulator' -quiet build 2>&1)",
+      "Bash(echo EXIT_CODE=$?:*)",
+      "Bash(go test:*)",
+      "Bash(go version:*)",
+      "WebFetch(domain:docs.anthropic.com)",
+      "Bash(go mod:*)",
+      "Bash(git mv:*)",
+      "WebFetch(domain:makeappicon.com)",
+      "WebFetch(domain:showmax.engineering)",
+      "WebFetch(domain:fatbobman.com)",
+      "WebFetch(domain:rryam.com)",
+      "WebFetch(domain:www.tothenew.com)",
+      "WebFetch(domain:en.wikipedia.org)",
+      "Bash(wc:*)",
+      "Bash(cd /Users/mohammedal-quraini/nanowave/projects/Skies && xcodegen generate 2>&1)"
     ]
   },
   "disabledMcpjsonServers": [

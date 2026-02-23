@@ -297,6 +297,10 @@ func generateWatchOnlyYAMLCfg(cfg *ProjectConfig) string {
 	var b strings.Builder
 	appName := cfg.AppName
 	bundleID := cfg.BundleID
+	watchAppName := watchAppTargetName(appName)
+	watchBundleID := bundleID + ".watchkitapp"
+	watchExtName := watchExtensionTargetName(appName)
+	watchExtBundleID := watchBundleID + ".watchkitextension"
 	hasExtensions := len(cfg.Extensions) > 0
 
 	fmt.Fprintf(&b, "name: %s\n", appName)
@@ -318,17 +322,13 @@ func generateWatchOnlyYAMLCfg(cfg *ProjectConfig) string {
 	b.WriteString("\n")
 
 	b.WriteString("targets:\n")
+
+	// Watch container target
 	fmt.Fprintf(&b, "  %s:\n", appName)
 	b.WriteString("    type: application.watchapp2-container\n")
 	b.WriteString("    platform: watchOS\n")
 	b.WriteString("    sources:\n")
-	fmt.Fprintf(&b, "      - path: %s\n", appName)
-	b.WriteString("        type: folder\n")
-	if hasExtensions {
-		b.WriteString("      - path: Shared\n")
-		b.WriteString("        type: folder\n")
-		b.WriteString("        optional: true\n")
-	}
+	writeFolderSourceEntryCfg(&b, appName, []string{"**/*.swift", "*.plist", "*.entitlements"}, false)
 
 	b.WriteString("    settings:\n")
 	b.WriteString("      base:\n")
@@ -338,12 +338,6 @@ func generateWatchOnlyYAMLCfg(cfg *ProjectConfig) string {
 	b.WriteString("        CURRENT_PROJECT_VERSION: 1\n")
 	b.WriteString("        MARKETING_VERSION: \"1.0\"\n")
 	b.WriteString("        GENERATE_INFOPLIST_FILE: YES\n")
-	b.WriteString("        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon\n")
-	b.WriteString("        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor\n")
-	b.WriteString("        ENABLE_PREVIEWS: YES\n")
-	b.WriteString("        SWIFT_EMIT_LOC_STRINGS: YES\n")
-	b.WriteString("        SWIFT_APPROACHABLE_CONCURRENCY: YES\n")
-	b.WriteString("        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor\n")
 
 	for _, perm := range cfg.Permissions {
 		fmt.Fprintf(&b, "        INFOPLIST_KEY_%s: %s\n", perm.Key, yamlQuote(perm.Description))
@@ -356,19 +350,52 @@ func generateWatchOnlyYAMLCfg(cfg *ProjectConfig) string {
 	fmt.Fprintf(&b, "      path: %s/%s.entitlements\n", appName, appName)
 	b.WriteString("      properties: {}\n")
 
-	b.WriteString("    info:\n")
-	fmt.Fprintf(&b, "      path: %s/Info.plist\n", appName)
-	b.WriteString("      properties:\n")
-	b.WriteString("        WKWatchOnly: true\n")
-
+	b.WriteString("    dependencies:\n")
+	fmt.Fprintf(&b, "      - target: %s\n", watchAppName)
+	b.WriteString("        embed: true\n")
 	if hasExtensions {
-		b.WriteString("    dependencies:\n")
 		for _, ext := range cfg.Extensions {
 			name := extensionTargetName(ext, appName)
 			fmt.Fprintf(&b, "      - target: %s\n", name)
 			b.WriteString("        embed: true\n")
 		}
 	}
+
+	// Watch app target (wrapper app bundle)
+	b.WriteString("\n")
+	fmt.Fprintf(&b, "  %s:\n", watchAppName)
+	b.WriteString("    type: application.watchapp2\n")
+	b.WriteString("    platform: watchOS\n")
+	b.WriteString("    sources:\n")
+	writeFolderSourceEntryCfg(&b, appName, []string{"**/*.swift", "*.plist", "*.entitlements"}, false)
+	b.WriteString("    settings:\n")
+	b.WriteString("      base:\n")
+	b.WriteString("        SWIFT_VERSION: \"6.0\"\n")
+	fmt.Fprintf(&b, "        PRODUCT_BUNDLE_IDENTIFIER: %s\n", watchBundleID)
+	b.WriteString("        CODE_SIGN_STYLE: Automatic\n")
+	b.WriteString("        CURRENT_PROJECT_VERSION: 1\n")
+	b.WriteString("        MARKETING_VERSION: \"1.0\"\n")
+	b.WriteString("        GENERATE_INFOPLIST_FILE: YES\n")
+	writeWatchOSBuildSettingsCfg(&b)
+	for _, perm := range cfg.Permissions {
+		fmt.Fprintf(&b, "        INFOPLIST_KEY_%s: %s\n", perm.Key, yamlQuote(perm.Description))
+	}
+
+	b.WriteString("    entitlements:\n")
+	fmt.Fprintf(&b, "      path: %s/%s.entitlements\n", appName, watchAppName)
+	b.WriteString("      properties: {}\n")
+
+	b.WriteString("    info:\n")
+	fmt.Fprintf(&b, "      path: %s/WatchApp-Info.plist\n", appName)
+	b.WriteString("      properties:\n")
+	b.WriteString("        WKWatchOnly: true\n")
+	b.WriteString("        WKRunsIndependentlyOfCompanionApp: true\n")
+	b.WriteString("    dependencies:\n")
+	fmt.Fprintf(&b, "      - target: %s\n", watchExtName)
+	b.WriteString("        embed: true\n")
+
+	// Intrinsic watch runtime extension target
+	writeIntrinsicWatchExtensionTargetYAMLCfg(&b, watchExtName, appName, watchExtBundleID, watchBundleID, hasExtensions)
 
 	for _, ext := range cfg.Extensions {
 		name := extensionTargetName(ext, appName)
@@ -381,11 +408,8 @@ func generateWatchOnlyYAMLCfg(cfg *ProjectConfig) string {
 		fmt.Fprintf(&b, "    type: %s\n", xcodegenTargetType(kind))
 		b.WriteString("    platform: watchOS\n")
 		b.WriteString("    sources:\n")
-		fmt.Fprintf(&b, "      - path: %s\n", sourcePath)
-		b.WriteString("        type: folder\n")
-		b.WriteString("      - path: Shared\n")
-		b.WriteString("        type: folder\n")
-		b.WriteString("        optional: true\n")
+		writeFolderSourceEntryCfg(&b, sourcePath, nil, false)
+		writeFolderSourceEntryCfg(&b, "Shared", nil, true)
 		b.WriteString("    settings:\n")
 		b.WriteString("      base:\n")
 		fmt.Fprintf(&b, "        PRODUCT_BUNDLE_IDENTIFIER: %s\n", extBundleID)
@@ -421,6 +445,20 @@ func generateWatchOnlyYAMLCfg(cfg *ProjectConfig) string {
 		}
 	}
 
+	b.WriteString("\nschemes:\n")
+	fmt.Fprintf(&b, "  %s:\n", appName)
+	b.WriteString("    build:\n")
+	b.WriteString("      targets:\n")
+	fmt.Fprintf(&b, "        %s: all\n", appName)
+	fmt.Fprintf(&b, "        %s: all\n", watchAppName)
+	fmt.Fprintf(&b, "        %s: all\n", watchExtName)
+	for _, ext := range cfg.Extensions {
+		name := extensionTargetName(ext, appName)
+		fmt.Fprintf(&b, "        %s: all\n", name)
+	}
+	b.WriteString("    run:\n")
+	fmt.Fprintf(&b, "      executable: %s\n", appName)
+
 	return b.String()
 }
 
@@ -429,8 +467,10 @@ func generatePairedYAMLCfg(cfg *ProjectConfig) string {
 	var b strings.Builder
 	appName := cfg.AppName
 	bundleID := cfg.BundleID
-	watchAppName := appName + "Watch"
+	watchAppName := watchAppTargetName(appName)
 	watchBundleID := bundleID + ".watchkitapp"
+	watchExtName := watchExtensionTargetName(appName)
+	watchExtBundleID := watchBundleID + ".watchkitextension"
 	hasExtensions := len(cfg.Extensions) > 0
 
 	fmt.Fprintf(&b, "name: %s\n", appName)
@@ -520,13 +560,7 @@ func generatePairedYAMLCfg(cfg *ProjectConfig) string {
 	b.WriteString("    type: application.watchapp2\n")
 	b.WriteString("    platform: watchOS\n")
 	b.WriteString("    sources:\n")
-	fmt.Fprintf(&b, "      - path: %s\n", watchAppName)
-	b.WriteString("        type: folder\n")
-	if hasExtensions {
-		b.WriteString("      - path: Shared\n")
-		b.WriteString("        type: folder\n")
-		b.WriteString("        optional: true\n")
-	}
+	writeFolderSourceEntryCfg(&b, watchAppName, []string{"**/*.swift", "*.plist", "*.entitlements"}, false)
 
 	b.WriteString("    settings:\n")
 	b.WriteString("      base:\n")
@@ -536,12 +570,7 @@ func generatePairedYAMLCfg(cfg *ProjectConfig) string {
 	b.WriteString("        CURRENT_PROJECT_VERSION: 1\n")
 	b.WriteString("        MARKETING_VERSION: \"1.0\"\n")
 	b.WriteString("        GENERATE_INFOPLIST_FILE: YES\n")
-	b.WriteString("        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon\n")
-	b.WriteString("        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor\n")
-	b.WriteString("        ENABLE_PREVIEWS: YES\n")
-	b.WriteString("        SWIFT_EMIT_LOC_STRINGS: YES\n")
-	b.WriteString("        SWIFT_APPROACHABLE_CONCURRENCY: YES\n")
-	b.WriteString("        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor\n")
+	writeWatchOSBuildSettingsCfg(&b)
 
 	b.WriteString("    entitlements:\n")
 	fmt.Fprintf(&b, "      path: %s/%s.entitlements\n", watchAppName, watchAppName)
@@ -550,7 +579,14 @@ func generatePairedYAMLCfg(cfg *ProjectConfig) string {
 	b.WriteString("    info:\n")
 	fmt.Fprintf(&b, "      path: %s/Info.plist\n", watchAppName)
 	b.WriteString("      properties:\n")
+	fmt.Fprintf(&b, "        WKCompanionAppBundleIdentifier: %s\n", yamlQuote(bundleID))
 	b.WriteString("        WKRunsIndependentlyOfCompanionApp: true\n")
+	b.WriteString("    dependencies:\n")
+	fmt.Fprintf(&b, "      - target: %s\n", watchExtName)
+	b.WriteString("        embed: true\n")
+
+	// Intrinsic watch runtime extension target
+	writeIntrinsicWatchExtensionTargetYAMLCfg(&b, watchExtName, watchAppName, watchExtBundleID, watchBundleID, hasExtensions)
 
 	// Watch extension targets
 	for _, ext := range cfg.Extensions {
@@ -564,11 +600,8 @@ func generatePairedYAMLCfg(cfg *ProjectConfig) string {
 		fmt.Fprintf(&b, "    type: %s\n", xcodegenTargetType(kind))
 		b.WriteString("    platform: watchOS\n")
 		b.WriteString("    sources:\n")
-		fmt.Fprintf(&b, "      - path: %s\n", sourcePath)
-		b.WriteString("        type: folder\n")
-		b.WriteString("      - path: Shared\n")
-		b.WriteString("        type: folder\n")
-		b.WriteString("        optional: true\n")
+		writeFolderSourceEntryCfg(&b, sourcePath, nil, false)
+		writeFolderSourceEntryCfg(&b, "Shared", nil, true)
 		b.WriteString("    settings:\n")
 		b.WriteString("      base:\n")
 		fmt.Fprintf(&b, "        PRODUCT_BUNDLE_IDENTIFIER: %s\n", extBundleID)
@@ -611,6 +644,7 @@ func generatePairedYAMLCfg(cfg *ProjectConfig) string {
 	b.WriteString("      targets:\n")
 	fmt.Fprintf(&b, "        %s: all\n", appName)
 	fmt.Fprintf(&b, "        %s: all\n", watchAppName)
+	fmt.Fprintf(&b, "        %s: all\n", watchExtName)
 	for _, ext := range cfg.Extensions {
 		name := extensionTargetName(ext, appName)
 		fmt.Fprintf(&b, "        %s: all\n", name)
@@ -619,6 +653,71 @@ func generatePairedYAMLCfg(cfg *ProjectConfig) string {
 	fmt.Fprintf(&b, "      executable: %s\n", appName)
 
 	return b.String()
+}
+
+func writeWatchOSBuildSettingsCfg(b *strings.Builder) {
+	b.WriteString("        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon\n")
+	b.WriteString("        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor\n")
+	b.WriteString("        ENABLE_PREVIEWS: YES\n")
+	b.WriteString("        SWIFT_EMIT_LOC_STRINGS: YES\n")
+	b.WriteString("        SWIFT_APPROACHABLE_CONCURRENCY: YES\n")
+	b.WriteString("        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor\n")
+}
+
+func watchAppTargetName(appName string) string {
+	return appName + "Watch"
+}
+
+func watchExtensionTargetName(appName string) string {
+	return appName + "WatchExtension"
+}
+
+func writeFolderSourceEntryCfg(b *strings.Builder, path string, excludes []string, optional bool) {
+	fmt.Fprintf(b, "      - path: %s\n", path)
+	b.WriteString("        type: folder\n")
+	if optional {
+		b.WriteString("        optional: true\n")
+	}
+	if len(excludes) == 0 {
+		return
+	}
+	b.WriteString("        excludes:\n")
+	for _, pattern := range excludes {
+		fmt.Fprintf(b, "          - %s\n", yamlQuote(pattern))
+	}
+}
+
+func writeIntrinsicWatchExtensionTargetYAMLCfg(b *strings.Builder, targetName, sourcePath, extBundleID, watchAppBundleID string, includeShared bool) {
+	b.WriteString("\n")
+	fmt.Fprintf(b, "  %s:\n", targetName)
+	b.WriteString("    type: watchkit2-extension\n")
+	b.WriteString("    platform: watchOS\n")
+	b.WriteString("    sources:\n")
+	writeFolderSourceEntryCfg(b, sourcePath, []string{"*.plist", "*.entitlements"}, false)
+	if includeShared {
+		writeFolderSourceEntryCfg(b, "Shared", nil, true)
+	}
+	b.WriteString("    settings:\n")
+	b.WriteString("      base:\n")
+	fmt.Fprintf(b, "        PRODUCT_BUNDLE_IDENTIFIER: %s\n", extBundleID)
+	b.WriteString("        CODE_SIGN_STYLE: Automatic\n")
+	b.WriteString("        SWIFT_VERSION: \"6.0\"\n")
+	b.WriteString("        GENERATE_INFOPLIST_FILE: YES\n")
+	b.WriteString("        SKIP_INSTALL: YES\n")
+	b.WriteString("        CURRENT_PROJECT_VERSION: 1\n")
+	b.WriteString("        MARKETING_VERSION: \"1.0\"\n")
+	b.WriteString("        SWIFT_APPROACHABLE_CONCURRENCY: YES\n")
+	b.WriteString("        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor\n")
+	b.WriteString("    entitlements:\n")
+	fmt.Fprintf(b, "      path: %s/%s.entitlements\n", sourcePath, targetName)
+	b.WriteString("      properties: {}\n")
+	b.WriteString("    info:\n")
+	fmt.Fprintf(b, "      path: %s/WatchExtension-Info.plist\n", sourcePath)
+	b.WriteString("      properties:\n")
+	b.WriteString("        NSExtension:\n")
+	b.WriteString("          NSExtensionPointIdentifier: com.apple.watchkit\n")
+	b.WriteString("          NSExtensionAttributes:\n")
+	fmt.Fprintf(b, "            WKAppBundleIdentifier: %s\n", yamlQuote(watchAppBundleID))
 }
 
 // writeIOSDestinationSettingsCfg constrains Xcode "Supported Destinations" for iOS apps.

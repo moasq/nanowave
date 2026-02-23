@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -76,6 +77,32 @@ func buildImageContext(userMessage string, images []string) string {
 		sb.WriteString(fmt.Sprintf("- Image %d: %s\n", i+1, img))
 	}
 	return sb.String()
+}
+
+// streamNDJSONLines reads newline-delimited JSON from r and calls onLine for each line.
+// It does not impose bufio.Scanner token limits and also processes a final line without
+// a trailing newline.
+func streamNDJSONLines(r io.Reader, onLine func([]byte) error) error {
+	br := bufio.NewReader(r)
+
+	for {
+		line, err := br.ReadBytes('\n')
+		if len(line) > 0 {
+			line = bytes.TrimRight(line, "\r\n")
+			if len(bytes.TrimSpace(line)) > 0 {
+				if onErr := onLine(line); onErr != nil {
+					return onErr
+				}
+			}
+		}
+
+		if err != nil {
+			if err == io.EOF {
+				return nil
+			}
+			return err
+		}
+	}
 }
 
 // Generate sends a prompt to Claude Code and returns the response.
@@ -231,18 +258,18 @@ func (c *Client) GenerateStreaming(ctx context.Context, userMessage string, opts
 	var sessionID string
 	var assistantText strings.Builder // accumulate text from assistant events
 
-	scanner := bufio.NewScanner(stdout)
-	scanner.Buffer(make([]byte, 1024*1024), 1024*1024) // 1MB buffer for large events
-
-	for scanner.Scan() {
-		line := scanner.Bytes()
-		if len(line) == 0 {
-			continue
+	streamErr := streamNDJSONLines(stdout, func(line []byte) error {
+		trimmed := bytes.TrimSpace(line)
+		if len(trimmed) == 0 {
+			return nil
+		}
+		if !json.Valid(trimmed) {
+			return fmt.Errorf("invalid JSON stream event (%d bytes)", len(trimmed))
 		}
 
-		ev := parseStreamEvent(line)
+		ev := parseStreamEvent(trimmed)
 		if ev == nil {
-			continue
+			return nil
 		}
 
 		if ev.Type == "system" && ev.Subtype == "init" && ev.SessionID != "" {
@@ -271,14 +298,21 @@ func (c *Client) GenerateStreaming(ctx context.Context, userMessage string, opts
 				Usage:        ev.Usage,
 			}
 			if ev.IsError {
-				cmd.Wait()
-				return nil, fmt.Errorf("claude returned error: %s", ev.Result)
+				return fmt.Errorf("claude returned error: %s", ev.Result)
 			}
 		}
 
 		if onEvent != nil {
 			onEvent(*ev)
 		}
+		return nil
+	})
+	if streamErr != nil {
+		_ = cmd.Wait()
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+		return nil, fmt.Errorf("failed to read claude stream: %w", streamErr)
 	}
 
 	if err := cmd.Wait(); err != nil {

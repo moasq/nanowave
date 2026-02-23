@@ -50,7 +50,7 @@ func TestWriteAlwaysSkills(t *testing.T) {
 		t.Fatalf("writeAlwaysSkills() error: %v", err)
 	}
 
-	// Verify flat skills are wrapped into SKILL.md
+	// Verify always skills are emitted as Anthropic-style folders with SKILL.md
 	flatSkills := []string{"design-system", "layout", "navigation", "components"}
 	for _, name := range flatSkills {
 		path := filepath.Join(skillsDir, name, "SKILL.md")
@@ -64,8 +64,20 @@ func TestWriteAlwaysSkills(t *testing.T) {
 		}
 	}
 
-	// Verify multi-file skill (swiftui/) is copied as directory
-	swiftuiFiles := []string{"SKILL.md", "animations.md", "forms.md", "lists.md", "scroll.md", "state.md", "performance.md", "text.md", "media.md", "modern-apis.md", "liquid-glass.md"}
+	// Verify multi-file skill (swiftui/) is copied as directory with reference/ companions
+	swiftuiFiles := []string{
+		"SKILL.md",
+		"reference/animations.md",
+		"reference/forms.md",
+		"reference/lists.md",
+		"reference/scroll.md",
+		"reference/state.md",
+		"reference/performance.md",
+		"reference/text.md",
+		"reference/media.md",
+		"reference/modern-apis.md",
+		"reference/liquid-glass.md",
+	}
 	for _, fileName := range swiftuiFiles {
 		path := filepath.Join(skillsDir, "swiftui", fileName)
 		info, err := os.Stat(path)
@@ -78,7 +90,7 @@ func TestWriteAlwaysSkills(t *testing.T) {
 		}
 	}
 
-	// Verify SKILL.md has frontmatter
+	// Verify SKILL.md has Anthropic-style frontmatter (name + description only)
 	skillMD, err := os.ReadFile(filepath.Join(skillsDir, "design-system", "SKILL.md"))
 	if err != nil {
 		t.Fatalf("failed to read SKILL.md: %v", err)
@@ -86,12 +98,18 @@ func TestWriteAlwaysSkills(t *testing.T) {
 	if !strings.HasPrefix(string(skillMD), "---") {
 		t.Error("SKILL.md should have YAML frontmatter")
 	}
-	if !strings.Contains(string(skillMD), "user-invocable: false") {
-		t.Error("SKILL.md should have user-invocable: false")
+	if !strings.Contains(string(skillMD), "\nname: ") {
+		t.Error("SKILL.md should include name in frontmatter")
+	}
+	if !strings.Contains(string(skillMD), "\ndescription: ") {
+		t.Error("SKILL.md should include description in frontmatter")
+	}
+	if strings.Contains(string(skillMD), "user-invocable:") {
+		t.Error("SKILL.md should not include legacy user-invocable frontmatter")
 	}
 
-	// Verify review multi-file skill is copied
-	reviewFiles := []string{"SKILL.md", "quality-review.md", "accessibility-audit.md", "output-format.md"}
+	// Verify review multi-file skill is copied with reference/ companions
+	reviewFiles := []string{"SKILL.md", "reference/quality-review.md", "reference/accessibility-audit.md", "reference/output-format.md"}
 	for _, fileName := range reviewFiles {
 		path := filepath.Join(skillsDir, "review", fileName)
 		info, err := os.Stat(path)
@@ -353,6 +371,11 @@ func TestLoadRuleContent(t *testing.T) {
 			wantHas: "AppTheme",
 		},
 		{
+			name:    "multi-file always skill loads nested reference content",
+			key:     "swiftui",
+			wantHas: "Animation Process:",
+		},
+		{
 			name:    "storage loads",
 			key:     "storage",
 			wantHas: "SwiftData",
@@ -363,8 +386,8 @@ func TestLoadRuleContent(t *testing.T) {
 			wantEmpty: true,
 		},
 		{
-			name:    "adaptive_layout loads NavigationSplitView",
-			key:     "adaptive_layout",
+			name:    "adaptive-layout loads NavigationSplitView",
+			key:     "adaptive-layout",
 			wantHas: "NavigationSplitView",
 		},
 		{
@@ -640,6 +663,16 @@ func TestCanonicalBuildCommandIOS(t *testing.T) {
 	}
 }
 
+func TestCanonicalBuildCommandPairedWatchUsesIOSDestination(t *testing.T) {
+	cmd := canonicalBuildCommandForShape("WristCounter", "watchos", WatchShapePaired)
+	if !strings.Contains(cmd, "iOS Simulator") {
+		t.Errorf("paired watch build command should use iOS Simulator destination, got: %s", cmd)
+	}
+	if strings.Contains(cmd, "watchOS Simulator") {
+		t.Errorf("paired watch build command should not use watchOS Simulator destination, got: %s", cmd)
+	}
+}
+
 func TestPlatformSummaryWatchOS(t *testing.T) {
 	summary := platformSummary("watchos", "")
 	if !strings.Contains(summary, "Apple Watch") {
@@ -876,6 +909,120 @@ func TestWriteConditionalSkillsWatchOSOverride(t *testing.T) {
 	}
 	if !strings.Contains(string(widgetsData), "accessoryCircular") {
 		t.Error("watchOS widgets should mention accessoryCircular complication family")
+	}
+}
+
+func TestScaffoldSourceDirsMultiPlatform(t *testing.T) {
+	projectDir := t.TempDir()
+
+	plan := &PlannerResult{
+		Platform:          "ios",
+		Platforms:         []string{"ios", "watchos", "tvos"},
+		DeviceFamily:      "universal",
+		WatchProjectShape: "paired_ios_watch",
+	}
+
+	if err := scaffoldSourceDirs(projectDir, "FocusFlow", plan); err != nil {
+		t.Fatalf("scaffoldSourceDirs() error: %v", err)
+	}
+
+	expected := []string{"FocusFlow", "FocusFlowWatch", "FocusFlowTV", "Shared"}
+	for _, dir := range expected {
+		if _, err := os.Stat(filepath.Join(projectDir, dir)); err != nil {
+			t.Errorf("expected %s directory to exist", dir)
+		}
+	}
+}
+
+func TestWriteAlwaysSkillsMultiPlatform(t *testing.T) {
+	projectDir := t.TempDir()
+	skillsDir := filepath.Join(projectDir, ".claude", "skills")
+	if err := os.MkdirAll(skillsDir, 0o755); err != nil {
+		t.Fatalf("failed to create skills dir: %v", err)
+	}
+
+	// Multi-platform: iOS primary + watchOS + tvOS extras
+	if err := writeAlwaysSkills(projectDir, "ios", "watchos", "tvos"); err != nil {
+		t.Fatalf("writeAlwaysSkills(ios, watchos, tvos) error: %v", err)
+	}
+
+	// Base iOS always skills should be present
+	for _, name := range []string{"design-system", "layout", "navigation", "components"} {
+		path := filepath.Join(skillsDir, name, "SKILL.md")
+		if _, err := os.Stat(path); err != nil {
+			t.Errorf("expected %s/SKILL.md to exist: %v", name, err)
+		}
+	}
+
+	// watchOS-only skill should be loaded
+	path := filepath.Join(skillsDir, "watchos-patterns", "SKILL.md")
+	if _, err := os.Stat(path); err != nil {
+		t.Errorf("expected watchos-patterns/SKILL.md to exist: %v", err)
+	}
+
+	// tvOS-only skill should be loaded
+	tvosPath := filepath.Join(skillsDir, "tvos-patterns", "SKILL.md")
+	if _, err := os.Stat(tvosPath); err != nil {
+		t.Errorf("expected tvos-patterns/SKILL.md to exist: %v", err)
+	}
+}
+
+func TestMultiPlatformBuildCommands(t *testing.T) {
+	cmds := multiPlatformBuildCommands("FocusFlow", []string{"ios", "watchos", "tvos"})
+
+	// watchOS is built via iOS scheme (paired), so we expect iOS + tvOS commands
+	if len(cmds) < 2 {
+		t.Fatalf("expected at least 2 build commands, got %d", len(cmds))
+	}
+
+	hasIOS := false
+	hasTV := false
+	for _, cmd := range cmds {
+		if strings.Contains(cmd, "FocusFlow.xcodeproj") && strings.Contains(cmd, "iOS Simulator") {
+			hasIOS = true
+		}
+		if strings.Contains(cmd, "FocusFlowTV") && strings.Contains(cmd, "tvOS Simulator") {
+			hasTV = true
+		}
+	}
+	if !hasIOS {
+		t.Error("expected iOS build command")
+	}
+	if !hasTV {
+		t.Error("expected tvOS build command")
+	}
+}
+
+func TestWriteClaudeMemoryFilesMultiPlatform(t *testing.T) {
+	projectDir := t.TempDir()
+	if err := setupWorkspace(projectDir); err != nil {
+		t.Fatalf("setupWorkspace() error: %v", err)
+	}
+
+	plan := &PlannerResult{
+		Platform:          "ios",
+		Platforms:         []string{"ios", "watchos", "tvos"},
+		DeviceFamily:      "universal",
+		WatchProjectShape: "paired_ios_watch",
+	}
+
+	if err := writeClaudeMemoryFiles(projectDir, "FocusFlow", "ios", "universal", plan); err != nil {
+		t.Fatalf("writeClaudeMemoryFiles() error: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(projectDir, ".claude", "memory", "project-overview.md"))
+	if err != nil {
+		t.Fatalf("failed to read project-overview.md: %v", err)
+	}
+	text := string(data)
+	if !strings.Contains(text, "iOS") || !strings.Contains(text, "watchOS") || !strings.Contains(text, "tvOS") {
+		t.Error("multi-platform project-overview should list all platforms")
+	}
+	if !strings.Contains(text, "FocusFlowWatch") {
+		t.Error("multi-platform project-overview should mention watch source dir")
+	}
+	if !strings.Contains(text, "FocusFlowTV") {
+		t.Error("multi-platform project-overview should mention TV source dir")
 	}
 }
 

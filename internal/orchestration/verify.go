@@ -39,10 +39,11 @@ func verifyPlannedFiles(projectDir, appName string, plan *PlannerResult) (*FileC
 		return report, nil
 	}
 
+	isMulti := plan.IsMultiPlatform()
 	for _, planned := range plan.Files {
 		status := PlannedFileStatus{
 			PlannedPath:  planned.Path,
-			ResolvedPath: resolvePlannedFilePath(projectDir, appName, planned.Path),
+			ResolvedPath: resolvePlannedFilePathWithPlatform(projectDir, appName, planned, isMulti),
 			ExpectedType: planned.TypeName,
 		}
 
@@ -111,13 +112,36 @@ func verifyPlannedFiles(projectDir, appName string, plan *PlannerResult) (*FileC
 // resolvePlannedFilePath resolves a planner file path to an absolute file path.
 func resolvePlannedFilePath(projectDir, appName, plannedPath string) string {
 	cleanPath := filepath.Clean(filepath.FromSlash(plannedPath))
-	targetPrefix := "Targets" + string(os.PathSeparator)
-	sharedPrefix := "Shared" + string(os.PathSeparator)
 
-	if strings.HasPrefix(cleanPath, targetPrefix) || cleanPath == "Targets" || strings.HasPrefix(cleanPath, sharedPrefix) || cleanPath == "Shared" {
-		return filepath.Join(projectDir, cleanPath)
+	// Try direct path first — the planner may already include the source dir prefix.
+	direct := filepath.Join(projectDir, cleanPath)
+	if _, err := os.Stat(direct); err == nil {
+		return direct
 	}
 
+	return filepath.Join(projectDir, appName, cleanPath)
+}
+
+// resolvePlannedFilePathWithPlatform resolves a planner file path using AI-assigned platform.
+// It tries the path directly under projectDir first (the planner may return full relative paths),
+// then falls back to prepending the platform source directory.
+func resolvePlannedFilePathWithPlatform(projectDir, appName string, planned FilePlan, isMultiPlatform bool) string {
+	cleanPath := filepath.Clean(filepath.FromSlash(planned.Path))
+
+	// Try the path directly under projectDir first — the planner may already
+	// include the source directory in the path.
+	direct := filepath.Join(projectDir, cleanPath)
+	if _, err := os.Stat(direct); err == nil {
+		return direct
+	}
+
+	// For multi-platform, use AI-assigned platform to determine base directory
+	if isMultiPlatform && planned.Platform != "" {
+		suffix := PlatformSourceDirSuffix(planned.Platform)
+		return filepath.Join(projectDir, appName+suffix, cleanPath)
+	}
+
+	// Default: under {AppName}/
 	return filepath.Join(projectDir, appName, cleanPath)
 }
 

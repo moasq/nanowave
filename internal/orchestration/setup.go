@@ -57,6 +57,9 @@ func platformSummary(platform, deviceFamily string) string {
 	if IsWatchOS(platform) {
 		return "Apple Watch, watchOS 26+, Swift 6"
 	}
+	if IsTvOS(platform) {
+		return "Apple TV, tvOS 26+, Swift 6"
+	}
 	switch deviceFamily {
 	case "ipad":
 		return "iPad only, iOS 26+, Swift 6"
@@ -67,9 +70,49 @@ func platformSummary(platform, deviceFamily string) string {
 	}
 }
 
-func canonicalBuildCommand(appName, platform string) string {
-	destination := canonicalBuildDestination(platform)
+func canonicalBuildDestinationForShape(platform, watchProjectShape string) string {
+	if IsWatchOS(platform) {
+		// Paired iPhone+Watch projects use an iOS app scheme as the primary executable.
+		// Building against an iOS simulator destination avoids watch-only destination errors.
+		if watchProjectShape == WatchShapePaired {
+			return "generic/platform=iOS Simulator"
+		}
+		return "generic/platform=watchOS Simulator"
+	}
+	if IsTvOS(platform) {
+		return "generic/platform=tvOS Simulator"
+	}
+	return "generic/platform=iOS Simulator"
+}
+
+func canonicalBuildCommandForShape(appName, platform, watchProjectShape string) string {
+	destination := canonicalBuildDestinationForShape(platform, watchProjectShape)
 	return fmt.Sprintf("xcodebuild -project %s.xcodeproj -scheme %s -destination '%s' -quiet build", appName, appName, destination)
+}
+
+func canonicalBuildCommand(appName, platform string) string {
+	return canonicalBuildCommandForShape(appName, platform, "")
+}
+
+// multiPlatformBuildCommands returns build commands for each platform scheme.
+func multiPlatformBuildCommands(appName string, platforms []string) []string {
+	var cmds []string
+	for _, plat := range platforms {
+		var scheme, destination string
+		switch plat {
+		case PlatformTvOS:
+			scheme = appName + "TV"
+			destination = PlatformBuildDestination(PlatformTvOS)
+		case PlatformWatchOS:
+			// In multi-platform, watchOS is built via the iOS scheme (paired)
+			continue
+		default:
+			scheme = appName
+			destination = PlatformBuildDestination(PlatformIOS)
+		}
+		cmds = append(cmds, fmt.Sprintf("xcodebuild -project %s.xcodeproj -scheme %s -destination '%s' -quiet build", appName, scheme, destination))
+	}
+	return cmds
 }
 
 func writeCLAUDEMDIndex(projectDir, appName string) error {
@@ -116,6 +159,20 @@ func writeCLAUDEMDIndex(projectDir, appName string) error {
 	b.WriteString("\n# Skills\n")
 	b.WriteString("Project skills live in `skills/`. Use `/preflight`, `/build-green`, `/quality-review`, `/accessibility-audit`, and `/xcodegen-change` for repeatable workflows.\n")
 
+	b.WriteString("\n## Required Reading — Load These Before Writing Code\n")
+	b.WriteString("Before writing ANY Swift code, you MUST read these skills:\n")
+	requiredSkills := []string{
+		"@skills/swiftui/SKILL.md",
+		"@skills/components/SKILL.md",
+		"@skills/layout/SKILL.md",
+		"@skills/navigation/SKILL.md",
+		"@skills/design-system/SKILL.md",
+	}
+	for _, s := range requiredSkills {
+		b.WriteString(s)
+		b.WriteString("\n")
+	}
+
 	return os.WriteFile(filepath.Join(projectDir, ".claude", "CLAUDE.md"), []byte(b.String()), 0o644)
 }
 
@@ -125,7 +182,11 @@ func writeClaudeMemoryFiles(projectDir, appName, platform, deviceFamily string, 
 		return fmt.Errorf("failed to create memory dir: %w", err)
 	}
 
-	buildCmd := canonicalBuildCommand(appName, platform)
+	watchProjectShape := ""
+	if plan != nil {
+		watchProjectShape = plan.GetWatchProjectShape()
+	}
+	isMulti := plan != nil && plan.IsMultiPlatform()
 	var files = map[string]string{}
 
 	// project-overview.md
@@ -134,19 +195,52 @@ func writeClaudeMemoryFiles(projectDir, appName, platform, deviceFamily string, 
 	overview.WriteString("- App name: `")
 	overview.WriteString(appName)
 	overview.WriteString("`\n")
-	overview.WriteString("- Platform: ")
-	overview.WriteString(platformSummary(platform, deviceFamily))
-	overview.WriteString("\n")
-	if IsWatchOS(platform) {
-		overview.WriteString("- Stack: SwiftUI (no third-party packages, no UIKit)\n")
+	if isMulti {
+		overview.WriteString("- Platforms: ")
+		for i, p := range plan.GetPlatforms() {
+			if i > 0 {
+				overview.WriteString(", ")
+			}
+			overview.WriteString(PlatformDisplayName(p))
+		}
+		overview.WriteString("\n")
+		overview.WriteString("- Stack: SwiftUI (no third-party packages)\n")
 	} else {
-		overview.WriteString("- Stack: SwiftUI + SwiftData (no third-party packages)\n")
+		overview.WriteString("- Platform: ")
+		overview.WriteString(platformSummary(platform, deviceFamily))
+		overview.WriteString("\n")
+		if IsWatchOS(platform) {
+			overview.WriteString("- Stack: SwiftUI (no third-party packages, no UIKit)\n")
+		} else if IsTvOS(platform) {
+			overview.WriteString("- Stack: SwiftUI (no third-party packages, no UIKit)\n")
+		} else {
+			overview.WriteString("- Stack: SwiftUI + SwiftData (no third-party packages)\n")
+		}
 	}
 	overview.WriteString("- Project config source of truth: `project_config.json`\n")
 	overview.WriteString("- XcodeGen spec: `project.yml`\n")
-	overview.WriteString("\n## Canonical Build Command\n\n```sh\n")
-	overview.WriteString(buildCmd)
-	overview.WriteString("\n```\n")
+
+	if isMulti {
+		overview.WriteString("\n## Source Directories\n")
+		for _, p := range plan.GetPlatforms() {
+			suffix := PlatformSourceDirSuffix(p)
+			dirName := appName + suffix
+			overview.WriteString(fmt.Sprintf("- `%s/` — %s source\n", dirName, PlatformDisplayName(p)))
+		}
+		overview.WriteString(fmt.Sprintf("- `Shared/` — cross-platform code\n"))
+
+		overview.WriteString("\n## Build Commands\n\n```sh\n")
+		for _, cmd := range multiPlatformBuildCommands(appName, plan.GetPlatforms()) {
+			overview.WriteString(cmd)
+			overview.WriteString("\n")
+		}
+		overview.WriteString("```\n")
+	} else {
+		buildCmd := canonicalBuildCommandForShape(appName, platform, watchProjectShape)
+		overview.WriteString("\n## Canonical Build Command\n\n```sh\n")
+		overview.WriteString(buildCmd)
+		overview.WriteString("\n```\n")
+	}
 	overview.WriteString("\n## Constraints\n")
 	overview.WriteString("- Use xcodegen MCP tools for permissions/extensions/entitlements/localizations/build settings\n")
 	overview.WriteString("- Never manually edit `.xcodeproj` (generated file)\n")
@@ -302,6 +396,8 @@ func writeClaudeMemoryFiles(projectDir, appName, platform, deviceFamily string, 
 		if IsWatchOS(plan.GetPlatform()) {
 			planDoc.WriteString("\n## Watch Project Shape\n")
 			fmt.Fprintf(&planDoc, "- `%s`\n", plan.GetWatchProjectShape())
+		} else if IsTvOS(plan.GetPlatform()) {
+			// tvOS has no device family or watch shape — just platform
 		} else {
 			planDoc.WriteString("\n## Device Family\n")
 			fmt.Fprintf(&planDoc, "- `%s`\n", plan.GetDeviceFamily())
@@ -401,28 +497,53 @@ func writeCoreRules(projectDir string) error {
 	return nil
 }
 
+// platformOverrideDir returns the embedded skills override directory for the given platform,
+// or empty string if no overrides exist. e.g. "skills/always-watchos" for watchOS.
+func platformOverrideDir(platform string) string {
+	switch {
+	case IsWatchOS(platform):
+		return "skills/always-watchos"
+	case IsTvOS(platform):
+		return "skills/always-tvos"
+	default:
+		return ""
+	}
+}
+
 // writeAlwaysSkills copies all skills/always/* to .claude/skills/*/ (lazy, always present).
 // Handles both flat .md files and multi-file directories (e.g., swiftui/).
-// When platform is watchOS, entries from skills/always_watchos/ override same-named entries
-// from skills/always/, and watchOS-only entries (no iOS equivalent) are also loaded.
-func writeAlwaysSkills(projectDir, platform string) error {
+// When platform has overrides (watchOS, tvOS), entries from the override directory replace
+// same-named entries from skills/always/, and platform-only entries are also loaded.
+// For multi-platform, loads the union of all platform overrides.
+func writeAlwaysSkills(projectDir, platform string, extraPlatforms ...string) error {
 	skillsDir := filepath.Join(projectDir, ".claude", "skills")
 
-	// Build set of watchOS overrides (by skill name) when platform is watchOS.
-	watchOverrides := map[string]bool{}
-	if IsWatchOS(platform) {
-		if wEntries, err := fs.ReadDir(skillsFS, "skills/always_watchos"); err == nil {
-			for _, e := range wEntries {
+	// Collect all override dirs for the given platform(s)
+	var overrideDirs []string
+	if d := platformOverrideDir(platform); d != "" {
+		overrideDirs = append(overrideDirs, d)
+	}
+	for _, p := range extraPlatforms {
+		if d := platformOverrideDir(p); d != "" {
+			overrideDirs = append(overrideDirs, d)
+		}
+	}
+
+	// Build set of platform overrides (by skill name).
+	overrides := map[string]bool{}
+	for _, overrideDir := range overrideDirs {
+		if entries, err := fs.ReadDir(skillsFS, overrideDir); err == nil {
+			for _, e := range entries {
 				if e.IsDir() {
-					watchOverrides[e.Name()] = true
+					overrides[e.Name()] = true
 				} else if strings.HasSuffix(e.Name(), ".md") {
-					watchOverrides[strings.TrimSuffix(e.Name(), ".md")] = true
+					overrides[strings.TrimSuffix(e.Name(), ".md")] = true
 				}
 			}
 		}
 	}
 
-	// Load from skills/always/, skipping entries that have a watchOS override.
+	// Load from skills/always/, skipping entries that have a platform override.
 	entries, err := fs.ReadDir(skillsFS, "skills/always")
 	if err != nil {
 		return fmt.Errorf("failed to read embedded always skills: %w", err)
@@ -433,19 +554,17 @@ func writeAlwaysSkills(projectDir, platform string) error {
 		if !entry.IsDir() && strings.HasSuffix(skillName, ".md") {
 			skillName = strings.TrimSuffix(skillName, ".md")
 		}
-		if watchOverrides[skillName] {
-			continue // will be loaded from always_watchos instead
+		if overrides[skillName] {
+			continue // will be loaded from platform override dir instead
 		}
 
 		if entry.IsDir() {
-			// Multi-file skill (e.g., swiftui/) — copy directory
 			srcPath := "skills/always/" + entry.Name()
 			dstPath := filepath.Join(skillsDir, entry.Name())
 			if err := writeSkillDir(srcPath, dstPath); err != nil {
 				return err
 			}
 		} else if strings.HasSuffix(entry.Name(), ".md") {
-			// Single-file skill — wrap in a directory with the file as SKILL.md
 			dstDir := filepath.Join(skillsDir, skillName)
 			if err := os.MkdirAll(dstDir, 0o755); err != nil {
 				return fmt.Errorf("failed to create dir %s: %w", dstDir, err)
@@ -460,15 +579,15 @@ func writeAlwaysSkills(projectDir, platform string) error {
 		}
 	}
 
-	// Load watchOS overrides + watchOS-only skills from always_watchos/.
-	if IsWatchOS(platform) {
-		wEntries, err := fs.ReadDir(skillsFS, "skills/always_watchos")
+	// Load platform overrides + platform-only skills.
+	for _, overrideDir := range overrideDirs {
+		oEntries, err := fs.ReadDir(skillsFS, overrideDir)
 		if err != nil {
-			return fmt.Errorf("failed to read embedded always_watchos skills: %w", err)
+			return fmt.Errorf("failed to read embedded %s skills: %w", overrideDir, err)
 		}
-		for _, entry := range wEntries {
+		for _, entry := range oEntries {
 			if entry.IsDir() {
-				srcPath := "skills/always_watchos/" + entry.Name()
+				srcPath := overrideDir + "/" + entry.Name()
 				dstPath := filepath.Join(skillsDir, entry.Name())
 				if err := writeSkillDir(srcPath, dstPath); err != nil {
 					return err
@@ -479,7 +598,7 @@ func writeAlwaysSkills(projectDir, platform string) error {
 				if err := os.MkdirAll(dstDir, 0o755); err != nil {
 					return fmt.Errorf("failed to create dir %s: %w", dstDir, err)
 				}
-				content, err := skillsFS.ReadFile("skills/always_watchos/" + entry.Name())
+				content, err := skillsFS.ReadFile(overrideDir + "/" + entry.Name())
 				if err != nil {
 					return fmt.Errorf("failed to read %s: %w", entry.Name(), err)
 				}
@@ -504,6 +623,8 @@ func writeConditionalSkills(projectDir string, ruleKeys []string, platform strin
 	categories := conditionalCategories
 	if IsWatchOS(platform) {
 		categories = append([]string{"watchos"}, conditionalCategories...)
+	} else if IsTvOS(platform) {
+		categories = append([]string{"tvos"}, conditionalCategories...)
 	}
 
 	for _, key := range ruleKeys {
@@ -537,28 +658,41 @@ func writeConditionalSkills(projectDir string, ruleKeys []string, platform strin
 
 // writeSkillDir copies all files from an embedded directory to an output directory.
 func writeSkillDir(embeddedPath, outputDir string) error {
-	entries, err := fs.ReadDir(skillsFS, embeddedPath)
-	if err != nil {
-		return fmt.Errorf("failed to read embedded dir %s: %w", embeddedPath, err)
-	}
-
-	if err := os.MkdirAll(outputDir, 0o755); err != nil {
-		return fmt.Errorf("failed to create dir %s: %w", outputDir, err)
-	}
-
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
+	if err := fs.WalkDir(skillsFS, embeddedPath, func(path string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return fmt.Errorf("failed walking %s: %w", path, walkErr)
 		}
 
-		content, err := skillsFS.ReadFile(embeddedPath + "/" + entry.Name())
+		rel := strings.TrimPrefix(path, embeddedPath)
+		rel = strings.TrimPrefix(rel, "/")
+		if rel == "" {
+			if err := os.MkdirAll(outputDir, 0o755); err != nil {
+				return fmt.Errorf("failed to create dir %s: %w", outputDir, err)
+			}
+			return nil
+		}
+
+		dstPath := filepath.Join(outputDir, filepath.FromSlash(rel))
+		if d.IsDir() {
+			if err := os.MkdirAll(dstPath, 0o755); err != nil {
+				return fmt.Errorf("failed to create dir %s: %w", dstPath, err)
+			}
+			return nil
+		}
+
+		content, err := skillsFS.ReadFile(path)
 		if err != nil {
-			return fmt.Errorf("failed to read %s/%s: %w", embeddedPath, entry.Name(), err)
+			return fmt.Errorf("failed to read %s: %w", path, err)
 		}
-
-		if err := os.WriteFile(filepath.Join(outputDir, entry.Name()), content, 0o644); err != nil {
+		if err := os.MkdirAll(filepath.Dir(dstPath), 0o755); err != nil {
+			return fmt.Errorf("failed to create parent dir for %s: %w", dstPath, err)
+		}
+		if err := os.WriteFile(dstPath, content, 0o644); err != nil {
 			return err
 		}
+		return nil
+	}); err != nil {
+		return err
 	}
 	return nil
 }
@@ -590,6 +724,42 @@ func extractFrontmatter(content string) (description string, body string) {
 	return "", body
 }
 
+func readEmbeddedMarkdownBody(path string) (body string, found bool) {
+	data, err := skillsFS.ReadFile(path)
+	if err != nil {
+		return "", false
+	}
+	_, body = extractFrontmatter(string(data))
+	return body, true
+}
+
+func readEmbeddedMarkdownDirBodies(dirPath string) string {
+	var combined strings.Builder
+
+	if body, found := readEmbeddedMarkdownBody(dirPath + "/SKILL.md"); found && body != "" {
+		combined.WriteString(body)
+	}
+
+	_ = fs.WalkDir(skillsFS, dirPath, func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return nil
+		}
+		if !strings.HasSuffix(d.Name(), ".md") || d.Name() == "SKILL.md" {
+			return nil
+		}
+		body, found := readEmbeddedMarkdownBody(path)
+		if !found || body == "" {
+			return nil
+		}
+		if combined.Len() > 0 {
+			combined.WriteString("\n\n")
+		}
+		combined.WriteString(body)
+		return nil
+	})
+	return combined.String()
+}
+
 // loadRuleContent reads content for a given rule_key from the embedded FS.
 // It searches core/, always/, features/, ui/, extensions/ for the key.
 // Handles both flat .md files and directories with content files.
@@ -597,8 +767,7 @@ func extractFrontmatter(content string) (description string, body string) {
 func loadRuleContent(ruleKey string) string {
 	// Try core/ first (single file)
 	corePath := fmt.Sprintf("skills/core/%s.md", ruleKey)
-	if data, err := skillsFS.ReadFile(corePath); err == nil {
-		_, body := extractFrontmatter(string(data))
+	if body, found := readEmbeddedMarkdownBody(corePath); found {
 		return body
 	}
 
@@ -607,40 +776,14 @@ func loadRuleContent(ruleKey string) string {
 	for _, cat := range categories {
 		// Try as flat file first
 		filePath := fmt.Sprintf("skills/%s/%s.md", cat, ruleKey)
-		if data, err := skillsFS.ReadFile(filePath); err == nil {
-			_, body := extractFrontmatter(string(data))
-			if body != "" {
-				return body
-			}
+		if body, found := readEmbeddedMarkdownBody(filePath); found && body != "" {
+			return body
 		}
 
 		// Try as directory
 		dirPath := fmt.Sprintf("skills/%s/%s", cat, ruleKey)
-		entries, err := fs.ReadDir(skillsFS, dirPath)
-		if err != nil {
-			continue
-		}
-
-		// Load all .md files except SKILL.md
-		var combined strings.Builder
-		for _, entry := range entries {
-			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") || entry.Name() == "SKILL.md" {
-				continue
-			}
-			data, err := skillsFS.ReadFile(dirPath + "/" + entry.Name())
-			if err != nil {
-				continue
-			}
-			_, body := extractFrontmatter(string(data))
-			if body != "" {
-				if combined.Len() > 0 {
-					combined.WriteString("\n\n")
-				}
-				combined.WriteString(body)
-			}
-		}
-		if combined.Len() > 0 {
-			return combined.String()
+		if combined := readEmbeddedMarkdownDirBodies(dirPath); combined != "" {
+			return combined
 		}
 	}
 	return ""
@@ -648,28 +791,32 @@ func loadRuleContent(ruleKey string) string {
 
 // writeClaudeProjectScaffold writes shared Claude Code project files for generated apps.
 func writeClaudeProjectScaffold(projectDir, appName, platform string) error {
+	return writeClaudeProjectScaffoldWithShape(projectDir, appName, platform, "")
+}
+
+func writeClaudeProjectScaffoldWithShape(projectDir, appName, platform, watchProjectShape string) error {
 	if err := writeSkillCatalog(projectDir); err != nil {
 		return err
 	}
-	if err := writeClaudeCommands(projectDir, appName, platform); err != nil {
+	if err := writeClaudeCommandsWithShape(projectDir, appName, platform, watchProjectShape); err != nil {
 		return err
 	}
 	if err := writeClaudeAgents(projectDir); err != nil {
 		return err
 	}
-	if err := writeClaudeScripts(projectDir, appName, platform); err != nil {
+	if err := writeClaudeScriptsWithShape(projectDir, appName, platform, watchProjectShape); err != nil {
 		return err
 	}
-	if err := writeClaudeWorkflowDocs(projectDir, appName, platform); err != nil {
+	if err := writeClaudeWorkflowDocsWithShape(projectDir, appName, platform, watchProjectShape); err != nil {
 		return err
 	}
 	if err := writeSettingsShared(projectDir); err != nil {
 		return err
 	}
-	if err := writeProjectMakefile(projectDir, appName, platform); err != nil {
+	if err := writeProjectMakefileWithShape(projectDir, appName, platform, watchProjectShape); err != nil {
 		return err
 	}
-	if err := writeCIWorkflow(projectDir, appName, platform); err != nil {
+	if err := writeCIWorkflowWithShape(projectDir, appName, platform, watchProjectShape); err != nil {
 		return err
 	}
 	return nil
@@ -713,14 +860,21 @@ func writeSkillCatalog(projectDir string) error {
 		}
 		desc, _ := extractFrontmatter(string(data))
 
-		companionEntries, _ := os.ReadDir(skillDir)
 		var companions []string
-		for _, c := range companionEntries {
-			if c.IsDir() || !strings.HasSuffix(c.Name(), ".md") || c.Name() == "SKILL.md" {
-				continue
+		_ = filepath.WalkDir(skillDir, func(path string, d fs.DirEntry, err error) error {
+			if err != nil || d.IsDir() {
+				return nil
 			}
-			companions = append(companions, c.Name())
-		}
+			if !strings.HasSuffix(d.Name(), ".md") || d.Name() == "SKILL.md" {
+				return nil
+			}
+			rel, err := filepath.Rel(skillDir, path)
+			if err != nil {
+				return nil
+			}
+			companions = append(companions, filepath.ToSlash(rel))
+			return nil
+		})
 		sort.Strings(companions)
 		skills = append(skills, skillInfo{
 			Name:        dirName,
@@ -974,6 +1128,29 @@ func writeAssetCatalog(projectDir, appName, platform string) error {
     "author": "xcode"
   }
 }`
+	} else if IsTvOS(platform) {
+		// tvOS uses layered image stacks for parallax effects on the home screen.
+		// The App Store icon is 1280x768 and home screen icon is 400x240.
+		appIconContents = `{
+  "images": [
+    {
+      "idiom": "tv",
+      "platform": "tvos",
+      "size": "1280x768",
+      "scale": "1x"
+    },
+    {
+      "idiom": "tv",
+      "platform": "tvos",
+      "size": "400x240",
+      "scale": "2x"
+    }
+  ],
+  "info": {
+    "version": 1,
+    "author": "xcode"
+  }
+}`
 	} else {
 		appIconContents = `{
   "images": [
@@ -1029,6 +1206,7 @@ func writeProjectConfig(projectDir string, plan *PlannerResult, appName string) 
 		AppName           string            `json:"app_name"`
 		BundleID          string            `json:"bundle_id"`
 		Platform          string            `json:"platform,omitempty"`
+		Platforms         []string          `json:"platforms,omitempty"`
 		WatchProjectShape string            `json:"watch_project_shape,omitempty"`
 		DeviceFamily      string            `json:"device_family,omitempty"`
 		Permissions       []permission      `json:"permissions,omitempty"`
@@ -1043,6 +1221,9 @@ func writeProjectConfig(projectDir string, plan *PlannerResult, appName string) 
 		Platform:          plan.GetPlatform(),
 		WatchProjectShape: plan.GetWatchProjectShape(),
 		DeviceFamily:      plan.GetDeviceFamily(),
+	}
+	if plan.IsMultiPlatform() {
+		cfg.Platforms = plan.GetPlatforms()
 	}
 
 	if plan != nil {
@@ -1087,17 +1268,28 @@ func scaffoldSourceDirs(projectDir, appName string, plan *PlannerResult) error {
 		filepath.Join(projectDir, appName),
 	}
 
-	// For paired watchOS apps, create the watch source directory
-	if plan != nil && IsWatchOS(plan.GetPlatform()) && plan.GetWatchProjectShape() == WatchShapePaired {
-		dirs = append(dirs, filepath.Join(projectDir, appName+"Watch"))
+	if plan != nil && plan.IsMultiPlatform() {
+		// Multi-platform: create source dirs for each platform
+		for _, plat := range plan.GetPlatforms() {
+			suffix := PlatformSourceDirSuffix(plat)
+			if suffix != "" {
+				dirs = append(dirs, filepath.Join(projectDir, appName+suffix))
+			}
+		}
+		// Shared/ always created for multi-platform
+		dirs = append(dirs, filepath.Join(projectDir, "Shared"))
+	} else {
+		// For paired watchOS apps, create the watch source directory
+		if plan != nil && IsWatchOS(plan.GetPlatform()) && plan.GetWatchProjectShape() == WatchShapePaired {
+			dirs = append(dirs, filepath.Join(projectDir, appName+"Watch"))
+		}
+		// Shared/ directory when extensions exist
+		if plan != nil && len(plan.Extensions) > 0 {
+			dirs = append(dirs, filepath.Join(projectDir, "Shared"))
+		}
 	}
 
 	if plan != nil {
-		// Shared/ directory when extensions exist
-		if len(plan.Extensions) > 0 {
-			dirs = append(dirs, filepath.Join(projectDir, "Shared"))
-		}
-
 		// Targets/{ExtensionName}/ per extension
 		for _, ext := range plan.Extensions {
 			name := extensionTargetName(ext, appName)
@@ -1118,25 +1310,108 @@ func scaffoldSourceDirs(projectDir, appName string, plan *PlannerResult) error {
 
 	// Write a placeholder .swift file in each source directory so XcodeGen
 	// doesn't complain about empty source groups.
-	placeholders := []string{
-		filepath.Join(projectDir, appName, "Placeholder.swift"),
+	// Each placeholder uses a unique name to avoid "Multiple commands produce
+	// *.stringsdata" collisions when multiple source dirs feed one target.
+	type placeholderEntry struct {
+		dir  string
+		name string
 	}
-	if plan != nil && len(plan.Extensions) > 0 {
-		placeholders = append(placeholders, filepath.Join(projectDir, "Shared", "Placeholder.swift"))
+	placeholders := []placeholderEntry{
+		{filepath.Join(projectDir, appName), "Placeholder.swift"},
+	}
+
+	if plan != nil && plan.IsMultiPlatform() {
+		for _, plat := range plan.GetPlatforms() {
+			suffix := PlatformSourceDirSuffix(plat)
+			if suffix != "" {
+				placeholders = append(placeholders, placeholderEntry{filepath.Join(projectDir, appName+suffix), "Placeholder.swift"})
+			}
+		}
+		placeholders = append(placeholders, placeholderEntry{filepath.Join(projectDir, "Shared"), "SharedPlaceholder.swift"})
+	} else if plan != nil && len(plan.Extensions) > 0 {
+		placeholders = append(placeholders, placeholderEntry{filepath.Join(projectDir, "Shared"), "SharedPlaceholder.swift"})
+	}
+
+	if plan != nil {
 		for _, ext := range plan.Extensions {
 			name := extensionTargetName(ext, appName)
-			placeholders = append(placeholders, filepath.Join(projectDir, "Targets", name, "Placeholder.swift"))
+			placeholders = append(placeholders, placeholderEntry{filepath.Join(projectDir, "Targets", name), "Placeholder.swift"})
 		}
 	}
 
 	placeholderContent := []byte("// Placeholder — replaced by generated code\nimport Foundation\n")
 	for _, p := range placeholders {
-		if err := os.WriteFile(p, placeholderContent, 0o644); err != nil {
-			return fmt.Errorf("failed to write placeholder %s: %w", p, err)
+		if err := os.WriteFile(filepath.Join(p.dir, p.name), placeholderContent, 0o644); err != nil {
+			return fmt.Errorf("failed to write placeholder %s: %w", filepath.Join(p.dir, p.name), err)
 		}
 	}
 
 	return nil
+}
+
+// cleanupScaffoldPlaceholders removes Placeholder.swift files from directories
+// that now contain real generated Swift code. These scaffolding files are created
+// by scaffoldSourceDirs to satisfy XcodeGen, but after the build phase writes
+// real code they are no longer needed and trigger the quality-gate hook.
+func cleanupScaffoldPlaceholders(projectDir, appName string, plan *PlannerResult) {
+	candidates := []string{
+		filepath.Join(projectDir, appName, "Placeholder.swift"),
+	}
+	if plan != nil && plan.IsMultiPlatform() {
+		for _, plat := range plan.GetPlatforms() {
+			suffix := PlatformSourceDirSuffix(plat)
+			if suffix != "" {
+				candidates = append(candidates, filepath.Join(projectDir, appName+suffix, "Placeholder.swift"))
+			}
+		}
+		candidates = append(candidates, filepath.Join(projectDir, "Shared", "SharedPlaceholder.swift"))
+	} else if plan != nil && len(plan.Extensions) > 0 {
+		candidates = append(candidates, filepath.Join(projectDir, "Shared", "SharedPlaceholder.swift"))
+	}
+	if plan != nil {
+		for _, ext := range plan.Extensions {
+			name := extensionTargetName(ext, appName)
+			candidates = append(candidates, filepath.Join(projectDir, "Targets", name, "Placeholder.swift"))
+		}
+	}
+	for _, p := range candidates {
+		if _, err := os.Stat(p); err != nil {
+			continue // already gone
+		}
+		// Only remove if the parent directory contains at least one other .swift file
+		dir := filepath.Dir(p)
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			continue
+		}
+		hasOtherSwift := false
+		placeholderName := filepath.Base(p)
+		for _, e := range entries {
+			if e.IsDir() {
+				continue
+			}
+			if strings.HasSuffix(e.Name(), ".swift") && e.Name() != placeholderName {
+				hasOtherSwift = true
+				break
+			}
+		}
+		// Also check subdirectories — the app source tree may have its Swift files in subdirs
+		if !hasOtherSwift {
+			_ = filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
+				if err != nil || d.IsDir() {
+					return nil
+				}
+				if strings.HasSuffix(d.Name(), ".swift") && d.Name() != placeholderName {
+					hasOtherSwift = true
+					return filepath.SkipAll
+				}
+				return nil
+			})
+		}
+		if hasOtherSwift {
+			os.Remove(p)
+		}
+	}
 }
 
 // runXcodeGen runs `xcodegen generate` in the project directory to create the .xcodeproj.
@@ -1151,7 +1426,11 @@ func runXcodeGen(projectDir string) error {
 }
 
 func writeClaudeCommands(projectDir, appName, platform string) error {
-	buildCmd := canonicalBuildCommand(appName, platform)
+	return writeClaudeCommandsWithShape(projectDir, appName, platform, "")
+}
+
+func writeClaudeCommandsWithShape(projectDir, appName, platform, watchProjectShape string) error {
+	buildCmd := canonicalBuildCommandForShape(appName, platform, watchProjectShape)
 	cmdDir := filepath.Join(projectDir, ".claude", "commands")
 	files := map[string]string{
 		"preflight.md": `---
@@ -1385,7 +1664,11 @@ Prefer fast checks first and avoid destabilizing app code.
 }
 
 func writeClaudeWorkflowDocs(projectDir, appName, platform string) error {
-	buildCmd := canonicalBuildCommand(appName, platform)
+	return writeClaudeWorkflowDocsWithShape(projectDir, appName, platform, "")
+}
+
+func writeClaudeWorkflowDocsWithShape(projectDir, appName, platform, watchProjectShape string) error {
+	buildCmd := canonicalBuildCommandForShape(appName, platform, watchProjectShape)
 	content := fmt.Sprintf(`# Claude Workflow (Generated Project)
 
 This project is generated with a quality-first Claude Code scaffold.
@@ -1445,14 +1728,22 @@ Keep Apple docs MCP plus web fallback as the default recovery path.
 }
 
 func writeProjectMakefile(projectDir, appName, platform string) error {
-	buildCmd := canonicalBuildCommand(appName, platform)
-	destination := canonicalBuildDestination(platform)
+	return writeProjectMakefileWithShape(projectDir, appName, platform, "")
+}
+
+func writeProjectMakefileWithShape(projectDir, appName, platform, watchProjectShape string) error {
+	buildCmd := canonicalBuildCommandForShape(appName, platform, watchProjectShape)
+	destination := canonicalBuildDestinationForShape(platform, watchProjectShape)
 	content := fmt.Sprintf(".PHONY: build test claude-check mcp-health skills-validate\n\nbuild:\n\t%s\n\nmcp-health:\n\t./scripts/claude/mcp-health.sh\n\nskills-validate:\n\t./scripts/claude/validate-skills.sh\n\nclaude-check:\n\t-./scripts/claude/mcp-health.sh\n\tplutil -lint .mcp.json >/dev/null\n\tplutil -lint .claude/settings.json >/dev/null\n\t./scripts/claude/validate-skills.sh\n\t./scripts/claude/check-no-placeholders.sh\n\t./scripts/claude/check-previews.sh\n\t./scripts/claude/check-swift-structure.sh\n\t./scripts/claude/check-a11y-dynamic-type.sh\n\t./scripts/claude/check-a11y-icon-buttons.sh\n\t./scripts/claude/check-project-config-edits.sh --scan || true\n\t./scripts/claude/run-build-check.sh\n\ntest:\n\t@if [ -d Tests ]; then \\\n\t\techo \"Tests directory found; running xcodebuild test\"; \\\n\t\txcodebuild -project %s.xcodeproj -scheme %s -destination '%s' -quiet test; \\\n\telse \\\n\t\techo \"No Tests directory present; skipping tests\"; \\\n\tfi\n", buildCmd, appName, appName, destination)
 	return writeTextFile(filepath.Join(projectDir, "Makefile"), content, 0o644)
 }
 
 func writeCIWorkflow(projectDir, appName, platform string) error {
-	destination := canonicalBuildDestination(platform)
+	return writeCIWorkflowWithShape(projectDir, appName, platform, "")
+}
+
+func writeCIWorkflowWithShape(projectDir, appName, platform, watchProjectShape string) error {
+	destination := canonicalBuildDestinationForShape(platform, watchProjectShape)
 	content := fmt.Sprintf(`name: Claude Quality
 
 on:
@@ -1499,8 +1790,12 @@ jobs:
 }
 
 func writeClaudeScripts(projectDir, appName, platform string) error {
+	return writeClaudeScriptsWithShape(projectDir, appName, platform, "")
+}
+
+func writeClaudeScriptsWithShape(projectDir, appName, platform, watchProjectShape string) error {
 	scriptsDir := filepath.Join(projectDir, "scripts", "claude")
-	buildCmd := canonicalBuildCommand(appName, platform)
+	buildCmd := canonicalBuildCommandForShape(appName, platform, watchProjectShape)
 	files := map[string]string{
 		"check-project-config-edits.sh": `#!/bin/sh
 set -eu
@@ -1837,6 +2132,21 @@ TMP_NAMES=$(mktemp)
 trap 'rm -f "$TMP_NAMES"' EXIT
 FAIL=0
 
+has_top_toc() {
+  f="$1"
+  awk '
+    NR > 30 { exit }
+    {
+      line = tolower($0)
+      if (line ~ /^[[:space:]]*#{1,6}[[:space:]]+contents[[:space:]]*$/ || line ~ /table of contents/) {
+        found = 1
+        exit
+      }
+    }
+    END { exit found ? 0 : 1 }
+  ' "$f"
+}
+
 for d in "$SKILLS_DIR"/*; do
   [ -d "$d" ] || continue
   SKILL_MD="$d/SKILL.md"
@@ -1854,16 +2164,71 @@ for d in "$SKILLS_DIR"/*; do
     printf '%s\n' "[validate-skills] Missing YAML frontmatter in $SKILL_MD" >&2
     FAIL=1
   fi
-  for field in name description user-invocable; do
+  for field in name description; do
     if ! grep -Eq "^${field}:" "$SKILL_MD"; then
       printf '%s\n' "[validate-skills] Missing frontmatter field '${field}' in $SKILL_MD" >&2
       FAIL=1
     fi
   done
 
+  FM_KEYS=$(awk '
+    BEGIN { in_fm = 0 }
+    NR == 1 && $0 == "---" { in_fm = 1; next }
+    in_fm && $0 == "---" { exit }
+    in_fm {
+      line = $0
+      sub(/^[[:space:]]+/, "", line)
+      if (line == "" || line ~ /^#/) next
+      if (line ~ /^[A-Za-z0-9_-]+:[[:space:]]*/) {
+        key = line
+        sub(/:.*/, "", key)
+        print key
+      }
+    }
+  ' "$SKILL_MD")
+  for key in $FM_KEYS; do
+    case "$key" in
+      name|description) ;;
+      *)
+        printf '%s\n' "[validate-skills] Unsupported frontmatter field '$key' in $SKILL_MD (Anthropic skills use only name + description)" >&2
+        FAIL=1
+        ;;
+    esac
+  done
+
   NAME=$(sed -n 's/^name:[[:space:]]*//p' "$SKILL_MD" | head -1 | sed "s/^['\"]//; s/['\"]$//")
   if [ -n "$NAME" ]; then
     printf '%s\n' "$NAME" >> "$TMP_NAMES"
+    if ! printf '%s' "$NAME" | grep -Eq '^[a-z0-9-]{1,64}$'; then
+      printf '%s\n' "[validate-skills] Invalid skill name in $SKILL_MD (must match ^[a-z0-9-]{1,64}$): $NAME" >&2
+      FAIL=1
+    fi
+    case "$NAME" in
+      *anthropic*|*claude*)
+        printf '%s\n' "[validate-skills] Reserved term used in skill name in $SKILL_MD: $NAME" >&2
+        FAIL=1
+        ;;
+    esac
+  fi
+
+  DESCRIPTION=$(sed -n 's/^description:[[:space:]]*//p' "$SKILL_MD" | head -1 | sed "s/^['\"]//; s/['\"]$//")
+  if [ -z "$DESCRIPTION" ]; then
+    printf '%s\n' "[validate-skills] Empty description in $SKILL_MD" >&2
+    FAIL=1
+  else
+    DESC_LEN=$(printf '%s' "$DESCRIPTION" | wc -c | tr -d ' ')
+    if [ "$DESC_LEN" -gt 1024 ]; then
+      printf '%s\n' "[validate-skills] Description too long in $SKILL_MD ($DESC_LEN > 1024 chars)" >&2
+      FAIL=1
+    fi
+    if printf '%s' "$DESCRIPTION" | grep -Eq '<[^>]+>'; then
+      printf '%s\n' "[validate-skills] Description contains XML/HTML-like markup in $SKILL_MD" >&2
+      FAIL=1
+    fi
+    if ! printf '%s' "$DESCRIPTION" | grep -Eqi 'use when'; then
+      printf '%s\n' "[validate-skills] Description should include a 'Use when ...' clause in $SKILL_MD" >&2
+      FAIL=1
+    fi
   fi
 
   BODY_HAS_CONTENT=$(awk '
@@ -1881,6 +2246,17 @@ for d in "$SKILLS_DIR"/*; do
     printf '%s\n' "[validate-skills] Skill body is empty in $SKILL_MD" >&2
     FAIL=1
   fi
+  BODY_LINES=$(awk '
+    BEGIN { in_fm = 0; fm_done = 0; n = 0 }
+    NR == 1 && $0 == "---" { in_fm = 1; next }
+    in_fm && $0 == "---" { in_fm = 0; fm_done = 1; next }
+    !in_fm && fm_done { n++ }
+    END { print n }
+  ' "$SKILL_MD")
+  if [ "$BODY_LINES" -ge 500 ]; then
+    printf '%s\n' "[validate-skills] SKILL.md body must be <500 lines in strict mode: $SKILL_MD (got $BODY_LINES)" >&2
+    FAIL=1
+  fi
 
   LINKS=$(grep -Eo '\[[^]]+\]\([^)]+\.md\)' "$SKILL_MD" | sed -E 's/.*\(([^)]+)\)/\1/' || true)
   for link in $LINKS; do
@@ -1889,10 +2265,47 @@ for d in "$SKILLS_DIR"/*; do
         continue
         ;;
     esac
+    case "$link" in
+      *\\*)
+        printf '%s\n' "[validate-skills] Local markdown links must use forward slashes in $SKILL_MD: $link" >&2
+        FAIL=1
+        continue
+        ;;
+    esac
     if [ ! -f "$d/$link" ]; then
       printf '%s\n' "[validate-skills] Referenced companion file missing: $d/$link (from $SKILL_MD)" >&2
       FAIL=1
     fi
+  done
+
+  for ref_md in $(find "$d" -type f -name '*.md' ! -name 'SKILL.md' 2>/dev/null); do
+    REF_LINES=$(wc -l < "$ref_md" | tr -d ' ')
+    if [ "$REF_LINES" -gt 100 ] && ! has_top_toc "$ref_md"; then
+      printf '%s\n' "[validate-skills] Reference file >100 lines must include a top-of-file TOC/Contents section: $ref_md" >&2
+      FAIL=1
+    fi
+
+    REF_LINKS=$(grep -Eo '\[[^]]+\]\([^)]+\)' "$ref_md" | sed -E 's/.*\(([^)]+)\)/\1/' || true)
+    for ref_link in $REF_LINKS; do
+      case "$ref_link" in
+        http*|/*|#*)
+          continue
+          ;;
+      esac
+      case "$ref_link" in
+        *\\*)
+          printf '%s\n' "[validate-skills] Local markdown links must use forward slashes in $ref_md: $ref_link" >&2
+          FAIL=1
+          continue
+          ;;
+      esac
+      case "$ref_link" in
+        *.md)
+          printf '%s\n' "[validate-skills] Nested local markdown links are not allowed in reference files (one-level reference rule): $ref_md -> $ref_link" >&2
+          FAIL=1
+          ;;
+      esac
+    done
   done
 done
 

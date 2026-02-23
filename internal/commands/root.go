@@ -28,11 +28,11 @@ var openCmd = &cobra.Command{
 	Use:   "open",
 	Short: "Open the project in Xcode",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cfg, err := loadConfigWithProject()
+		svc, err := loadProjectService()
 		if err != nil {
 			return fmt.Errorf("no project found. Run `nanowave` first")
 		}
-		return openProject(cfg)
+		return svc.Open()
 	},
 }
 

@@ -14,7 +14,7 @@ func TestValidatePlatform(t *testing.T) {
 		{"watchos", false},
 		{"", false},
 		{"macos", true},
-		{"tvos", true},
+		{"tvos", false},
 		{"visionos", true},
 	}
 
@@ -74,12 +74,12 @@ func TestFilterRuleKeysForPlatformIOS(t *testing.T) {
 }
 
 func TestFilterRuleKeysForPlatformWatchOS(t *testing.T) {
-	keys := []string{"camera", "haptics", "storage", "widgets", "foundation_models", "biometrics"}
+	keys := []string{"camera", "haptics", "storage", "widgets", "foundation-models", "biometrics"}
 	filtered, warnings := FilterRuleKeysForPlatform("watchos", keys)
 
-	// camera and foundation_models should be removed
+	// camera and foundation-models should be removed
 	for _, f := range filtered {
-		if f == "camera" || f == "foundation_models" {
+		if f == "camera" || f == "foundation-models" {
 			t.Errorf("watchOS should remove %q from keys", f)
 		}
 	}
@@ -145,7 +145,7 @@ func TestFilterRuleKeysForPlatformWatchOS(t *testing.T) {
 }
 
 func TestFilterRuleKeysAllUnsupported(t *testing.T) {
-	keys := []string{"camera", "foundation_models", "apple_translation", "adaptive_layout", "liquid_glass", "speech", "app_review"}
+	keys := []string{"camera", "foundation-models", "apple-translation", "adaptive-layout", "liquid-glass", "speech", "app-review"}
 	filtered, warnings := FilterRuleKeysForPlatform("watchos", keys)
 
 	if len(filtered) != 0 {
@@ -165,6 +165,171 @@ func TestValidateExtensionsForPlatformIOS(t *testing.T) {
 	err := ValidateExtensionsForPlatform("ios", extensions)
 	if err != nil {
 		t.Errorf("iOS should support all extension kinds, got: %v", err)
+	}
+}
+
+func TestIsTvOS(t *testing.T) {
+	if !IsTvOS("tvos") {
+		t.Error("IsTvOS(tvos) should be true")
+	}
+	if IsTvOS("ios") {
+		t.Error("IsTvOS(ios) should be false")
+	}
+	if IsTvOS("") {
+		t.Error("IsTvOS('') should be false")
+	}
+}
+
+func TestFilterRuleKeysForPlatformTvOS(t *testing.T) {
+	keys := []string{"camera", "biometrics", "healthkit", "haptics", "maps", "speech", "apple-translation", "gestures", "animations", "storage"}
+	filtered, warnings := FilterRuleKeysForPlatform("tvos", keys)
+
+	// camera, biometrics, healthkit, haptics, maps, speech, apple-translation should be removed
+	unsupported := map[string]bool{
+		"camera": true, "biometrics": true, "healthkit": true,
+		"haptics": true, "maps": true, "speech": true, "apple-translation": true,
+	}
+	for _, f := range filtered {
+		if unsupported[f] {
+			t.Errorf("tvOS should remove %q from keys", f)
+		}
+	}
+
+	// gestures and animations should remain (conditional)
+	foundGestures := false
+	foundAnimations := false
+	for _, f := range filtered {
+		if f == "gestures" {
+			foundGestures = true
+		}
+		if f == "animations" {
+			foundAnimations = true
+		}
+	}
+	if !foundGestures {
+		t.Error("gestures should remain in filtered keys (conditional)")
+	}
+	if !foundAnimations {
+		t.Error("animations should remain in filtered keys (conditional)")
+	}
+
+	// storage should remain (supported)
+	foundStorage := false
+	for _, f := range filtered {
+		if f == "storage" {
+			foundStorage = true
+		}
+	}
+	if !foundStorage {
+		t.Error("storage should remain in filtered keys")
+	}
+
+	// Check warnings
+	hasRemovedWarning := false
+	hasConditionalWarning := false
+	for _, w := range warnings {
+		if strings.Contains(w, "removed") {
+			hasRemovedWarning = true
+		}
+		if strings.Contains(w, "gestures") || strings.Contains(w, "animations") {
+			hasConditionalWarning = true
+		}
+	}
+	if !hasRemovedWarning {
+		t.Error("should have removal warnings for tvOS unsupported keys")
+	}
+	if !hasConditionalWarning {
+		t.Error("should have conditional warnings for gestures or animations")
+	}
+}
+
+func TestValidateExtensionsForPlatformTvOS(t *testing.T) {
+	// All standard extension kinds should be rejected on tvOS
+	unsupported := []string{"live_activity", "share", "notification_service", "safari", "app_clip", "widget"}
+	for _, kind := range unsupported {
+		err := ValidateExtensionsForPlatform("tvos", []ExtensionPlan{{Kind: kind}})
+		if err == nil {
+			t.Errorf("tvOS should reject extension kind %q", kind)
+		}
+	}
+}
+
+func TestValidatePlatforms(t *testing.T) {
+	tests := []struct {
+		name  string
+		input []string
+		want  []string
+	}{
+		{"all valid", []string{"ios", "watchos", "tvos"}, []string{"ios", "watchos", "tvos"}},
+		{"drops invalid", []string{"ios", "macos", "tvos"}, []string{"ios", "tvos"}},
+		{"empty input", nil, nil},
+		{"all invalid", []string{"macos", "visionos"}, nil},
+		{"single valid", []string{"watchos"}, []string{"watchos"}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := ValidatePlatforms(tc.input)
+			if len(got) != len(tc.want) {
+				t.Fatalf("ValidatePlatforms(%v) = %v, want %v", tc.input, got, tc.want)
+			}
+			for i := range got {
+				if got[i] != tc.want[i] {
+					t.Fatalf("ValidatePlatforms(%v)[%d] = %q, want %q", tc.input, i, got[i], tc.want[i])
+				}
+			}
+		})
+	}
+}
+
+func TestPlatformSourceDirSuffix(t *testing.T) {
+	tests := []struct {
+		platform string
+		want     string
+	}{
+		{"ios", ""},
+		{"watchos", "Watch"},
+		{"tvos", "TV"},
+		{"", ""},
+	}
+	for _, tc := range tests {
+		t.Run(tc.platform, func(t *testing.T) {
+			got := PlatformSourceDirSuffix(tc.platform)
+			if got != tc.want {
+				t.Fatalf("PlatformSourceDirSuffix(%q) = %q, want %q", tc.platform, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestHasPlatform(t *testing.T) {
+	platforms := []string{"ios", "watchos", "tvos"}
+	if !HasPlatform(platforms, "watchos") {
+		t.Error("HasPlatform should find watchos")
+	}
+	if HasPlatform(platforms, "macos") {
+		t.Error("HasPlatform should not find macos")
+	}
+	if HasPlatform(nil, "ios") {
+		t.Error("HasPlatform(nil) should return false")
+	}
+}
+
+func TestPlatformBuildDestination(t *testing.T) {
+	tests := []struct {
+		platform string
+		wantSub  string
+	}{
+		{"ios", "iOS Simulator"},
+		{"watchos", "watchOS Simulator"},
+		{"tvos", "tvOS Simulator"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.platform, func(t *testing.T) {
+			got := PlatformBuildDestination(tc.platform)
+			if !strings.Contains(got, tc.wantSub) {
+				t.Fatalf("PlatformBuildDestination(%q) = %q, want to contain %q", tc.platform, got, tc.wantSub)
+			}
+		})
 	}
 }
 

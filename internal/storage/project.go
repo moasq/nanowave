@@ -18,6 +18,7 @@ type Project struct {
 	ProjectPath         string    `json:"project_path"`
 	BundleID            string    `json:"bundle_id"`
 	Platform            string    `json:"platform,omitempty"`
+	Platforms           []string  `json:"platforms,omitempty"`
 	DeviceFamily        string    `json:"device_family,omitempty"`
 	SessionID           string    `json:"session_id,omitempty"`
 	Simulator           string    `json:"simulator,omitempty"`
