@@ -290,6 +290,24 @@ type ModelPlan struct {
 	Properties []PropertyPlan `json:"properties"`
 }
 
+// UnmarshalJSON handles both object form {"name":"Foo",...} and bare string "Foo".
+func (m *ModelPlan) UnmarshalJSON(data []byte) error {
+	// Try bare string first
+	var s string
+	if err := json.Unmarshal(data, &s); err == nil {
+		m.Name = s
+		return nil
+	}
+	// Fall back to struct
+	type alias ModelPlan
+	var a alias
+	if err := json.Unmarshal(data, &a); err != nil {
+		return err
+	}
+	*m = ModelPlan(a)
+	return nil
+}
+
 // PropertyPlan describes a single property on a model.
 type PropertyPlan struct {
 	Name         string `json:"name"`
