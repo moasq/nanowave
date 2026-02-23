@@ -2,9 +2,12 @@ package terminal
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"time"
+
+	"golang.org/x/term"
 )
 
 // Phase represents the current build phase.
@@ -70,23 +73,29 @@ type activity struct {
 
 // ProgressDisplay provides a rich, phase-aware terminal progress UI.
 type ProgressDisplay struct {
-	mu            sync.Mutex
-	phase         Phase
-	totalFiles    int
-	filesWritten  int
-	activities    []activity
-	statusText    string // dimmed assistant text
-	streamingBuf  strings.Builder // accumulates streaming text tokens
-	running       bool
-	done          chan struct{}
-	mode          string // "build", "edit", "fix", "analyze", "plan"
-	totalPhases   int
-	buildFailed   bool
-	fixAttempts   int
-	startedAt     time.Time
+	mu           sync.Mutex
+	phase        Phase
+	totalFiles   int
+	filesWritten int
+	activities   []activity
+	statusText   string          // dimmed assistant text
+	streamingBuf strings.Builder // accumulates streaming text tokens
+	running      bool
+	done         chan struct{}
+	mode         string // "build", "edit", "fix", "analyze", "plan"
+	totalPhases  int
+	buildFailed  bool
+	fixAttempts  int
+	startedAt    time.Time
+	interactive  bool
+	lastRenderID string
 }
 
-const maxActivities = 4
+const (
+	maxActivities                = 4
+	maxStatusWidth               = 70
+	structuredStreamingTailRunes = 240
+)
 
 // NewProgressDisplay creates a progress display for the given mode.
 // totalFiles is used for the build progress bar (0 if unknown).
@@ -95,6 +104,9 @@ func NewProgressDisplay(mode string, totalFiles int) *ProgressDisplay {
 	startPhase := PhaseBuildingCode
 
 	switch mode {
+	case "intent":
+		startPhase = PhaseAnalyzing
+		totalPhases = 5
 	case "analyze":
 		startPhase = PhaseAnalyzing
 		totalPhases = 5
@@ -118,6 +130,7 @@ func NewProgressDisplay(mode string, totalFiles int) *ProgressDisplay {
 		mode:        mode,
 		totalPhases: totalPhases,
 		startedAt:   time.Now(),
+		interactive: term.IsTerminal(int(os.Stdout.Fd())),
 		done:        make(chan struct{}),
 	}
 }
@@ -146,7 +159,9 @@ func (pd *ProgressDisplay) Stop() {
 	pd.mu.Unlock()
 
 	close(pd.done)
-	pd.clearDisplay()
+	if pd.interactive {
+		pd.clearDisplay()
+	}
 }
 
 // StopWithSuccess stops and prints a success message.
@@ -305,9 +320,9 @@ func (pd *ProgressDisplay) OnStreamingText(text string) {
 
 	pd.streamingBuf.WriteString(text)
 
-	// Extract the last meaningful line from accumulated text for display
+	// Extract a mode-aware preview from accumulated text for display.
 	accumulated := pd.streamingBuf.String()
-	status := extractLastLine(accumulated)
+	status := extractStreamingPreview(accumulated, pd.mode)
 	if status != "" {
 		pd.statusText = status
 	}
@@ -331,6 +346,13 @@ func (pd *ProgressDisplay) OnAssistantText(text string) {
 		strings.Contains(lower, "let me") || strings.Contains(lower, "i'll")) {
 		pd.phase = PhaseFixing
 		pd.fixAttempts++
+	}
+
+	if isStructuredStreamingPreviewMode(pd.mode) {
+		if status := extractStreamingPreview(text, pd.mode); status != "" {
+			pd.statusText = status
+		}
+		return
 	}
 
 	// Extract a short meaningful status from assistant text
@@ -367,7 +389,13 @@ func (pd *ProgressDisplay) render(frame int) {
 	totalPhases := pd.totalPhases
 	buildFailed := pd.buildFailed
 	elapsed := time.Since(pd.startedAt)
+	interactive := pd.interactive
 	pd.mu.Unlock()
+
+	if !interactive {
+		pd.renderNonInteractive(phase, totalPhases, totalFiles, filesWritten, activities, statusText, buildFailed)
+		return
+	}
 
 	spinChar := spinnerFrames[frame%len(spinnerFrames)]
 	var lines []string
@@ -409,6 +437,39 @@ func (pd *ProgressDisplay) render(frame int) {
 	for _, line := range lines {
 		// Clear line and print
 		fmt.Printf("\r\033[K%s\n", line)
+	}
+}
+
+func (pd *ProgressDisplay) renderNonInteractive(phase Phase, totalPhases, totalFiles, filesWritten int, activities []activity, statusText string, buildFailed bool) {
+	header := pd.buildPhaseHeader(phase, totalPhases, totalFiles, filesWritten, buildFailed, "•", 0)
+
+	latestActivity := ""
+	if len(activities) > 0 {
+		act := activities[len(activities)-1]
+		marker := "•"
+		if act.done {
+			marker = "✓"
+		}
+		latestActivity = fmt.Sprintf("  %s %s", marker, act.text)
+	}
+
+	parts := []string{header, latestActivity, statusText}
+	renderID := strings.Join(parts, "\n")
+
+	pd.mu.Lock()
+	if renderID == pd.lastRenderID {
+		pd.mu.Unlock()
+		return
+	}
+	pd.lastRenderID = renderID
+	pd.mu.Unlock()
+
+	fmt.Println(header)
+	if latestActivity != "" {
+		fmt.Println(latestActivity)
+	}
+	if statusText != "" {
+		fmt.Println("  " + statusText)
 	}
 }
 
@@ -554,6 +615,56 @@ func truncateActivity(s string) string {
 	return s
 }
 
+// extractStreamingPreview returns a mode-aware live preview for streaming text.
+// Structured modes intentionally avoid raw JSON tails in the UI.
+func extractStreamingPreview(text, mode string) string {
+	if !isStructuredStreamingPreviewMode(mode) {
+		return extractLastLine(text)
+	}
+	if strings.TrimSpace(text) == "" {
+		return ""
+	}
+	switch mode {
+	case "intent":
+		return "Preparing routing decision..."
+	case "analyze":
+		return "Preparing analysis output..."
+	case "plan":
+		return "Preparing build plan..."
+	default:
+		return "Preparing structured output..."
+	}
+}
+
+func isStructuredStreamingPreviewMode(mode string) bool {
+	return mode == "intent" || mode == "analyze" || mode == "plan"
+}
+
+func tailRunes(s string, max int) string {
+	if max <= 0 || s == "" {
+		return ""
+	}
+	r := []rune(s)
+	if len(r) <= max {
+		return s
+	}
+	return string(r[len(r)-max:])
+}
+
+func truncateTailWithEllipsis(s string, max int) string {
+	if max <= 0 {
+		return ""
+	}
+	r := []rune(s)
+	if len(r) <= max {
+		return s
+	}
+	if max <= 3 {
+		return string(r[len(r)-max:])
+	}
+	return "..." + string(r[len(r)-(max-3):])
+}
+
 // extractStatus extracts a short, meaningful status from assistant text.
 func extractStatus(text string) string {
 	// Take the first sentence, truncated
@@ -571,9 +682,8 @@ func extractStatus(text string) string {
 	}
 
 	// Truncate to max width
-	const maxWidth = 70
-	if len(text) > maxWidth {
-		text = text[:maxWidth] + "..."
+	if len(text) > maxStatusWidth {
+		text = text[:maxStatusWidth] + "..."
 	}
 
 	return text
@@ -598,9 +708,8 @@ func extractLastLine(text string) string {
 			continue
 		}
 		// Truncate
-		const maxWidth = 70
-		if len(line) > maxWidth {
-			line = line[:maxWidth] + "..."
+		if len(line) > maxStatusWidth {
+			line = line[:maxStatusWidth] + "..."
 		}
 		return line
 	}

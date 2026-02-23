@@ -1,4 +1,4 @@
-.PHONY: build install clean test release-snapshot
+.PHONY: build install clean test deps run release-snapshot skills-source-validate
 
 BINARY_NAME=nanowave
 BUILD_DIR=./bin
@@ -17,6 +17,9 @@ clean:
 
 test:
 	go test ./... -v
+
+skills-source-validate:
+	go test ./internal/orchestration -run '^TestSourceSkillsAnthropicComplianceStrict$$' -count=1 -v
 
 deps:
 	go mod tidy

@@ -25,16 +25,111 @@ import (
 	"github.com/moasq/nanowave/internal/terminal"
 )
 
-// defaultSimulatorPreference is the preferred simulator name when auto-detecting.
-var defaultSimulatorPreference = []string{"iPhone 17 Pro", "iPhone 17", "iPhone 16 Pro", "iPhone 16", "iPhone Air"}
+// rankSimulator scores a device based on its type identifier.
+// Higher scores are preferred. This avoids hardcoding device marketing names
+// which change across Xcode versions.
+func rankSimulator(deviceTypeID, family, platform string) int {
+	lower := strings.ToLower(deviceTypeID)
+
+	if platform == "tvos" {
+		if !strings.Contains(lower, "apple-tv") {
+			return -1
+		}
+		switch {
+		case strings.Contains(lower, "4k"):
+			return 100
+		default:
+			return 60
+		}
+	}
+
+	if platform == "watchos" {
+		if !strings.Contains(lower, "watch") {
+			return -1
+		}
+		switch {
+		case strings.Contains(lower, "ultra"):
+			return 100
+		case strings.Contains(lower, "series"):
+			return 80
+		case strings.Contains(lower, "se"):
+			return 50
+		default:
+			return 60
+		}
+	}
+
+	switch family {
+	case "ipad":
+		if !strings.Contains(lower, "ipad") {
+			return -1
+		}
+		switch {
+		case strings.Contains(lower, "ipad-pro") && strings.Contains(lower, "13"):
+			return 100
+		case strings.Contains(lower, "ipad-pro"):
+			return 95
+		case strings.Contains(lower, "ipad-air") && strings.Contains(lower, "13"):
+			return 85
+		case strings.Contains(lower, "ipad-air"):
+			return 80
+		case strings.Contains(lower, "ipad-mini"):
+			return 60
+		default:
+			return 70
+		}
+
+	case "universal":
+		// Accept both iPhone and iPad, prefer pro models
+		isIPhone := strings.Contains(lower, "iphone")
+		isIPad := strings.Contains(lower, "ipad")
+		if !isIPhone && !isIPad {
+			return -1
+		}
+		switch {
+		case isIPhone && strings.Contains(lower, "pro-max"):
+			return 100
+		case isIPhone && strings.Contains(lower, "pro"):
+			return 95
+		case isIPad && strings.Contains(lower, "ipad-pro"):
+			return 90
+		case isIPhone && !strings.Contains(lower, "se"):
+			return 80
+		case isIPad:
+			return 75
+		default:
+			return 50
+		}
+
+	default: // "iphone"
+		if !strings.Contains(lower, "iphone") {
+			return -1
+		}
+		switch {
+		case strings.Contains(lower, "pro-max"):
+			return 100
+		case strings.Contains(lower, "pro"):
+			return 90
+		case strings.Contains(lower, "plus"):
+			return 80
+		case strings.Contains(lower, "air"):
+			return 70
+		case strings.Contains(lower, "se"):
+			return 50
+		default:
+			return 75 // standard iPhone models
+		}
+	}
+}
 
 const defaultRunLogWatchSeconds = 30
 
-// SimulatorDevice represents an available iOS simulator.
+// SimulatorDevice represents an available simulator.
 type SimulatorDevice struct {
-	Name    string
-	UDID    string
-	Runtime string // e.g. "iOS 18.1"
+	Name         string
+	UDID         string
+	Runtime      string // e.g. "iOS 18.1"
+	DeviceTypeID string // e.g. "com.apple.CoreSimulator.SimDeviceType.iPhone-16-Pro"
 }
 
 // Service coordinates app generation for CLI usage.
@@ -143,29 +238,48 @@ func (s *Service) CurrentSimulator() string {
 	return project.Simulator
 }
 
-// detectDefaultSimulator picks the best available iPhone simulator.
-func (s *Service) detectDefaultSimulator() string {
-	devices, err := s.ListSimulators()
-	if err != nil || len(devices) == 0 {
-		return "iPhone 17 Pro"
+// currentDeviceFamily reads the device family from the current project, defaulting to "iphone".
+func (s *Service) currentDeviceFamily() string {
+	project, err := s.projectStore.Load()
+	if err != nil || project == nil || project.DeviceFamily == "" {
+		return "iphone"
 	}
-
-	// Try preferred names in order
-	available := make(map[string]bool)
-	for _, d := range devices {
-		available[d.Name] = true
-	}
-	for _, name := range defaultSimulatorPreference {
-		if available[name] {
-			return name
-		}
-	}
-
-	// Fall back to first available iPhone
-	return devices[0].Name
+	return project.DeviceFamily
 }
 
-// ListSimulators returns available iOS simulator devices.
+// currentPlatform reads the platform from the current project, defaulting to "ios".
+func (s *Service) currentPlatform() string {
+	project, err := s.projectStore.Load()
+	if err != nil || project == nil || project.Platform == "" {
+		return "ios"
+	}
+	return project.Platform
+}
+
+// detectDefaultSimulator picks the best available simulator for the current device family.
+// It ranks all available devices dynamically using their device type identifiers
+// rather than hardcoded marketing names, which change across Xcode versions.
+func (s *Service) detectDefaultSimulator() string {
+	family := s.currentDeviceFamily()
+	platform := s.currentPlatform()
+	devices, err := s.ListSimulators()
+	if err != nil || len(devices) == 0 {
+		return "Simulator"
+	}
+
+	bestIdx := 0
+	bestScore := rankSimulator(devices[0].DeviceTypeID, family, platform)
+	for i := 1; i < len(devices); i++ {
+		score := rankSimulator(devices[i].DeviceTypeID, family, platform)
+		if score > bestScore {
+			bestScore = score
+			bestIdx = i
+		}
+	}
+	return devices[bestIdx].Name
+}
+
+// ListSimulators returns available simulator devices for the current platform and device family.
 func (s *Service) ListSimulators() ([]SimulatorDevice, error) {
 	out, err := exec.Command("xcrun", "simctl", "list", "devices", "available", "-j").Output()
 	if err != nil {
@@ -174,42 +288,61 @@ func (s *Service) ListSimulators() ([]SimulatorDevice, error) {
 
 	var result struct {
 		Devices map[string][]struct {
-			Name        string `json:"name"`
-			UDID        string `json:"udid"`
-			IsAvailable bool   `json:"isAvailable"`
+			Name                 string `json:"name"`
+			UDID                 string `json:"udid"`
+			IsAvailable          bool   `json:"isAvailable"`
+			DeviceTypeIdentifier string `json:"deviceTypeIdentifier"`
 		} `json:"devices"`
 	}
 	if err := json.Unmarshal(out, &result); err != nil {
 		return nil, fmt.Errorf("failed to parse simulator list: %w", err)
 	}
 
+	platform := s.currentPlatform()
+	family := s.currentDeviceFamily()
+
+	// Filter runtimes by platform
+	runtimeFilter := "iOS"
+	switch platform {
+	case "watchos":
+		runtimeFilter = "watchOS"
+	case "tvos":
+		runtimeFilter = "tvOS"
+	}
+
 	var devices []SimulatorDevice
 	for runtime, devs := range result.Devices {
-		if !strings.Contains(runtime, "iOS") {
+		if !strings.Contains(runtime, runtimeFilter) {
 			continue
 		}
-		// Extract readable runtime: "com.apple.CoreSimulator.SimRuntime.iOS-18-1" → "iOS 18.1"
 		runtimeName := parseRuntimeName(runtime)
 		for _, d := range devs {
 			if !d.IsAvailable {
 				continue
 			}
-			// Only include iPhones for simplicity
-			if !strings.HasPrefix(d.Name, "iPhone") {
-				continue
+			// Use device type identifier for filtering instead of marketing names
+			score := rankSimulator(d.DeviceTypeIdentifier, family, platform)
+			if score < 0 {
+				continue // not relevant for this family/platform
 			}
 			devices = append(devices, SimulatorDevice{
-				Name:    d.Name,
-				UDID:    d.UDID,
-				Runtime: runtimeName,
+				Name:         d.Name,
+				UDID:         d.UDID,
+				Runtime:      runtimeName,
+				DeviceTypeID: d.DeviceTypeIdentifier,
 			})
 		}
 	}
 
-	// Sort: newest runtime first, then by name
+	// Sort: newest runtime first, then by rank (best device first), then by name
 	sort.Slice(devices, func(i, j int) bool {
 		if devices[i].Runtime != devices[j].Runtime {
 			return devices[i].Runtime > devices[j].Runtime
+		}
+		ri := rankSimulator(devices[i].DeviceTypeID, family, platform)
+		rj := rankSimulator(devices[j].DeviceTypeID, family, platform)
+		if ri != rj {
+			return ri > rj
 		}
 		return devices[i].Name < devices[j].Name
 	})
@@ -226,6 +359,21 @@ func (s *Service) ListSimulators() ([]SimulatorDevice, error) {
 	}
 
 	return unique, nil
+}
+
+// resolveSimulatorUDID looks up the UDID for a simulator by name.
+// Returns "" if the simulator cannot be found.
+func (s *Service) resolveSimulatorUDID(name string) string {
+	devices, err := s.ListSimulators()
+	if err != nil {
+		return ""
+	}
+	for _, d := range devices {
+		if d.Name == name {
+			return d.UDID
+		}
+	}
+	return ""
 }
 
 // build creates a new app from a prompt using the multi-phase pipeline.
@@ -252,12 +400,15 @@ func (s *Service) build(ctx context.Context, prompt string, images []string) err
 	if err := s.config.EnsureNanowaveDir(); err == nil {
 		appName := result.AppName
 		proj := &storage.Project{
-			ID:          1,
-			Name:        &appName,
-			Status:      "active",
-			ProjectPath: result.ProjectDir,
-			BundleID:    result.BundleID,
-			SessionID:   result.SessionID,
+			ID:           1,
+			Name:         &appName,
+			Status:       "active",
+			ProjectPath:  result.ProjectDir,
+			BundleID:     result.BundleID,
+			Platform:     result.Platform,
+			Platforms:     result.Platforms,
+			DeviceFamily: result.DeviceFamily,
+			SessionID:    result.SessionID,
 		}
 		s.projectStore.Save(proj)
 		s.historyStore.Append(storage.HistoryMessage{Role: "user", Content: prompt})
@@ -373,7 +524,7 @@ func (s *Service) Fix(ctx context.Context) error {
 	return nil
 }
 
-// Run builds and launches the project in the iOS Simulator.
+// Run builds and launches the project in the Simulator.
 func (s *Service) Run(ctx context.Context) error {
 	project, err := s.projectStore.Load()
 	if err != nil || project == nil {
@@ -402,10 +553,34 @@ func (s *Service) Run(ctx context.Context) error {
 	}
 
 	scheme := strings.TrimSuffix(xcodeprojName, ".xcodeproj")
+	platform := s.currentPlatform()
 	simulator := s.CurrentSimulator()
-	destination := fmt.Sprintf("platform=iOS Simulator,name=%s", simulator)
+
+	// Platform-aware simulator destination
+	simPlatform := "iOS Simulator"
+	switch platform {
+	case "watchos":
+		simPlatform = "watchOS Simulator"
+	case "tvos":
+		simPlatform = "tvOS Simulator"
+	}
+
+	// Resolve simulator name to UDID for a precise destination match,
+	// avoiding OS version mismatch when xcodebuild defaults to OS:latest.
+	simUDID := s.resolveSimulatorUDID(simulator)
+	var destination string
+	if simUDID != "" {
+		destination = fmt.Sprintf("platform=%s,id=%s", simPlatform, simUDID)
+	} else {
+		destination = fmt.Sprintf("platform=%s,name=%s", simPlatform, simulator)
+	}
 
 	terminal.Detail("Simulator", simulator)
+
+	derivedDataPath := projectDerivedDataPath(project.ProjectPath)
+	if err := os.MkdirAll(derivedDataPath, 0o755); err != nil {
+		return fmt.Errorf("failed to prepare derived data path %s: %w", derivedDataPath, err)
+	}
 
 	// Build for simulator
 	spinner := terminal.NewSpinner("Building for simulator...")
@@ -414,6 +589,7 @@ func (s *Service) Run(ctx context.Context) error {
 	buildCmd := exec.CommandContext(ctx, "xcodebuild",
 		"-project", xcodeprojName,
 		"-scheme", scheme,
+		"-derivedDataPath", derivedDataPath,
 		"-destination", destination,
 		"-quiet",
 		"build",
@@ -448,6 +624,7 @@ func (s *Service) Run(ctx context.Context) error {
 		retryCmd := exec.CommandContext(ctx, "xcodebuild",
 			"-project", xcodeprojName,
 			"-scheme", scheme,
+			"-derivedDataPath", derivedDataPath,
 			"-destination", destination,
 			"-quiet",
 			"build",
@@ -471,11 +648,22 @@ func (s *Service) Run(ctx context.Context) error {
 	spinner = terminal.NewSpinner(fmt.Sprintf("Launching %s...", simulator))
 	spinner.Start()
 
-	// Boot the simulator by name
-	_ = exec.CommandContext(ctx, "xcrun", "simctl", "boot", simulator).Run()
+	// Boot the simulator by UDID (falls back to name)
+	bootTarget := simulator
+	if simUDID != "" {
+		bootTarget = simUDID
+	}
+	bootCmd := exec.CommandContext(ctx, "xcrun", "simctl", "boot", bootTarget)
+	if bootOutput, bootErr := bootCmd.CombinedOutput(); bootErr != nil && !isAlreadyBootedSimError(bootErr, bootOutput) {
+		spinner.Stop()
+		return fmt.Errorf("failed to boot simulator %s: %w%s", simulator, bootErr, commandOutputSuffix(bootOutput))
+	}
 
 	// Open Simulator.app
-	_ = exec.CommandContext(ctx, "open", "-a", "Simulator").Run()
+	openCmd := exec.CommandContext(ctx, "open", "-a", "Simulator")
+	if openOutput, openErr := openCmd.CombinedOutput(); openErr != nil {
+		terminal.Warning(fmt.Sprintf("Could not open Simulator.app: %v%s", openErr, commandOutputSuffix(openOutput)))
+	}
 
 	// Install and launch the app
 	bundleID := project.BundleID
@@ -483,11 +671,23 @@ func (s *Service) Run(ctx context.Context) error {
 		bundleID = fmt.Sprintf("com.%s.%s", sanitizeBundleID(currentUsername()), strings.ToLower(scheme))
 	}
 
-	// Find the built .app in DerivedData
-	appPath := findBuiltApp(project.ProjectPath, scheme)
-	if appPath != "" {
-		_ = exec.CommandContext(ctx, "xcrun", "simctl", "install", "booted", appPath).Run()
-		_ = exec.CommandContext(ctx, "xcrun", "simctl", "launch", "booted", bundleID).Run()
+	// Find the built .app in the per-project derived data path.
+	appPath, err := findBuiltAppInDerivedData(derivedDataPath, scheme, platform)
+	if err != nil {
+		spinner.Stop()
+		return err
+	}
+
+	installCmd := exec.CommandContext(ctx, "xcrun", "simctl", "install", "booted", appPath)
+	if installOutput, installErr := installCmd.CombinedOutput(); installErr != nil {
+		spinner.Stop()
+		return fmt.Errorf("failed to install app on simulator: %w%s", installErr, commandOutputSuffix(installOutput))
+	}
+
+	launchCmd := exec.CommandContext(ctx, "xcrun", "simctl", "launch", "booted", bundleID)
+	if launchOutput, launchErr := launchCmd.CombinedOutput(); launchErr != nil {
+		spinner.Stop()
+		return fmt.Errorf("failed to launch app %s on simulator: %w%s", bundleID, launchErr, commandOutputSuffix(launchOutput))
 	}
 
 	spinner.Stop()
@@ -524,6 +724,11 @@ func (s *Service) Info() error {
 	terminal.Detail("Status", project.Status)
 	terminal.Detail("Path", project.ProjectPath)
 	terminal.Detail("Bundle ID", project.BundleID)
+	if len(project.Platforms) > 1 {
+		terminal.Detail("Platforms", strings.Join(project.Platforms, ", "))
+	} else if project.Platform != "" {
+		terminal.Detail("Platform", project.Platform)
+	}
 	terminal.Detail("Simulator", s.CurrentSimulator())
 
 	history, _ := s.historyStore.List()
@@ -767,36 +972,64 @@ func parseRuntimeName(runtime string) string {
 	return name
 }
 
-// findBuiltApp looks for the built .app bundle in DerivedData.
-func findBuiltApp(projectDir, scheme string) string {
-	// xcodebuild typically puts builds in DerivedData
-	home, _ := os.UserHomeDir()
-	derivedData := filepath.Join(home, "Library", "Developer", "Xcode", "DerivedData")
+func projectDerivedDataPath(projectPath string) string {
+	return filepath.Join(projectPath, ".nanowave", "DerivedData")
+}
 
-	entries, err := os.ReadDir(derivedData)
-	if err != nil {
-		return ""
+// findBuiltAppInDerivedData looks for the expected .app bundle in a specific DerivedData path.
+func findBuiltAppInDerivedData(derivedDataPath, scheme, platform string) (string, error) {
+	productsSubdir := "Debug-iphonesimulator"
+	switch platform {
+	case "watchos":
+		productsSubdir = "Debug-watchsimulator"
+	case "tvos":
+		productsSubdir = "Debug-appletvsimulator"
 	}
 
-	// Find the matching DerivedData directory
+	productsDir := filepath.Join(derivedDataPath, "Build", "Products", productsSubdir)
+	entries, err := os.ReadDir(productsDir)
+	if err != nil {
+		return "", fmt.Errorf("failed to read build products in %s: %w", productsDir, err)
+	}
+
+	expectedApp := scheme + ".app"
+	var foundApps []string
 	for _, entry := range entries {
-		if !entry.IsDir() || !strings.HasPrefix(entry.Name(), scheme+"-") {
-			continue
-		}
-		// Look for the .app in Build/Products/Debug-iphonesimulator/
-		appDir := filepath.Join(derivedData, entry.Name(), "Build", "Products", "Debug-iphonesimulator")
-		appEntries, err := os.ReadDir(appDir)
-		if err != nil {
-			continue
-		}
-		for _, ae := range appEntries {
-			if strings.HasSuffix(ae.Name(), ".app") {
-				return filepath.Join(appDir, ae.Name())
+		if entry.IsDir() && strings.HasSuffix(entry.Name(), ".app") {
+			foundApps = append(foundApps, entry.Name())
+			if entry.Name() == expectedApp {
+				return filepath.Join(productsDir, entry.Name()), nil
 			}
 		}
 	}
 
-	return ""
+	if len(foundApps) == 0 {
+		return "", fmt.Errorf("no .app bundle found in %s (derived data path: %s)", productsDir, derivedDataPath)
+	}
+
+	sort.Strings(foundApps)
+	return "", fmt.Errorf("expected %s in %s but found %d app bundle(s): %s", expectedApp, productsDir, len(foundApps), strings.Join(foundApps, ", "))
+}
+
+func isAlreadyBootedSimError(err error, output []byte) bool {
+	if err == nil {
+		return false
+	}
+	text := strings.ToLower(err.Error())
+	if len(output) > 0 {
+		text += " " + strings.ToLower(string(output))
+	}
+	return strings.Contains(text, "already booted") ||
+		strings.Contains(text, "current state: booted") ||
+		strings.Contains(text, "unable to boot device in current state: booted")
+}
+
+func commandOutputSuffix(output []byte) string {
+	trimmed := strings.TrimSpace(string(output))
+	if trimmed == "" {
+		return ""
+	}
+	return "\n" + trimmed
 }
 
 func runLogWatchDuration() time.Duration {

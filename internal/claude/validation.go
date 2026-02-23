@@ -11,7 +11,7 @@ func ValidateEnvironment() error {
 	// Check claude CLI exists
 	claudePath, err := exec.LookPath("claude")
 	if err != nil {
-		return fmt.Errorf("Claude Code CLI not found.\nInstall: npm install -g @anthropic-ai/claude-code")
+		return fmt.Errorf("Claude Code CLI not found.\nInstall: curl -fsSL https://claude.ai/install.sh | bash")
 	}
 
 	// Check version

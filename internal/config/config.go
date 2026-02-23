@@ -42,7 +42,7 @@ type ProjectInfo struct {
 func Load() (*Config, error) {
 	claudePath, err := findClaude()
 	if err != nil {
-		return nil, fmt.Errorf("claude Code CLI not found: %w\nInstall: npm install -g @anthropic-ai/claude-code", err)
+		return nil, fmt.Errorf("claude Code CLI not found: %w\nInstall: curl -fsSL https://claude.ai/install.sh | bash", err)
 	}
 
 	home, err := os.UserHomeDir()
@@ -168,24 +168,6 @@ func CheckSimulator() bool {
 	return strings.Contains(string(out), "iOS")
 }
 
-// CheckHomebrew returns true if Homebrew is installed.
-func CheckHomebrew() bool {
-	_, err := exec.LookPath("brew")
-	return err == nil
-}
-
-// CheckNode returns true if Node.js is installed.
-func CheckNode() bool {
-	_, err := exec.LookPath("node")
-	return err == nil
-}
-
-// CheckNpm returns true if npm is installed.
-func CheckNpm() bool {
-	_, err := exec.LookPath("npm")
-	return err == nil
-}
-
 // CheckXcodegen returns true if xcodegen is installed.
 func CheckXcodegen() bool {
 	_, err := exec.LookPath("xcodegen")
@@ -253,11 +235,3 @@ func ClaudeVersion(claudePath string) string {
 	return strings.TrimSpace(string(out))
 }
 
-// NodeVersion returns the installed Node.js version.
-func NodeVersion() string {
-	out, err := exec.Command("node", "--version").Output()
-	if err != nil {
-		return ""
-	}
-	return strings.TrimSpace(string(out))
-}

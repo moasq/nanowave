@@ -80,62 +80,7 @@ func runSetup() error {
 		allGood = false
 	}
 
-	// ── 4. Homebrew ────────────────────────────────────────────
-	fmt.Print("  Checking Homebrew... ")
-	if config.CheckHomebrew() {
-		terminal.Success("installed")
-	} else {
-		terminal.Warning("not found")
-		if askConfirm(reader, "    Install Homebrew?") {
-			fmt.Println("    Installing Homebrew (may ask for your password)...")
-			installCmd := exec.Command("/bin/bash", "-c",
-				`$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)`)
-			installCmd.Stdin = os.Stdin
-			installCmd.Stdout = os.Stdout
-			installCmd.Stderr = os.Stderr
-			if err := installCmd.Run(); err != nil {
-				terminal.Error(fmt.Sprintf("failed to install Homebrew: %v", err))
-				terminal.Detail("Install manually", "https://brew.sh")
-				allGood = false
-			} else {
-				terminal.Success("Homebrew installed")
-			}
-		} else {
-			terminal.Detail("Install manually", "https://brew.sh")
-			allGood = false
-		}
-	}
-
-	// ── 5. Node.js + npm ───────────────────────────────────────
-	fmt.Print("  Checking Node.js... ")
-	if config.CheckNode() && config.CheckNpm() {
-		version := config.NodeVersion()
-		terminal.Success(fmt.Sprintf("installed (%s)", version))
-	} else {
-		terminal.Warning("not found")
-		if config.CheckHomebrew() {
-			if askConfirm(reader, "    Install Node.js via Homebrew?") {
-				fmt.Print("    Installing Node.js... ")
-				installCmd := exec.Command("brew", "install", "node")
-				if err := installCmd.Run(); err != nil {
-					terminal.Error(fmt.Sprintf("failed: %v", err))
-					terminal.Detail("Install manually", "brew install node")
-					allGood = false
-				} else {
-					terminal.Success("installed")
-				}
-			} else {
-				terminal.Detail("Install manually", "brew install node")
-				allGood = false
-			}
-		} else {
-			terminal.Detail("Install", "Install Homebrew first, then run: brew install node")
-			terminal.Detail("Or download from", "https://nodejs.org")
-			allGood = false
-		}
-	}
-
-	// ── 6. Claude Code CLI ─────────────────────────────────────
+	// ── 4. Claude Code CLI (native install) ────────────────────
 	fmt.Print("  Checking Claude Code CLI... ")
 	if config.CheckClaude() {
 		cfg, _ := config.Load()
@@ -147,74 +92,78 @@ func runSetup() error {
 		}
 	} else {
 		terminal.Warning("not found")
-		if config.CheckNpm() {
-			if askConfirm(reader, "    Install Claude Code CLI via npm?") {
-				fmt.Print("    Installing Claude Code CLI... ")
-				installCmd := exec.Command("npm", "install", "-g", "@anthropic-ai/claude-code")
-				if err := installCmd.Run(); err != nil {
-					terminal.Error(fmt.Sprintf("failed: %v", err))
-					terminal.Detail("Install manually", "npm install -g @anthropic-ai/claude-code")
-					allGood = false
-				} else {
-					terminal.Success("installed")
-				}
-			} else {
-				terminal.Detail("Install manually", "npm install -g @anthropic-ai/claude-code")
+		if askConfirm(reader, "    Install Claude Code CLI?") {
+			fmt.Println("    Installing Claude Code CLI...")
+			installCmd := exec.Command("/bin/bash", "-c",
+				`curl -fsSL https://claude.ai/install.sh | bash`)
+			installCmd.Stdin = os.Stdin
+			installCmd.Stdout = os.Stdout
+			installCmd.Stderr = os.Stderr
+			if err := installCmd.Run(); err != nil {
+				terminal.Error(fmt.Sprintf("failed: %v", err))
+				terminal.Detail("Install manually", "curl -fsSL https://claude.ai/install.sh | bash")
 				allGood = false
+			} else {
+				terminal.Success("Claude Code CLI installed")
 			}
 		} else {
-			terminal.Detail("Install", "Install Node.js first, then run: npm install -g @anthropic-ai/claude-code")
+			terminal.Detail("Install manually", "curl -fsSL https://claude.ai/install.sh | bash")
 			allGood = false
 		}
 	}
 
-	// ── 7. XcodeGen ────────────────────────────────────────────
+	// ── 5. XcodeGen ────────────────────────────────────────────
 	fmt.Print("  Checking XcodeGen... ")
 	if config.CheckXcodegen() {
 		terminal.Success("installed")
 	} else {
 		terminal.Warning("not found")
-		if config.CheckHomebrew() {
-			if askConfirm(reader, "    Install XcodeGen via Homebrew?") {
-				fmt.Print("    Installing XcodeGen... ")
+		if askConfirm(reader, "    Install XcodeGen?") {
+			fmt.Print("    Installing XcodeGen... ")
+			// Try Mint first (Swift-native package manager), fall back to Homebrew
+			if _, err := exec.LookPath("mint"); err == nil {
+				installCmd := exec.Command("mint", "install", "yonaskolb/XcodeGen")
+				if err := installCmd.Run(); err != nil {
+					terminal.Error(fmt.Sprintf("mint install failed: %v", err))
+					allGood = false
+				} else {
+					terminal.Success("installed via Mint")
+				}
+			} else if _, err := exec.LookPath("brew"); err == nil {
 				installCmd := exec.Command("brew", "install", "xcodegen")
 				if err := installCmd.Run(); err != nil {
 					terminal.Error(fmt.Sprintf("failed: %v", err))
-					terminal.Detail("Install manually", "brew install xcodegen")
 					allGood = false
 				} else {
 					terminal.Success("installed")
 				}
 			} else {
-				terminal.Detail("Install manually", "brew install xcodegen")
+				terminal.Error("no package manager found")
+				terminal.Detail("Option 1", "Install Mint: git clone https://github.com/yonaskolb/Mint.git && cd Mint && swift run mint install yonaskolb/XcodeGen")
+				terminal.Detail("Option 2", "Install Homebrew (https://brew.sh) then: brew install xcodegen")
 				allGood = false
 			}
 		} else {
-			terminal.Detail("Install", "Install Homebrew first, then run: brew install xcodegen")
+			terminal.Detail("Install via Mint", "mint install yonaskolb/XcodeGen")
+			terminal.Detail("Or via Homebrew", "brew install xcodegen")
 			allGood = false
 		}
 	}
 
-	// ── 8. MCP Servers (only if Claude Code is available) ──────
+	// ── 6. MCP Servers (only if Claude Code is available) ──────
 	if config.CheckClaude() {
 		fmt.Println()
 		terminal.Info("Configuring MCP servers...")
 
-		fmt.Print("  Setting up XcodeBuildMCP... ")
-		mcpCmd := exec.Command("claude", "mcp", "add", "XcodeBuildMCP", "-s", "user",
-			"-e", "XCODEBUILDMCP_SENTRY_DISABLED=true",
-			"--", "npx", "-y", "xcodebuildmcp@latest", "mcp")
-		if err := mcpCmd.Run(); err != nil {
-			terminal.Warning(fmt.Sprintf("could not add: %v", err))
-		} else {
-			terminal.Success("configured")
-		}
-
 		fmt.Print("  Setting up Apple Docs MCP... ")
 		docsCmd := exec.Command("claude", "mcp", "add", "apple-docs", "-s", "user",
 			"--", "npx", "-y", "@anthropic-ai/apple-docs-mcp@latest")
-		if err := docsCmd.Run(); err != nil {
-			terminal.Warning(fmt.Sprintf("could not add: %v", err))
+		if output, err := docsCmd.CombinedOutput(); err != nil {
+			if strings.Contains(string(output), "already exists") {
+				terminal.Success("already configured")
+			} else {
+				terminal.Warning(fmt.Sprintf("could not add: %v", err))
+			}
 		} else {
 			terminal.Success("configured")
 		}

@@ -38,34 +38,247 @@ func sanitizeBundleID(s string) string {
 
 // parseAnalysis parses the analyzer JSON response.
 func parseAnalysis(result string) (*AnalysisResult, error) {
-	cleaned := extractJSON(result)
-
-	var analysis AnalysisResult
-	if err := json.Unmarshal([]byte(cleaned), &analysis); err != nil {
-		return nil, fmt.Errorf("failed to parse analysis: %w\nRaw output:\n%s", err, truncateStr(result, 500))
+	analysis, err := parseClaudeJSON[AnalysisResult](result, "analysis")
+	if err != nil {
+		return nil, err
 	}
 
 	if analysis.AppName == "" {
 		return nil, fmt.Errorf("analysis has no app name")
 	}
 
-	return &analysis, nil
+	return analysis, nil
+}
+
+// parseIntentDecision parses the intent-router JSON response.
+func parseIntentDecision(result string) (*IntentDecision, error) {
+	decision, err := parseClaudeJSON[IntentDecision](result, "intent decision")
+	if err != nil {
+		return nil, err
+	}
+
+	// Accept only canonical operation values; fall back to "build" for anything else.
+	// The skill docs instruct the AI to return exactly "build", "edit", or "fix".
+	switch decision.Operation {
+	case "build", "edit", "fix":
+		// valid — keep as-is
+	default:
+		decision.Operation = "build"
+	}
+
+	// Validate platform_hints — drop invalid entries gracefully.
+	if len(decision.PlatformHints) > 0 {
+		decision.PlatformHints = ValidatePlatforms(decision.PlatformHints)
+		// If PlatformHint is empty, set it to first valid entry from PlatformHints
+		if decision.PlatformHint == "" && len(decision.PlatformHints) > 0 {
+			decision.PlatformHint = decision.PlatformHints[0]
+		}
+	}
+
+	// If the AI returned an unrecognized platform_hint, fall back to iOS
+	// rather than crashing. The skill docs instruct it to return only valid
+	// values, but graceful degradation is still important.
+	if err := ValidatePlatform(decision.PlatformHint); err != nil {
+		decision.PlatformHint = PlatformIOS
+	}
+	if err := ValidateWatchShape(decision.WatchProjectShapeHint); err != nil {
+		decision.WatchProjectShapeHint = ""
+	}
+	switch decision.DeviceFamilyHint {
+	case "", "iphone", "ipad", "universal":
+		// valid
+	default:
+		decision.DeviceFamilyHint = ""
+	}
+
+	if decision.Confidence < 0 {
+		decision.Confidence = 0
+	}
+	if decision.Confidence > 1 {
+		decision.Confidence = 1
+	}
+	if decision.Operation == "" {
+		decision.Operation = "unknown"
+	}
+
+	return decision, nil
 }
 
 // parsePlan parses the planner JSON response.
 func parsePlan(result string) (*PlannerResult, error) {
-	cleaned := extractJSON(result)
-
-	var plan PlannerResult
-	if err := json.Unmarshal([]byte(cleaned), &plan); err != nil {
-		return nil, fmt.Errorf("failed to parse plan: %w\nRaw output:\n%s", err, truncateStr(result, 500))
+	plan, err := parseClaudeJSON[PlannerResult](result, "plan")
+	if err != nil {
+		return nil, err
 	}
+	normalizePlannerResult(plan)
 
 	if len(plan.Files) == 0 {
 		return nil, fmt.Errorf("plan has no files")
 	}
 
-	return &plan, nil
+	// Validate Platforms entries
+	if len(plan.Platforms) > 0 {
+		plan.Platforms = ValidatePlatforms(plan.Platforms)
+	}
+
+	// Platform validation
+	if err := ValidatePlatform(plan.Platform); err != nil {
+		return nil, err
+	}
+	if err := ValidateWatchShape(plan.WatchProjectShape); err != nil {
+		return nil, err
+	}
+
+	// Reject device_family when platform is watchOS (single-platform only)
+	if !plan.IsMultiPlatform() && IsWatchOS(plan.Platform) && plan.DeviceFamily != "" {
+		return nil, fmt.Errorf("device_family must not be set when platform is watchOS (got %q)", plan.DeviceFamily)
+	}
+
+	// Validate FilePlan.Platform entries — invalid values gracefully default to ""
+	for i := range plan.Files {
+		if plan.Files[i].Platform != "" {
+			if err := ValidatePlatform(plan.Files[i].Platform); err != nil {
+				plan.Files[i].Platform = ""
+			}
+		}
+	}
+
+	// Validate ExtensionPlan.Platform entries
+	for i := range plan.Extensions {
+		if plan.Extensions[i].Platform != "" {
+			if err := ValidatePlatform(plan.Extensions[i].Platform); err != nil {
+				plan.Extensions[i].Platform = ""
+			}
+		}
+	}
+
+	// Filter rule_keys for platform compatibility (single-platform)
+	if !plan.IsMultiPlatform() && IsWatchOS(plan.Platform) {
+		filtered, _ := FilterRuleKeysForPlatform(plan.Platform, plan.RuleKeys)
+		plan.RuleKeys = filtered
+	}
+
+	// For multi-platform, filter rule_keys for each platform and keep the union
+	if plan.IsMultiPlatform() {
+		allKeys := map[string]bool{}
+		for _, plat := range plan.GetPlatforms() {
+			filtered, _ := FilterRuleKeysForPlatform(plat, plan.RuleKeys)
+			for _, k := range filtered {
+				allKeys[k] = true
+			}
+		}
+		var merged []string
+		for _, k := range plan.RuleKeys {
+			if allKeys[k] {
+				merged = append(merged, k)
+			}
+		}
+		plan.RuleKeys = merged
+	}
+
+	// Validate extensions for platform compatibility
+	if plan.IsMultiPlatform() {
+		// For multi-platform, validate each extension against its target platform
+		for _, ext := range plan.Extensions {
+			if ext.Platform != "" {
+				if err := ValidateExtensionsForPlatform(ext.Platform, []ExtensionPlan{ext}); err != nil {
+					return nil, err
+				}
+			}
+		}
+	} else {
+		if err := ValidateExtensionsForPlatform(plan.Platform, plan.Extensions); err != nil {
+			return nil, err
+		}
+	}
+
+	return plan, nil
+}
+
+func normalizePlannerResult(plan *PlannerResult) {
+	if plan == nil {
+		return
+	}
+
+	plan.Platform = normalizePlannerPlatform(plan.Platform)
+	plan.WatchProjectShape = normalizePlannerWatchShape(plan.WatchProjectShape)
+
+	// Normalize Platforms entries
+	for i, p := range plan.Platforms {
+		plan.Platforms[i] = normalizePlannerPlatform(p)
+	}
+
+	// When Platforms has entries, set Platform to first entry for backward compat.
+	if len(plan.Platforms) > 0 && plan.Platform == "" {
+		plan.Platform = plan.Platforms[0]
+	}
+
+	// If the planner emits a watch project shape, it intends a watch build path.
+	if plan.WatchProjectShape != "" && !IsWatchOS(plan.Platform) && !plan.IsMultiPlatform() {
+		plan.Platform = PlatformWatchOS
+	}
+
+	// Default WatchProjectShape when watchOS is in a multi-platform list
+	if plan.IsMultiPlatform() && plan.WatchProjectShape == "" {
+		for _, p := range plan.GetPlatforms() {
+			if IsWatchOS(p) {
+				plan.WatchProjectShape = WatchShapePaired
+				break
+			}
+		}
+	}
+
+	// watchOS-only plans should not carry iOS device family hints.
+	if !plan.IsMultiPlatform() && IsWatchOS(plan.Platform) {
+		plan.DeviceFamily = ""
+	}
+}
+
+// normalizePlannerPlatform gracefully handles unrecognized platform values
+// from the AI planner. If the value is not a recognized constant, it passes
+// through to ValidatePlatform which will reject it. Empty means default (ios).
+func normalizePlannerPlatform(platform string) string {
+	trimmed := strings.TrimSpace(platform)
+	if trimmed == "" {
+		return ""
+	}
+	// Accept the canonical constants as-is
+	lower := strings.ToLower(trimmed)
+	switch lower {
+	case PlatformIOS, PlatformWatchOS, PlatformTvOS:
+		return lower
+	default:
+		// Unrecognized — pass through; ValidatePlatform will catch it downstream
+		return lower
+	}
+}
+
+// normalizePlannerWatchShape gracefully handles the watch_project_shape field.
+// Only exact canonical values are accepted; anything else passes through to
+// ValidateWatchShape which will reject it.
+func normalizePlannerWatchShape(shape string) string {
+	trimmed := strings.TrimSpace(shape)
+	if trimmed == "" {
+		return ""
+	}
+	switch trimmed {
+	case WatchShapeStandalone, WatchShapePaired:
+		return trimmed
+	default:
+		// Unrecognized — pass through; ValidateWatchShape will catch it downstream
+		return trimmed
+	}
+}
+
+func parseClaudeJSON[T any](result string, label string) (*T, error) {
+	cleaned := extractJSON(result)
+
+	var parsed T
+	if err := json.Unmarshal([]byte(cleaned), &parsed); err != nil {
+		return nil, fmt.Errorf("failed to parse %s: %w\nRaw output:\n%s", label, err, truncateStr(result, 500))
+	}
+
+	return &parsed, nil
 }
 
 // extractJSON finds and extracts the first JSON object from a string.

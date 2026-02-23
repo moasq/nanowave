@@ -8,8 +8,22 @@ import (
 )
 
 func TestResolvePlannedFilePath(t *testing.T) {
-	projectDir := filepath.Join(string(filepath.Separator), "tmp", "project")
+	projectDir := t.TempDir()
 	appName := "MyApp"
+
+	// Create the files so os.Stat can find them
+	filesToCreate := []string{
+		filepath.Join(projectDir, "Targets", "MyWidget", "Widget.swift"),
+		filepath.Join(projectDir, "Shared", "ActivityAttributes.swift"),
+	}
+	for _, f := range filesToCreate {
+		if err := os.MkdirAll(filepath.Dir(f), 0o755); err != nil {
+			t.Fatalf("failed to create dir: %v", err)
+		}
+		if err := os.WriteFile(f, []byte("// test"), 0o644); err != nil {
+			t.Fatalf("failed to create file: %v", err)
+		}
+	}
 
 	tests := []struct {
 		name       string
@@ -17,17 +31,17 @@ func TestResolvePlannedFilePath(t *testing.T) {
 		wantSuffix string
 	}{
 		{
-			name:       "app file",
+			name:       "app file (not on disk) falls back to appName prefix",
 			planned:    "Models/Meal.swift",
 			wantSuffix: filepath.Join("MyApp", "Models", "Meal.swift"),
 		},
 		{
-			name:       "targets file",
+			name:       "targets file found directly",
 			planned:    "Targets/MyWidget/Widget.swift",
 			wantSuffix: filepath.Join("Targets", "MyWidget", "Widget.swift"),
 		},
 		{
-			name:       "shared file",
+			name:       "shared file found directly",
 			planned:    "Shared/ActivityAttributes.swift",
 			wantSuffix: filepath.Join("Shared", "ActivityAttributes.swift"),
 		},

@@ -1,0 +1,178 @@
+name: Skies
+options:
+  bundleIdPrefix: com.mohammedalquraini
+  deploymentTarget:
+    iOS: "26.0"
+    watchOS: "26.0"
+    tvOS: "26.0"
+  xcodeVersion: "16.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+  useBaseInternationalization: false
+  knownRegions:
+    - en
+
+targets:
+  Skies:
+    type: application
+    platform: iOS
+    supportedDestinations:
+      - iOS
+    destinationFilters:
+      - device: iPhone
+      - device: iPad
+    sources:
+      - path: Skies
+        type: syncedFolder
+      - path: Shared
+        type: syncedFolder
+        optional: true
+    settings:
+      base:
+        SWIFT_VERSION: "6.0"
+        PRODUCT_BUNDLE_IDENTIFIER: com.mohammedalquraini.skies
+        CODE_SIGN_STYLE: Automatic
+        CURRENT_PROJECT_VERSION: 1
+        MARKETING_VERSION: "1.0"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        TARGETED_DEVICE_FAMILY: "1,2"
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        ENABLE_PREVIEWS: YES
+        SWIFT_EMIT_LOC_STRINGS: YES
+        LD_RUNPATH_SEARCH_PATHS:
+          - "$(inherited)"
+          - "@executable_path/Frameworks"
+        SWIFT_APPROACHABLE_CONCURRENCY: YES
+        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+    entitlements:
+      path: Skies/Skies.entitlements
+      properties: {}
+    dependencies:
+      - target: SkiesWatch
+        embed: true
+
+  SkiesWatch:
+    type: application.watchapp2
+    platform: watchOS
+    sources:
+      - path: SkiesWatch
+        type: syncedFolder
+        excludes:
+          - "**/*.swift"
+          - "*.plist"
+          - "*.entitlements"
+    settings:
+      base:
+        SWIFT_VERSION: "6.0"
+        PRODUCT_BUNDLE_IDENTIFIER: com.mohammedalquraini.skies.watchkitapp
+        CODE_SIGN_STYLE: Automatic
+        CURRENT_PROJECT_VERSION: 1
+        MARKETING_VERSION: "1.0"
+        GENERATE_INFOPLIST_FILE: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        ENABLE_PREVIEWS: YES
+        SWIFT_EMIT_LOC_STRINGS: YES
+        SWIFT_APPROACHABLE_CONCURRENCY: YES
+        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+    entitlements:
+      path: SkiesWatch/SkiesWatch.entitlements
+      properties: {}
+    info:
+      path: SkiesWatch/Info.plist
+      properties:
+        WKCompanionAppBundleIdentifier: com.mohammedalquraini.skies
+        WKRunsIndependentlyOfCompanionApp: true
+    dependencies:
+      - target: SkiesWatchExtension
+        embed: true
+
+  SkiesWatchExtension:
+    type: watchkit2-extension
+    platform: watchOS
+    sources:
+      - path: SkiesWatch
+        type: syncedFolder
+        excludes:
+          - "*.plist"
+          - "*.entitlements"
+      - path: Shared
+        type: syncedFolder
+        optional: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.mohammedalquraini.skies.watchkitapp.watchkitextension
+        CODE_SIGN_STYLE: Automatic
+        SWIFT_VERSION: "6.0"
+        GENERATE_INFOPLIST_FILE: YES
+        SKIP_INSTALL: YES
+        CURRENT_PROJECT_VERSION: 1
+        MARKETING_VERSION: "1.0"
+        SWIFT_APPROACHABLE_CONCURRENCY: YES
+        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+    entitlements:
+      path: SkiesWatch/SkiesWatchExtension.entitlements
+      properties: {}
+    info:
+      path: SkiesWatch/WatchExtension-Info.plist
+      properties:
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.watchkit
+          NSExtensionAttributes:
+            WKAppBundleIdentifier: com.mohammedalquraini.skies.watchkitapp
+
+  SkiesTV:
+    type: application
+    platform: tvOS
+    supportedDestinations:
+      - tvOS
+    sources:
+      - path: SkiesTV
+        type: syncedFolder
+      - path: Shared
+        type: syncedFolder
+        optional: true
+    settings:
+      base:
+        SWIFT_VERSION: "6.0"
+        PRODUCT_BUNDLE_IDENTIFIER: com.mohammedalquraini.skies.tv
+        CODE_SIGN_STYLE: Automatic
+        CURRENT_PROJECT_VERSION: 1
+        MARKETING_VERSION: "1.0"
+        GENERATE_INFOPLIST_FILE: YES
+        TARGETED_DEVICE_FAMILY: "3"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        ENABLE_PREVIEWS: YES
+        SWIFT_EMIT_LOC_STRINGS: YES
+        LD_RUNPATH_SEARCH_PATHS:
+          - "$(inherited)"
+          - "@executable_path/Frameworks"
+        SWIFT_APPROACHABLE_CONCURRENCY: YES
+        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+    entitlements:
+      path: SkiesTV/SkiesTV.entitlements
+      properties: {}
+
+schemes:
+  Skies:
+    build:
+      targets:
+        Skies: all
+        SkiesWatch: all
+        SkiesWatchExtension: all
+    run:
+      executable: Skies
+
+  SkiesTV:
+    build:
+      targets:
+        SkiesTV: all
+    run:
+      executable: SkiesTV
