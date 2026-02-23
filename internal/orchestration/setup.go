@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -20,6 +21,12 @@ func setupWorkspace(projectDir string) error {
 		projectDir,
 		filepath.Join(projectDir, ".claude", "rules"),
 		filepath.Join(projectDir, ".claude", "skills"),
+		filepath.Join(projectDir, ".claude", "memory"),
+		filepath.Join(projectDir, ".claude", "commands"),
+		filepath.Join(projectDir, ".claude", "agents"),
+		filepath.Join(projectDir, "scripts", "claude"),
+		filepath.Join(projectDir, "docs"),
+		filepath.Join(projectDir, ".github", "workflows"),
 	}
 	for _, d := range dirs {
 		if err := os.MkdirAll(d, 0o755); err != nil {
@@ -30,127 +37,339 @@ func setupWorkspace(projectDir string) error {
 }
 
 // writeInitialCLAUDEMD writes the CLAUDE.md with project-specific info only (before plan exists).
-// Architecture, concurrency, UI, and design rules come from .claude/rules/ and .claude/skills/.
-func writeInitialCLAUDEMD(projectDir, appName, deviceFamily string) error {
-	var platformLine string
-	switch deviceFamily {
-	case "ipad":
-		platformLine = "iPad only, iOS 26+, Swift 6"
-	case "universal":
-		platformLine = "iPhone and iPad, iOS 26+, Swift 6"
-	default:
-		platformLine = "iPhone only, iOS 26+, Swift 6"
+// CLAUDE.md is a thin index that imports shared project memory modules and core rules.
+func writeInitialCLAUDEMD(projectDir, appName, platform, deviceFamily string) error {
+	if err := writeClaudeMemoryFiles(projectDir, appName, platform, deviceFamily, nil); err != nil {
+		return err
 	}
-	content := fmt.Sprintf(`# %s — iOS Project Rules
-
-## Platform
-- %s
-- SwiftUI + SwiftData only. No UIKit (except when required), no third-party packages.
-
-## Architecture
-- @main App -> RootView -> MainView -> content
-- AppTheme for all design tokens (colors, spacing, typography)
-- Models in Models/, Views in Features/{Name}/, Theme in Theme/
-
-## @AppStorage Wiring (CRITICAL)
-- Any @AppStorage value written in child views MUST be read in RootView
-- A toggle without visible app-wide effect is a bug
-
-## Build Command
-`+"```"+`
-xcodebuild -project %s.xcodeproj -scheme %s \
-  -destination 'generic/platform=iOS Simulator' -quiet build
-`+"```"+`
-
-## Project Configuration
-- Use the xcodegen MCP tools to manage project configuration
-- add_permission, add_extension, add_entitlement, add_localization, set_build_setting, get_project_config, regenerate_project
-- NEVER manually edit project.yml or .xcodeproj files
-`, appName, platformLine, appName, appName)
-
-	return os.WriteFile(filepath.Join(projectDir, ".claude", "CLAUDE.md"), []byte(content), 0o644)
+	return writeCLAUDEMDIndex(projectDir, appName)
 }
 
-// enrichCLAUDEMD updates CLAUDE.md with design tokens and plan details after Phase 3.
+// enrichCLAUDEMD updates memory modules with plan-specific details after Phase 3.
 func enrichCLAUDEMD(projectDir string, plan *PlannerResult, appName string) error {
-	claudeMDPath := filepath.Join(projectDir, ".claude", "CLAUDE.md")
+	if err := writeClaudeMemoryFiles(projectDir, appName, plan.GetPlatform(), plan.GetDeviceFamily(), plan); err != nil {
+		return err
+	}
+	return writeCLAUDEMDIndex(projectDir, appName)
+}
 
-	existing, err := os.ReadFile(claudeMDPath)
-	if err != nil {
-		return fmt.Errorf("failed to read CLAUDE.md: %w", err)
+func platformSummary(platform, deviceFamily string) string {
+	if IsWatchOS(platform) {
+		return "Apple Watch, watchOS 26+, Swift 6"
+	}
+	switch deviceFamily {
+	case "ipad":
+		return "iPad only, iOS 26+, Swift 6"
+	case "universal":
+		return "iPhone and iPad, iOS 26+, Swift 6"
+	default:
+		return "iPhone only, iOS 26+, Swift 6"
+	}
+}
+
+func canonicalBuildCommand(appName, platform string) string {
+	destination := canonicalBuildDestination(platform)
+	return fmt.Sprintf("xcodebuild -project %s.xcodeproj -scheme %s -destination '%s' -quiet build", appName, appName, destination)
+}
+
+func writeCLAUDEMDIndex(projectDir, appName string) error {
+	var b strings.Builder
+	b.WriteString("# ")
+	b.WriteString(appName)
+	b.WriteString(" — Claude Code Memory Index\n\n")
+
+	imports := []string{
+		"@memory/project-overview.md",
+		"@memory/architecture.md",
+		"@memory/design-system.md",
+		"@memory/xcodegen-policy.md",
+		"@memory/build-fix-workflow.md",
+		"@memory/review-playbook.md",
+		"@memory/accessibility-policy.md",
+		"@memory/quality-gates.md",
+		"@memory/generated-plan.md",
 	}
 
-	var enrichment strings.Builder
-	enrichment.WriteString("\n\n## Design System\n")
-	enrichment.WriteString(fmt.Sprintf("- Primary: %s, Secondary: %s, Accent: %s\n",
-		plan.Design.Palette.Primary, plan.Design.Palette.Secondary, plan.Design.Palette.Accent))
-	enrichment.WriteString(fmt.Sprintf("- Background: %s, Surface: %s\n",
-		plan.Design.Palette.Background, plan.Design.Palette.Surface))
-	enrichment.WriteString(fmt.Sprintf("- Font: %s, Corner radius: %d, Mood: %s\n",
-		plan.Design.FontDesign, plan.Design.CornerRadius, plan.Design.AppMood))
-	enrichment.WriteString(fmt.Sprintf("- Density: %s, Surfaces: %s\n",
-		plan.Design.Density, plan.Design.Surfaces))
-
-	if len(plan.Models) > 0 {
-		enrichment.WriteString("\n## Models\n")
-		for _, m := range plan.Models {
-			var props []string
-			for _, p := range m.Properties {
-				props = append(props, fmt.Sprintf("%s: %s", p.Name, p.Type))
+	coreRuleImports := make([]string, 0, 8)
+	if entries, err := fs.ReadDir(skillsFS, "skills/core"); err == nil {
+		for _, entry := range entries {
+			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+				continue
 			}
-			enrichment.WriteString(fmt.Sprintf("- %s (%s): %s\n", m.Name, m.Storage, strings.Join(props, ", ")))
+			coreRuleImports = append(coreRuleImports, "@rules/"+entry.Name())
+		}
+		sort.Strings(coreRuleImports)
+	}
+
+	for _, line := range imports {
+		b.WriteString(line)
+		b.WriteString("\n")
+	}
+	if len(coreRuleImports) > 0 {
+		b.WriteString("\n# Core Rules (explicit imports for deterministic loading)\n")
+		for _, line := range coreRuleImports {
+			b.WriteString(line)
+			b.WriteString("\n")
 		}
 	}
 
-	if len(plan.Files) > 0 {
-		enrichment.WriteString("\n## File Architecture\n")
-		for _, f := range plan.Files {
-			enrichment.WriteString(fmt.Sprintf("- %s: %s\n", f.Path, f.Purpose))
-		}
+	b.WriteString("\n# Skills\n")
+	b.WriteString("Project skills live in `skills/`. Use `/preflight`, `/build-green`, `/quality-review`, `/accessibility-audit`, and `/xcodegen-change` for repeatable workflows.\n")
+
+	return os.WriteFile(filepath.Join(projectDir, ".claude", "CLAUDE.md"), []byte(b.String()), 0o644)
+}
+
+func writeClaudeMemoryFiles(projectDir, appName, platform, deviceFamily string, plan *PlannerResult) error {
+	memoryDir := filepath.Join(projectDir, ".claude", "memory")
+	if err := os.MkdirAll(memoryDir, 0o755); err != nil {
+		return fmt.Errorf("failed to create memory dir: %w", err)
 	}
 
-	if len(plan.Permissions) > 0 {
-		enrichment.WriteString("\n## Permissions\n")
-		for _, p := range plan.Permissions {
-			enrichment.WriteString(fmt.Sprintf("- %s: %s (%s)\n", p.Key, p.Description, p.Framework))
-		}
-	}
+	buildCmd := canonicalBuildCommand(appName, platform)
+	var files = map[string]string{}
 
-	if len(plan.Localizations) > 0 {
-		enrichment.WriteString("\n## Localizations\n")
-		enrichment.WriteString(fmt.Sprintf("- Languages: %s\n", strings.Join(plan.Localizations, ", ")))
+	// project-overview.md
+	var overview strings.Builder
+	overview.WriteString("# Project Overview\n\n")
+	overview.WriteString("- App name: `")
+	overview.WriteString(appName)
+	overview.WriteString("`\n")
+	overview.WriteString("- Platform: ")
+	overview.WriteString(platformSummary(platform, deviceFamily))
+	overview.WriteString("\n")
+	if IsWatchOS(platform) {
+		overview.WriteString("- Stack: SwiftUI (no third-party packages, no UIKit)\n")
+	} else {
+		overview.WriteString("- Stack: SwiftUI + SwiftData (no third-party packages)\n")
 	}
+	overview.WriteString("- Project config source of truth: `project_config.json`\n")
+	overview.WriteString("- XcodeGen spec: `project.yml`\n")
+	overview.WriteString("\n## Canonical Build Command\n\n```sh\n")
+	overview.WriteString(buildCmd)
+	overview.WriteString("\n```\n")
+	overview.WriteString("\n## Constraints\n")
+	overview.WriteString("- Use xcodegen MCP tools for permissions/extensions/entitlements/localizations/build settings\n")
+	overview.WriteString("- Never manually edit `.xcodeproj` (generated file)\n")
+	overview.WriteString("- Prefer Apple docs MCP for API verification; fall back to WebFetch/WebSearch when needed\n")
+	if plan != nil && len(plan.Localizations) > 0 {
+		overview.WriteString("- Localizations: ")
+		overview.WriteString(strings.Join(plan.Localizations, ", "))
+		overview.WriteString("\n")
+	}
+	files["project-overview.md"] = overview.String()
 
-	if len(plan.Extensions) > 0 {
-		enrichment.WriteString("\n## Extensions\n")
+	// architecture.md
+	var arch strings.Builder
+	arch.WriteString("# Architecture\n\n")
+	arch.WriteString("## App Structure\n")
+	arch.WriteString("- `@main App` -> `RootView` -> `MainView` -> feature content\n")
+	arch.WriteString("- Models in `Models/`\n")
+	arch.WriteString("- Theme in `Theme/` (`AppTheme` is the single source of design tokens)\n")
+	arch.WriteString("- Features in `Features/<Name>/`\n")
+	arch.WriteString("- Shared feature services/components in `Features/Common/`\n")
+	arch.WriteString("\n## Project Scaffolding Rules\n")
+	arch.WriteString("- Keep generated project config changes in xcodegen MCP tools\n")
+	arch.WriteString("- Shared extension types must live in `Shared/`\n")
+	if plan != nil && len(plan.Extensions) > 0 {
+		arch.WriteString("\n## Extensions\n")
 		for _, ext := range plan.Extensions {
 			name := extensionTargetName(ext, appName)
-			enrichment.WriteString(fmt.Sprintf("- %s (%s): %s → Targets/%s/\n", name, ext.Kind, ext.Purpose, name))
+			fmt.Fprintf(&arch, "- `%s` (%s): %s -> `Targets/%s/`\n", name, ext.Kind, ext.Purpose, name)
 		}
-		enrichment.WriteString("\nExtension source files go in Targets/{ExtensionName}/. Shared types (e.g. ActivityAttributes) go in the Shared/ directory — both targets compile it.\n")
+	} else {
+		arch.WriteString("\n## Extensions\n- No extension targets planned.\n")
+	}
+	files["architecture.md"] = arch.String()
+
+	// design-system.md
+	var design strings.Builder
+	design.WriteString("# Design System\n\n")
+	design.WriteString("- `AppTheme` is the only place for colors, spacing, typography tokens\n")
+	design.WriteString("- Avoid hardcoded ad-hoc colors in feature views\n")
+	design.WriteString("- Every view should use semantic theme tokens and include `#Preview`\n")
+	design.WriteString("- Keep adaptive layout and accessibility in mind for iPad/universal apps\n")
+	if plan != nil {
+		design.WriteString("\n## Current Palette\n")
+		fmt.Fprintf(&design, "- Primary: `%s`\n", plan.Design.Palette.Primary)
+		fmt.Fprintf(&design, "- Secondary: `%s`\n", plan.Design.Palette.Secondary)
+		fmt.Fprintf(&design, "- Accent: `%s`\n", plan.Design.Palette.Accent)
+		fmt.Fprintf(&design, "- Background: `%s`\n", plan.Design.Palette.Background)
+		fmt.Fprintf(&design, "- Surface: `%s`\n", plan.Design.Palette.Surface)
+		fmt.Fprintf(&design, "- Font design: `%s`\n", plan.Design.FontDesign)
+		fmt.Fprintf(&design, "- Corner radius: `%d`\n", plan.Design.CornerRadius)
+		fmt.Fprintf(&design, "- Density: `%s`\n", plan.Design.Density)
+		fmt.Fprintf(&design, "- Surfaces: `%s`\n", plan.Design.Surfaces)
+	}
+	files["design-system.md"] = design.String()
+
+	// xcodegen-policy.md
+	var xg strings.Builder
+	xg.WriteString("# XcodeGen Policy\n\n")
+	xg.WriteString("## Required Workflow\n")
+	xg.WriteString("- Use xcodegen MCP tools for project configuration changes\n")
+	xg.WriteString("- Preferred tools: `add_permission`, `add_extension`, `add_entitlement`, `add_localization`, `set_build_setting`, `get_project_config`, `regenerate_project`\n")
+	xg.WriteString("- Do not manually edit `.xcodeproj`\n")
+	xg.WriteString("- Avoid manual `project.yml` edits unless explicitly doing emergency recovery, then run `regenerate_project`\n")
+	xg.WriteString("\n## Files\n")
+	xg.WriteString("- `project_config.json` = editable source of truth\n")
+	xg.WriteString("- `project.yml` = generated XcodeGen spec\n")
+	xg.WriteString("- `.xcodeproj` = generated output\n")
+	files["xcodegen-policy.md"] = xg.String()
+
+	// build-fix-workflow.md
+	var workflow strings.Builder
+	workflow.WriteString("# Build / Fix Workflow\n\n")
+	workflow.WriteString("## Preflight\n")
+	workflow.WriteString("1. Run `/preflight`\n")
+	workflow.WriteString("2. Confirm MCP readiness and skill integrity\n")
+	workflow.WriteString("\n## Build Green Loop\n")
+	workflow.WriteString("1. Implement or edit code\n")
+	workflow.WriteString("2. Run `/build-green` or `make claude-check`\n")
+	workflow.WriteString("3. Fix errors\n")
+	workflow.WriteString("4. Repeat until build passes\n")
+	workflow.WriteString("\n## Research Policy\n")
+	workflow.WriteString("- Use Apple docs MCP first for API signatures and platform compatibility\n")
+	workflow.WriteString("- If docs MCP is unavailable or insufficient, use WebFetch/WebSearch official docs fallback\n")
+	workflow.WriteString("- `context7` is optional and not required for this project scaffold\n")
+	files["build-fix-workflow.md"] = workflow.String()
+
+	// review-playbook.md
+	reviewPlaybook := "# Review Playbook\n\n" +
+		"## When To Use Each Command\n" +
+		"- Use `/quality-review` for project quality gates, structure, previews, wiring, and configuration policy checks\n" +
+		"- Use `/accessibility-audit` for focused a11y review (code-first, screenshots optional)\n" +
+		"- For UI-heavy changes, run `/quality-review` first and then `/accessibility-audit`\n\n" +
+		"## Reporting Format (Required)\n" +
+		"- Findings first, ordered by severity\n" +
+		"- Use structured Markdown sections exactly as requested by the command\n" +
+		"- Include file references for code-based findings (`path:line`)\n" +
+		"- Include remediation direction for each finding\n\n" +
+		"## Severity Definitions\n" +
+		"- Critical: build/runtime breakage, severe accessibility failure, or release-blocking regression\n" +
+		"- High: user-facing quality issue likely to ship incorrectly without fix\n" +
+		"- Medium: correctness/UX issue with limited scope or workaround\n" +
+		"- Low: polish or maintainability issue\n\n" +
+		"## Evidence Rules\n" +
+		"- Prefer code evidence first\n" +
+		"- Use screenshots/images only when provided or necessary for visual validation\n" +
+		"- If a visual issue cannot be proven from code, mark it as `needs verification`\n\n" +
+		"## Fix Planning\n" +
+		"- Prioritize high-confidence, low-blast-radius fixes first\n" +
+		"- Re-run relevant local checks after fixes (`check-previews`, `check-no-placeholders`, a11y checks)\n" +
+		"- End with exact re-test steps\n\n" +
+		"## Staged Enforcement Note\n" +
+		"- Phase 1: new a11y static checks are advisory in hooks and fail only in `make claude-check`\n" +
+		"- CI does not run the new a11y checks yet\n"
+	files["review-playbook.md"] = reviewPlaybook
+
+	// accessibility-policy.md
+	accessibilityPolicy := "# Accessibility Policy (Generated SwiftUI Project)\n\n" +
+		"- Use SwiftUI system text styles (`.body`, `.headline`, etc.) and avoid fixed font sizes unless explicitly justified\n" +
+		"- Icon-only controls must include `.accessibilityLabel(...)`\n" +
+		"- Respect Reduce Motion and Reduce Transparency when adding motion or materials\n" +
+		"- Prefer semantic accessibility elements/traits over decorative-only UI\n" +
+		"- Minimum touch target expectation: 44x44 points\n" +
+		"- Do not rely on color alone for status/meaning; pair with text and/or symbols\n" +
+		"- Previews should include representative states when feasible (empty/loading/error/content)\n" +
+		"- For ambiguous issues, report `needs verification` rather than guessing\n"
+	files["accessibility-policy.md"] = accessibilityPolicy
+
+	// quality-gates.md
+	quality := "# Quality Gates\n\n" +
+		"## Definition of Done\n" +
+		"- Canonical build command passes\n" +
+		"- No placeholder-only Swift files remain\n" +
+		"- No dead feature views (new UI is reachable from app flow)\n" +
+		"- Global settings are wired at the root app when they affect app-wide behavior\n" +
+		"- New View files include #Preview\n" +
+		"- Project configuration changes are done via xcodegen MCP tools\n" +
+		"- Extensions compile and include required @main entry points (when applicable)\n" +
+		"- Shared app/extension types live in Shared/\n\n" +
+		"## Local Checks\n" +
+		"- make claude-check\n" +
+		"- /quality-review\n" +
+		"- /accessibility-audit (for UI-heavy changes)\n"
+	files["quality-gates.md"] = quality
+
+	// generated-plan.md
+	var planDoc strings.Builder
+	planDoc.WriteString("# Generated Plan Snapshot\n\n")
+	if plan == nil {
+		planDoc.WriteString("Planner output has not been written yet. This file will be populated after the planning phase.\n")
+	} else {
+		planDoc.WriteString("## Platform\n")
+		fmt.Fprintf(&planDoc, "- `%s`\n", plan.GetPlatform())
+		if IsWatchOS(plan.GetPlatform()) {
+			planDoc.WriteString("\n## Watch Project Shape\n")
+			fmt.Fprintf(&planDoc, "- `%s`\n", plan.GetWatchProjectShape())
+		} else {
+			planDoc.WriteString("\n## Device Family\n")
+			fmt.Fprintf(&planDoc, "- `%s`\n", plan.GetDeviceFamily())
+		}
+		planDoc.WriteString("\n## Rule Keys\n")
+		if len(plan.RuleKeys) == 0 {
+			planDoc.WriteString("- None\n")
+		} else {
+			for _, key := range plan.RuleKeys {
+				fmt.Fprintf(&planDoc, "- `%s`\n", key)
+			}
+		}
+		planDoc.WriteString("\n## Models\n")
+		if len(plan.Models) == 0 {
+			planDoc.WriteString("- None\n")
+		} else {
+			for _, m := range plan.Models {
+				var props []string
+				for _, p := range m.Properties {
+					props = append(props, fmt.Sprintf("%s: %s", p.Name, p.Type))
+				}
+				fmt.Fprintf(&planDoc, "- `%s` (%s): %s\n", m.Name, m.Storage, strings.Join(props, ", "))
+			}
+		}
+		planDoc.WriteString("\n## Files (Build Order)\n")
+		if len(plan.BuildOrder) == 0 {
+			for _, f := range plan.Files {
+				fmt.Fprintf(&planDoc, "- `%s` (%s)\n", f.Path, f.TypeName)
+			}
+		} else {
+			for _, p := range plan.BuildOrder {
+				fmt.Fprintf(&planDoc, "- `%s`\n", p)
+			}
+		}
+		planDoc.WriteString("\n## Permissions\n")
+		if len(plan.Permissions) == 0 {
+			planDoc.WriteString("- None\n")
+		} else {
+			for _, p := range plan.Permissions {
+				fmt.Fprintf(&planDoc, "- `%s` (%s): %s\n", p.Key, p.Framework, p.Description)
+			}
+		}
+		planDoc.WriteString("\n## Extensions\n")
+		if len(plan.Extensions) == 0 {
+			planDoc.WriteString("- None\n")
+		} else {
+			for _, ext := range plan.Extensions {
+				fmt.Fprintf(&planDoc, "- `%s` (%s): %s\n", extensionTargetName(ext, appName), ext.Kind, ext.Purpose)
+			}
+		}
+		planDoc.WriteString("\n## Localizations\n")
+		if len(plan.Localizations) == 0 {
+			planDoc.WriteString("- None\n")
+		} else {
+			for _, lang := range plan.Localizations {
+				fmt.Fprintf(&planDoc, "- `%s`\n", lang)
+			}
+		}
+	}
+	files["generated-plan.md"] = planDoc.String()
+
+	for name, content := range files {
+		if err := os.WriteFile(filepath.Join(memoryDir, name), []byte(content), 0o644); err != nil {
+			return fmt.Errorf("failed to write memory file %s: %w", name, err)
+		}
 	}
 
-	enrichment.WriteString(`
-## Extending Rules & Skills
-
-This project uses a scalable skill system. Rules live in ` + "`.claude/`" + `:
-- ` + "`.claude/rules/`" + ` — always loaded (core architecture rules)
-- ` + "`.claude/skills/<name>/`" + ` — lazy loaded (SKILL.md with description + implementation rules)
-
-### Adding a new feature domain (e.g., payments, auth, Firebase)
-1. Create ` + "`.claude/skills/<name>/SKILL.md`" + ` with frontmatter and implementation rules
-2. Claude will load it automatically when working on that feature
-
-### Skill format
-Each SKILL.md uses frontmatter:
-  name: <skill-name>
-  description: "<when to use this skill>"
-  user-invocable: false
-The body contains the implementation rules and code examples.
-`)
-
-	enriched := string(existing) + enrichment.String()
-	return os.WriteFile(claudeMDPath, []byte(enriched), 0o644)
+	return nil
 }
 
 // conditionalCategories lists embedded directories searched for conditional skill keys.
@@ -184,15 +403,40 @@ func writeCoreRules(projectDir string) error {
 
 // writeAlwaysSkills copies all skills/always/* to .claude/skills/*/ (lazy, always present).
 // Handles both flat .md files and multi-file directories (e.g., swiftui/).
-func writeAlwaysSkills(projectDir string) error {
+// When platform is watchOS, entries from skills/always_watchos/ override same-named entries
+// from skills/always/, and watchOS-only entries (no iOS equivalent) are also loaded.
+func writeAlwaysSkills(projectDir, platform string) error {
 	skillsDir := filepath.Join(projectDir, ".claude", "skills")
 
+	// Build set of watchOS overrides (by skill name) when platform is watchOS.
+	watchOverrides := map[string]bool{}
+	if IsWatchOS(platform) {
+		if wEntries, err := fs.ReadDir(skillsFS, "skills/always_watchos"); err == nil {
+			for _, e := range wEntries {
+				if e.IsDir() {
+					watchOverrides[e.Name()] = true
+				} else if strings.HasSuffix(e.Name(), ".md") {
+					watchOverrides[strings.TrimSuffix(e.Name(), ".md")] = true
+				}
+			}
+		}
+	}
+
+	// Load from skills/always/, skipping entries that have a watchOS override.
 	entries, err := fs.ReadDir(skillsFS, "skills/always")
 	if err != nil {
 		return fmt.Errorf("failed to read embedded always skills: %w", err)
 	}
 
 	for _, entry := range entries {
+		skillName := entry.Name()
+		if !entry.IsDir() && strings.HasSuffix(skillName, ".md") {
+			skillName = strings.TrimSuffix(skillName, ".md")
+		}
+		if watchOverrides[skillName] {
+			continue // will be loaded from always_watchos instead
+		}
+
 		if entry.IsDir() {
 			// Multi-file skill (e.g., swiftui/) — copy directory
 			srcPath := "skills/always/" + entry.Name()
@@ -202,7 +446,6 @@ func writeAlwaysSkills(projectDir string) error {
 			}
 		} else if strings.HasSuffix(entry.Name(), ".md") {
 			// Single-file skill — wrap in a directory with the file as SKILL.md
-			skillName := strings.TrimSuffix(entry.Name(), ".md")
 			dstDir := filepath.Join(skillsDir, skillName)
 			if err := os.MkdirAll(dstDir, 0o755); err != nil {
 				return fmt.Errorf("failed to create dir %s: %w", dstDir, err)
@@ -216,17 +459,55 @@ func writeAlwaysSkills(projectDir string) error {
 			}
 		}
 	}
+
+	// Load watchOS overrides + watchOS-only skills from always_watchos/.
+	if IsWatchOS(platform) {
+		wEntries, err := fs.ReadDir(skillsFS, "skills/always_watchos")
+		if err != nil {
+			return fmt.Errorf("failed to read embedded always_watchos skills: %w", err)
+		}
+		for _, entry := range wEntries {
+			if entry.IsDir() {
+				srcPath := "skills/always_watchos/" + entry.Name()
+				dstPath := filepath.Join(skillsDir, entry.Name())
+				if err := writeSkillDir(srcPath, dstPath); err != nil {
+					return err
+				}
+			} else if strings.HasSuffix(entry.Name(), ".md") {
+				skillName := strings.TrimSuffix(entry.Name(), ".md")
+				dstDir := filepath.Join(skillsDir, skillName)
+				if err := os.MkdirAll(dstDir, 0o755); err != nil {
+					return fmt.Errorf("failed to create dir %s: %w", dstDir, err)
+				}
+				content, err := skillsFS.ReadFile("skills/always_watchos/" + entry.Name())
+				if err != nil {
+					return fmt.Errorf("failed to read %s: %w", entry.Name(), err)
+				}
+				if err := os.WriteFile(filepath.Join(dstDir, "SKILL.md"), content, 0o644); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
 	return nil
 }
 
 // writeConditionalSkills copies matching skills from features/, ui/, extensions/
 // to .claude/skills/<key>/ for each key in ruleKeys.
 // Handles both directories and flat .md files.
-func writeConditionalSkills(projectDir string, ruleKeys []string) error {
+// When platform is watchOS, the search order is ["watchos", "features", "ui", "extensions"]
+// so watchOS-specific skills take precedence (first match wins).
+func writeConditionalSkills(projectDir string, ruleKeys []string, platform string) error {
 	skillsDir := filepath.Join(projectDir, ".claude", "skills")
 
+	categories := conditionalCategories
+	if IsWatchOS(platform) {
+		categories = append([]string{"watchos"}, conditionalCategories...)
+	}
+
 	for _, key := range ruleKeys {
-		for _, cat := range conditionalCategories {
+		for _, cat := range categories {
 			// Try as directory first
 			srcPath := fmt.Sprintf("skills/%s/%s", cat, key)
 			if _, err := fs.ReadDir(skillsFS, srcPath); err == nil {
@@ -365,32 +646,151 @@ func loadRuleContent(ruleKey string) string {
 	return ""
 }
 
+// writeClaudeProjectScaffold writes shared Claude Code project files for generated apps.
+func writeClaudeProjectScaffold(projectDir, appName, platform string) error {
+	if err := writeSkillCatalog(projectDir); err != nil {
+		return err
+	}
+	if err := writeClaudeCommands(projectDir, appName, platform); err != nil {
+		return err
+	}
+	if err := writeClaudeAgents(projectDir); err != nil {
+		return err
+	}
+	if err := writeClaudeScripts(projectDir, appName, platform); err != nil {
+		return err
+	}
+	if err := writeClaudeWorkflowDocs(projectDir, appName, platform); err != nil {
+		return err
+	}
+	if err := writeSettingsShared(projectDir); err != nil {
+		return err
+	}
+	if err := writeProjectMakefile(projectDir, appName, platform); err != nil {
+		return err
+	}
+	if err := writeCIWorkflow(projectDir, appName, platform); err != nil {
+		return err
+	}
+	return nil
+}
+
+func writeTextFile(path, content string, mode fs.FileMode) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(path, []byte(content), mode)
+}
+
+func writeExecutableFile(path, content string) error {
+	return writeTextFile(path, content, 0o755)
+}
+
+func writeSkillCatalog(projectDir string) error {
+	skillsDir := filepath.Join(projectDir, ".claude", "skills")
+	entries, err := os.ReadDir(skillsDir)
+	if err != nil {
+		return fmt.Errorf("failed to read generated skills dir: %w", err)
+	}
+
+	type skillInfo struct {
+		Name        string
+		Description string
+		Dir         string
+		Companions  []string
+	}
+	var skills []skillInfo
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		dirName := entry.Name()
+		skillDir := filepath.Join(skillsDir, dirName)
+		skillPath := filepath.Join(skillDir, "SKILL.md")
+		data, err := os.ReadFile(skillPath)
+		if err != nil {
+			continue
+		}
+		desc, _ := extractFrontmatter(string(data))
+
+		companionEntries, _ := os.ReadDir(skillDir)
+		var companions []string
+		for _, c := range companionEntries {
+			if c.IsDir() || !strings.HasSuffix(c.Name(), ".md") || c.Name() == "SKILL.md" {
+				continue
+			}
+			companions = append(companions, c.Name())
+		}
+		sort.Strings(companions)
+		skills = append(skills, skillInfo{
+			Name:        dirName,
+			Description: desc,
+			Dir:         dirName,
+			Companions:  companions,
+		})
+	}
+	sort.Slice(skills, func(i, j int) bool { return skills[i].Name < skills[j].Name })
+
+	var b strings.Builder
+	b.WriteString("# Skill Catalog\n\n")
+	b.WriteString("Generated project-local skills for Claude Code. Skills are lazy-loaded from `.claude/skills/` when relevant.\n\n")
+	b.WriteString("## Usage\n")
+	b.WriteString("- Let Claude discover skills automatically via descriptions\n")
+	b.WriteString("- You can also invoke related workflows through slash commands in `.claude/commands/`\n")
+	b.WriteString("- Run `./scripts/claude/validate-skills.sh` after editing skill files\n")
+
+	if len(skills) == 0 {
+		b.WriteString("\n_No skills generated yet._\n")
+	} else {
+		b.WriteString("\n## Skills\n")
+		for _, s := range skills {
+			fmt.Fprintf(&b, "\n### `%s`\n", s.Name)
+			if s.Description != "" {
+				fmt.Fprintf(&b, "- Purpose: %s\n", s.Description)
+			} else {
+				b.WriteString("- Purpose: (no description found in frontmatter)\n")
+			}
+			fmt.Fprintf(&b, "- Path: `.claude/skills/%s/`\n", s.Dir)
+			fmt.Fprintf(&b, "- Trigger hint: tasks related to `%s`\n", strings.ReplaceAll(s.Name, "_", " "))
+			if len(s.Companions) > 0 {
+				b.WriteString("- Companion docs: ")
+				for i, c := range s.Companions {
+					if i > 0 {
+						b.WriteString(", ")
+					}
+					fmt.Fprintf(&b, "`%s`", c)
+				}
+				b.WriteString("\n")
+			}
+			fmt.Fprintf(&b, "- Example command: `/quality-review` before large refactors touching `%s`\n", s.Name)
+		}
+	}
+
+	return writeTextFile(filepath.Join(skillsDir, "INDEX.md"), b.String(), 0o644)
+}
+
 // writeMCPConfig writes .mcp.json at the project root to give Claude Code access to Apple docs and xcodegen tools.
 func writeMCPConfig(projectDir string) error {
-	nanowaveBin, err := os.Executable()
-	if err != nil {
-		// Fallback: try to find nanowave in PATH
-		nanowaveBin = "nanowave"
-	}
-	mcpConfig := fmt.Sprintf(`{
+	mcpConfig := `{
   "mcpServers": {
     "apple-docs": {
       "command": "npx",
       "args": ["-y", "@kimsungwhee/apple-docs-mcp"]
     },
     "xcodegen": {
-      "command": %q,
+      "command": "nanowave",
       "args": ["mcp", "xcodegen"]
     }
   }
 }
-`, nanowaveBin)
+`
 	return os.WriteFile(filepath.Join(projectDir, ".mcp.json"), []byte(mcpConfig), 0o644)
 }
 
-// writeSettingsLocal writes .claude/settings.local.json to auto-allow MCP tools.
-func writeSettingsLocal(projectDir string) error {
+// writeSettingsShared writes team-shared Claude Code settings.
+func writeSettingsShared(projectDir string) error {
 	settings := `{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "permissions": {
     "allow": [
       "mcp__apple-docs__search_apple_docs",
@@ -407,9 +807,88 @@ func writeSettingsLocal(projectDir string) error {
       "mcp__xcodegen__set_build_setting",
       "mcp__xcodegen__get_project_config",
       "mcp__xcodegen__regenerate_project",
+      "SlashCommand",
+      "Task",
+      "ViewImage",
       "WebFetch",
       "WebSearch"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./secrets/**)"
     ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./scripts/claude/check-project-config-edits.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./scripts/claude/check-bash-safety.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./scripts/claude/check-swift-structure.sh"
+          },
+          {
+            "type": "command",
+            "command": "./scripts/claude/check-no-placeholders.sh --hook"
+          },
+          {
+            "type": "command",
+            "command": "./scripts/claude/check-previews.sh --hook"
+          },
+          {
+            "type": "command",
+            "command": "./scripts/claude/check-a11y-dynamic-type.sh --hook"
+          },
+          {
+            "type": "command",
+            "command": "./scripts/claude/check-a11y-icon-buttons.sh --hook"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./scripts/claude/run-build-check.sh --hook"
+          }
+        ]
+      }
+    ]
+  }
+}
+`
+	return os.WriteFile(filepath.Join(projectDir, ".claude", "settings.json"), []byte(settings), 0o644)
+}
+
+// writeSettingsLocal writes local (non-committed) Claude Code settings for machine-specific overrides.
+func writeSettingsLocal(projectDir string) error {
+	settings := `{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": []
   }
 }
 `
@@ -422,6 +901,11 @@ func ensureMCPConfig(projectDir string) {
 	mcpPath := filepath.Join(projectDir, ".mcp.json")
 	if _, err := os.Stat(mcpPath); os.IsNotExist(err) {
 		_ = writeMCPConfig(projectDir)
+	}
+	sharedSettingsPath := filepath.Join(projectDir, ".claude", "settings.json")
+	if _, err := os.Stat(sharedSettingsPath); os.IsNotExist(err) {
+		_ = os.MkdirAll(filepath.Join(projectDir, ".claude"), 0o755)
+		_ = writeSettingsShared(projectDir)
 	}
 	settingsPath := filepath.Join(projectDir, ".claude", "settings.local.json")
 	if _, err := os.Stat(settingsPath); os.IsNotExist(err) {
@@ -450,13 +934,16 @@ Package.resolved
 .DS_Store
 
 # Claude Code
-.claude/
+.claude/settings.local.json
+.claude/logs/
+.claude/tmp/
+.claude/transcripts/
 `
 	return os.WriteFile(filepath.Join(projectDir, ".gitignore"), []byte(content), 0o644)
 }
 
 // writeAssetCatalog writes the minimal Assets.xcassets structure with AppIcon and AccentColor.
-func writeAssetCatalog(projectDir, appName string) error {
+func writeAssetCatalog(projectDir, appName, platform string) error {
 	assetsDir := filepath.Join(projectDir, appName, "Assets.xcassets")
 	appIconDir := filepath.Join(assetsDir, "AppIcon.appiconset")
 	accentColorDir := filepath.Join(assetsDir, "AccentColor.colorset")
@@ -472,7 +959,23 @@ func writeAssetCatalog(projectDir, appName string) error {
 		return err
 	}
 
-	appIconContents := `{
+	var appIconContents string
+	if IsWatchOS(platform) {
+		appIconContents = `{
+  "images": [
+    {
+      "idiom": "universal",
+      "platform": "watchos",
+      "size": "1024x1024"
+    }
+  ],
+  "info": {
+    "version": 1,
+    "author": "xcode"
+  }
+}`
+	} else {
+		appIconContents = `{
   "images": [
     {
       "idiom": "universal",
@@ -485,6 +988,7 @@ func writeAssetCatalog(projectDir, appName string) error {
     "author": "xcode"
   }
 }`
+	}
 	if err := os.WriteFile(filepath.Join(appIconDir, "Contents.json"), []byte(appIconContents), 0o644); err != nil {
 		return err
 	}
@@ -522,19 +1026,23 @@ func writeProjectConfig(projectDir string, plan *PlannerResult, appName string) 
 		Settings     map[string]string `json:"settings,omitempty"`
 	}
 	type projectConfig struct {
-		AppName       string            `json:"app_name"`
-		BundleID      string            `json:"bundle_id"`
-		DeviceFamily  string            `json:"device_family,omitempty"`
-		Permissions   []permission      `json:"permissions,omitempty"`
-		Extensions    []extensionPlan   `json:"extensions,omitempty"`
-		Localizations []string          `json:"localizations,omitempty"`
-		BuildSettings map[string]string `json:"build_settings,omitempty"`
+		AppName           string            `json:"app_name"`
+		BundleID          string            `json:"bundle_id"`
+		Platform          string            `json:"platform,omitempty"`
+		WatchProjectShape string            `json:"watch_project_shape,omitempty"`
+		DeviceFamily      string            `json:"device_family,omitempty"`
+		Permissions       []permission      `json:"permissions,omitempty"`
+		Extensions        []extensionPlan   `json:"extensions,omitempty"`
+		Localizations     []string          `json:"localizations,omitempty"`
+		BuildSettings     map[string]string `json:"build_settings,omitempty"`
 	}
 
 	cfg := projectConfig{
-		AppName:      appName,
-		BundleID:     bundleID,
-		DeviceFamily: plan.GetDeviceFamily(),
+		AppName:           appName,
+		BundleID:          bundleID,
+		Platform:          plan.GetPlatform(),
+		WatchProjectShape: plan.GetWatchProjectShape(),
+		DeviceFamily:      plan.GetDeviceFamily(),
 	}
 
 	if plan != nil {
@@ -577,6 +1085,11 @@ func writeProjectYML(projectDir string, plan *PlannerResult, appName string) err
 func scaffoldSourceDirs(projectDir, appName string, plan *PlannerResult) error {
 	dirs := []string{
 		filepath.Join(projectDir, appName),
+	}
+
+	// For paired watchOS apps, create the watch source directory
+	if plan != nil && IsWatchOS(plan.GetPlatform()) && plan.GetWatchProjectShape() == WatchShapePaired {
+		dirs = append(dirs, filepath.Join(projectDir, appName+"Watch"))
 	}
 
 	if plan != nil {
@@ -633,6 +1146,776 @@ func runXcodeGen(projectDir string) error {
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("xcodegen generate failed: %w\n%s", err, string(output))
+	}
+	return nil
+}
+
+func writeClaudeCommands(projectDir, appName, platform string) error {
+	buildCmd := canonicalBuildCommand(appName, platform)
+	cmdDir := filepath.Join(projectDir, ".claude", "commands")
+	files := map[string]string{
+		"preflight.md": `---
+description: Run generated-project preflight checks for Claude Code workflows.
+---
+Run the preflight workflow for this iOS project.
+
+1. Read @memory/project-overview.md and @memory/build-fix-workflow.md.
+2. Run ./scripts/claude/mcp-health.sh.
+3. Run ./scripts/claude/validate-skills.sh.
+4. Summarize actionable issues only.
+`,
+		"build-green.md": fmt.Sprintf(`---
+description: Build-fix loop until the iOS project builds successfully.
+---
+Use the quality-first build loop for this project.
+
+1. Read @memory/build-fix-workflow.md and @memory/quality-gates.md.
+2. Run ./scripts/claude/check-no-placeholders.sh and ./scripts/claude/check-previews.sh.
+3. Run this build command:
+   %s
+4. If the build fails, investigate and fix the errors.
+5. Repeat until the build is green.
+6. Finish with a short summary of fixes and residual risks.
+`, buildCmd),
+		"fix-build.md": fmt.Sprintf(`---
+description: Focused build error fixing using project memory and xcodegen policy.
+---
+Fix current build issues only.
+
+1. Read @memory/xcodegen-policy.md and @memory/build-fix-workflow.md.
+2. Run this build command first:
+   %s
+3. Fix the errors with minimal changes.
+4. If project configuration must change, use xcodegen MCP tools.
+5. Rebuild until green.
+`, buildCmd),
+		"add-feature.md": `---
+description: Add a feature using generated project memory, skills, and quality checks.
+---
+Add the requested feature while preserving project quality.
+
+1. Read @memory/generated-plan.md, @memory/architecture.md, and @memory/design-system.md.
+2. Load relevant skills from .claude/skills and consult .claude/skills/INDEX.md.
+3. If permissions/extensions/entitlements are needed, use xcodegen MCP tools.
+4. Implement the feature end-to-end with previews and reachable navigation wiring.
+5. Run make claude-check.
+6. Summarize what changed and any follow-up work.
+`,
+		"xcodegen-change.md": fmt.Sprintf(`---
+description: Perform project configuration changes through xcodegen MCP tools only.
+---
+Handle project configuration changes via xcodegen MCP tools only.
+
+1. Read @memory/xcodegen-policy.md.
+2. Use get_project_config to inspect current state.
+3. Apply changes using xcodegen MCP tools.
+4. Run regenerate_project if needed.
+5. Verify with:
+   %s
+6. Summarize the configuration diff and affected targets.
+`, buildCmd),
+		"quality-review.md": `---
+description: Review generated iOS project quality gates and report findings.
+---
+Perform a quality review of the current project state (not a full accessibility audit unless requested).
+
+Actions:
+1. Read @memory/review-playbook.md, @memory/quality-gates.md, and @memory/design-system.md.
+2. Load the review skill from .claude/skills (see .claude/skills/INDEX.md).
+3. Run ./scripts/claude/check-no-placeholders.sh.
+4. Run ./scripts/claude/check-previews.sh.
+5. Run ./scripts/claude/check-swift-structure.sh.
+6. If the user supplied screenshots/paths, include an optional visual pass (code evidence still takes priority).
+7. Report using structured Markdown with these exact sections:
+   - ## Scope
+   - ## Findings (severity-ordered)
+   - ## Fix Plan
+   - ## Verification Steps
+   - ## Escalation
+8. In ## Escalation, explicitly state whether /accessibility-audit is recommended.
+
+Findings requirements:
+- One finding per bullet
+- Include severity (Critical/High/Medium/Low)
+- Include evidence with file path and line when code-based
+- Include remediation direction (not just symptom)
+`,
+		"accessibility-audit.md": `---
+description: Perform a focused accessibility audit for generated SwiftUI apps (code-first, screenshots optional).
+---
+Run a focused accessibility audit for the current project or the requested files/screens.
+
+Actions:
+1. Read @memory/accessibility-policy.md and @memory/review-playbook.md.
+2. Load relevant skills from .claude/skills/INDEX.md (especially accessibility/review guidance).
+3. Run ./scripts/claude/check-a11y-dynamic-type.sh.
+4. Run ./scripts/claude/check-a11y-icon-buttons.sh.
+5. Review code evidence first; use screenshots/images only if provided for visual cues (contrast/tap target/hierarchy hints).
+6. Report using structured Markdown with these exact sections:
+   - ## Scope
+   - ## Checklist Coverage
+   - ## Findings (severity-ordered)
+   - ## Remediation Plan
+   - ## Re-test Steps
+   - ## Open Questions (only if required)
+
+Checklist coverage categories (fixed):
+- Dynamic Type / text scaling
+- VoiceOver labels/hints/traits
+- Reduce Motion / Reduce Transparency
+- Touch targets and interaction clarity
+- Color/contrast (code-evidence and visual hints)
+- Focus/form navigation (if forms exist)
+- Status/feedback semantics (if present)
+`,
+		"research-apple-api.md": `---
+description: Research Apple APIs with Apple docs MCP first, then official web fallback.
+---
+Research the requested Apple API/framework carefully.
+
+Process:
+1. Use Apple docs MCP tools first.
+2. If unavailable or insufficient, use WebFetch/WebSearch on official Apple sources.
+3. Do not guess API signatures.
+4. Return exact API names, platform notes, and integration guidance for this project.
+
+Note: context7 is optional for this project scaffold and not required.
+`,
+	}
+	for name, content := range files {
+		if err := writeTextFile(filepath.Join(cmdDir, name), content, 0o644); err != nil {
+			return fmt.Errorf("failed to write command %s: %w", name, err)
+		}
+	}
+	return nil
+}
+
+func writeClaudeAgents(projectDir string) error {
+	agentsDir := filepath.Join(projectDir, ".claude", "agents")
+	files := map[string]string{
+		"ios-api-researcher.md": `---
+name: ios-api-researcher
+description: Verifies Apple API signatures, platform support, and usage details before implementation.
+tools:
+  - Read
+  - WebFetch
+  - WebSearch
+  - mcp__apple-docs__search_apple_docs
+  - mcp__apple-docs__get_apple_doc_content
+  - mcp__apple-docs__search_framework_symbols
+  - mcp__apple-docs__get_platform_compatibility
+model: sonnet
+---
+You are the Apple API research specialist for this project.
+
+Prefer Apple docs MCP first. Fall back to official web docs when MCP is unavailable.
+Do not edit project files unless explicitly asked.
+`,
+		"xcodegen-config-specialist.md": `---
+name: xcodegen-config-specialist
+description: Handles XcodeGen project configuration changes via MCP tools with minimal risk.
+tools:
+  - Read
+  - mcp__xcodegen__get_project_config
+  - mcp__xcodegen__add_permission
+  - mcp__xcodegen__add_extension
+  - mcp__xcodegen__add_entitlement
+  - mcp__xcodegen__add_localization
+  - mcp__xcodegen__set_build_setting
+  - mcp__xcodegen__regenerate_project
+model: sonnet
+---
+You are the XcodeGen configuration specialist.
+
+Use xcodegen MCP tools only. Avoid manual .xcodeproj edits. Summarize target-level effects.
+`,
+		"swiftui-quality-reviewer.md": `---
+name: swiftui-quality-reviewer
+description: Reviews SwiftUI output for previews, theme usage, adaptive layout, and dead code risks.
+tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
+model: sonnet
+---
+You are the SwiftUI quality reviewer.
+
+Focus on project quality gates: previews, theme token usage, adaptive layout, dead code, and root wiring for app-wide settings.
+If the change is UI-heavy or needs deeper accessibility analysis, recommend or delegate to swiftui-accessibility-reviewer.
+Return findings first, ordered by severity.
+`,
+		"swiftui-accessibility-reviewer.md": `---
+name: swiftui-accessibility-reviewer
+description: Performs code-first accessibility audits for generated SwiftUI apps, with optional screenshot review.
+tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
+  - ViewImage
+model: sonnet
+---
+You are the SwiftUI accessibility reviewer.
+
+Audit code first and prefer file-based evidence. Use screenshots only when provided or needed for visual validation.
+Return findings first, ordered by severity. Mark visual-only uncertainty as "needs verification".
+Do not edit files unless explicitly asked.
+`,
+		"test-scaffold-writer.md": `---
+name: test-scaffold-writer
+description: Creates minimal, low-risk tests or checks for generated projects.
+tools:
+  - Read
+  - Write
+  - Edit
+  - Bash
+model: sonnet
+---
+Create deterministic, low-risk checks and tests with small diffs.
+Prefer fast checks first and avoid destabilizing app code.
+`,
+	}
+	for name, content := range files {
+		if err := writeTextFile(filepath.Join(agentsDir, name), content, 0o644); err != nil {
+			return fmt.Errorf("failed to write agent %s: %w", name, err)
+		}
+	}
+	return nil
+}
+
+func writeClaudeWorkflowDocs(projectDir, appName, platform string) error {
+	buildCmd := canonicalBuildCommand(appName, platform)
+	content := fmt.Sprintf(`# Claude Workflow (Generated Project)
+
+This project is generated with a quality-first Claude Code scaffold.
+
+## Shared Files (Commit)
+- .claude/CLAUDE.md
+- .claude/memory/
+- .claude/skills/
+- .claude/commands/
+- .claude/agents/
+- .claude/settings.json
+- .mcp.json
+- scripts/claude/
+- docs/claude-workflow.md
+
+## Local-Only Files (Ignored)
+- .claude/settings.local.json
+- .claude/logs/
+- .claude/tmp/
+- .claude/transcripts/
+
+## Canonical Build Command
+
+%s
+
+## Recommended Commands
+- /preflight
+- /build-green
+- /fix-build
+- /xcodegen-change
+- /quality-review
+- /accessibility-audit
+- /research-apple-api
+
+## Review & Accessibility Workflow
+- Run /quality-review before major refactors or before handing off a feature for QA
+- Run /accessibility-audit for UI-heavy changes, new forms, custom controls, or motion-heavy interfaces
+- Accessibility audits are code-first; add screenshot/image paths when you want a visual pass
+- Phase 1 enforcement: a11y hooks are advisory, but make claude-check fails on the new local a11y checks
+- CI intentionally does not run the new a11y checks yet (staged rollout)
+
+## Project Config Policy
+- Use xcodegen MCP tools for project configuration changes
+- Do not manually edit .xcodeproj
+- Manual project.yml edits should be rare and followed by regenerate_project
+
+## Research Policy
+- Apple docs MCP first
+- Official web docs fallback when MCP is unavailable
+- context7 is optional (not required for this scaffold)
+
+## Optional context7 (Later)
+If your environment supports context7, add it to .mcp.json and verify with scripts/claude/mcp-health.sh.
+Keep Apple docs MCP plus web fallback as the default recovery path.
+`, buildCmd)
+	return writeTextFile(filepath.Join(projectDir, "docs", "claude-workflow.md"), content, 0o644)
+}
+
+func writeProjectMakefile(projectDir, appName, platform string) error {
+	buildCmd := canonicalBuildCommand(appName, platform)
+	destination := canonicalBuildDestination(platform)
+	content := fmt.Sprintf(".PHONY: build test claude-check mcp-health skills-validate\n\nbuild:\n\t%s\n\nmcp-health:\n\t./scripts/claude/mcp-health.sh\n\nskills-validate:\n\t./scripts/claude/validate-skills.sh\n\nclaude-check:\n\t-./scripts/claude/mcp-health.sh\n\tplutil -lint .mcp.json >/dev/null\n\tplutil -lint .claude/settings.json >/dev/null\n\t./scripts/claude/validate-skills.sh\n\t./scripts/claude/check-no-placeholders.sh\n\t./scripts/claude/check-previews.sh\n\t./scripts/claude/check-swift-structure.sh\n\t./scripts/claude/check-a11y-dynamic-type.sh\n\t./scripts/claude/check-a11y-icon-buttons.sh\n\t./scripts/claude/check-project-config-edits.sh --scan || true\n\t./scripts/claude/run-build-check.sh\n\ntest:\n\t@if [ -d Tests ]; then \\\n\t\techo \"Tests directory found; running xcodebuild test\"; \\\n\t\txcodebuild -project %s.xcodeproj -scheme %s -destination '%s' -quiet test; \\\n\telse \\\n\t\techo \"No Tests directory present; skipping tests\"; \\\n\tfi\n", buildCmd, appName, appName, destination)
+	return writeTextFile(filepath.Join(projectDir, "Makefile"), content, 0o644)
+}
+
+func writeCIWorkflow(projectDir, appName, platform string) error {
+	destination := canonicalBuildDestination(platform)
+	content := fmt.Sprintf(`name: Claude Quality
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+
+jobs:
+  quality:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Validate Claude JSON config files
+        run: |
+          plutil -lint .mcp.json
+          plutil -lint .claude/settings.json
+
+      - name: Ensure scripts are executable
+        run: chmod +x scripts/claude/*.sh
+
+      - name: Validate skills
+        run: ./scripts/claude/validate-skills.sh
+
+      - name: Placeholder check
+        run: ./scripts/claude/check-no-placeholders.sh
+
+      - name: Build check
+        run: ./scripts/claude/run-build-check.sh
+
+      - name: Optional tests (if present)
+        run: |
+          if [ -d Tests ]; then
+            xcodebuild -project %s.xcodeproj -scheme %s -destination '%s' -quiet test
+          else
+            echo "No Tests directory present; skipping tests"
+          fi
+`, appName, appName, destination)
+	return writeTextFile(filepath.Join(projectDir, ".github", "workflows", "claude-quality.yml"), content, 0o644)
+}
+
+func writeClaudeScripts(projectDir, appName, platform string) error {
+	scriptsDir := filepath.Join(projectDir, "scripts", "claude")
+	buildCmd := canonicalBuildCommand(appName, platform)
+	files := map[string]string{
+		"check-project-config-edits.sh": `#!/bin/sh
+set -eu
+
+MODE="${1:-hook}"
+INPUT=""
+if [ ! -t 0 ]; then
+  INPUT=$(cat || true)
+fi
+
+warn() {
+  printf '%s\n' "$1" >&2
+}
+
+if [ "$MODE" = "--scan" ]; then
+  if ! command -v git >/dev/null 2>&1; then
+    exit 0
+  fi
+  if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    exit 0
+  fi
+  CHANGED=$(git diff --name-only 2>/dev/null || true)
+  printf '%s\n' "$CHANGED" | grep -Eq '(^|/)(project\.yml|.*\.xcodeproj/)' || exit 0
+  warn "[claude-check] Advisory: project.yml or .xcodeproj changes detected. Prefer xcodegen MCP tools for configuration changes."
+  exit 0
+fi
+
+printf '%s' "$INPUT" | grep -Eq '"tool_name"[[:space:]]*:[[:space:]]*"(Write|Edit|MultiEdit)"' || exit 0
+printf '%s' "$INPUT" | grep -Eq '(project\.yml|\.xcodeproj/)' || exit 0
+warn "[claude-hook] Advisory: direct edits to project.yml/.xcodeproj detected. Prefer xcodegen MCP tools (add_permission/add_extension/etc.)."
+exit 0
+`,
+		"check-bash-safety.sh": `#!/bin/sh
+set -eu
+
+INPUT=""
+if [ ! -t 0 ]; then
+  INPUT=$(cat || true)
+fi
+
+warn() {
+  printf '%s\n' "$1" >&2
+}
+
+printf '%s' "$INPUT" | grep -Eq '"tool_name"[[:space:]]*:[[:space:]]*"Bash"' || exit 0
+if printf '%s' "$INPUT" | grep -Eq '(git reset --hard|git checkout --|rm -rf)'; then
+  warn "[claude-hook] Advisory: potentially destructive shell command detected. Confirm intent before continuing."
+fi
+exit 0
+`,
+		"check-no-placeholders.sh": `#!/bin/sh
+set -eu
+
+HOOK_MODE=0
+if [ "${1:-}" = "--hook" ]; then
+  HOOK_MODE=1
+fi
+
+ROOT="${CLAUDE_PROJECT_DIR:-$(pwd)}"
+cd "$ROOT"
+
+MATCHES=$(find . -type f -name '*.swift' \
+  -not -path './.git/*' \
+  -not -path './.build/*' \
+  -not -path './DerivedData/*' \
+  -exec grep -nH 'Placeholder.*replaced by generated code' {} + 2>/dev/null || true)
+
+if [ -n "$MATCHES" ]; then
+  printf '%s\n' "$MATCHES" >&2
+  printf '%s\n' "[claude-check] Placeholder Swift files still exist. Replace scaffolding placeholders before completion." >&2
+  if [ "$HOOK_MODE" -eq 1 ]; then
+    exit 0
+  fi
+  exit 1
+fi
+exit 0
+`,
+		"check-previews.sh": `#!/bin/sh
+set -eu
+
+HOOK_MODE=0
+if [ "${1:-}" = "--hook" ]; then
+  HOOK_MODE=1
+fi
+
+ROOT="${CLAUDE_PROJECT_DIR:-$(pwd)}"
+cd "$ROOT"
+
+if [ "$HOOK_MODE" -eq 1 ] && [ ! -t 0 ]; then
+  INPUT=$(cat || true)
+  FILE=$(printf '%s' "$INPUT" | tr '\n' ' ' | sed -n 's/.*"file_path"[[:space:]]*:[[:space:]]*"\([^"]*\.swift\)".*/\1/p')
+  if [ -n "${FILE:-}" ] && [ -f "$FILE" ]; then
+    CANDIDATES="$FILE"
+  else
+    CANDIDATES=""
+  fi
+else
+  CANDIDATES=""
+fi
+
+if [ -z "$CANDIDATES" ]; then
+  CANDIDATES=$(find App Features Targets Shared -type f -name '*.swift' 2>/dev/null || true)
+fi
+
+MISSING=""
+for f in $CANDIDATES; do
+  [ -f "$f" ] || continue
+  if grep -Eq 'struct[[:space:]]+[A-Za-z0-9_]+[[:space:]]*:[[:space:]]*View' "$f"; then
+    if ! grep -q '#Preview' "$f"; then
+      MISSING="${MISSING}${f}\n"
+    fi
+  fi
+done
+
+if [ -n "$MISSING" ]; then
+  printf '%b' "$MISSING" >&2
+  printf '%s\n' "[claude-check] View files without #Preview detected (advisory in hook mode)." >&2
+  if [ "$HOOK_MODE" -eq 1 ]; then
+    exit 0
+  fi
+  exit 1
+fi
+exit 0
+`,
+		"check-swift-structure.sh": `#!/bin/sh
+set -eu
+
+ROOT="${CLAUDE_PROJECT_DIR:-$(pwd)}"
+cd "$ROOT"
+
+FILES=""
+if [ ! -t 0 ]; then
+  INPUT=$(cat || true)
+  FILE=$(printf '%s' "$INPUT" | tr '\n' ' ' | sed -n 's/.*"file_path"[[:space:]]*:[[:space:]]*"\([^"]*\.swift\)".*/\1/p')
+  if [ -n "${FILE:-}" ] && [ -f "$FILE" ]; then
+    FILES="$FILE"
+  fi
+fi
+if [ -z "$FILES" ]; then
+  FILES=$(find App Features Targets Shared -type f -name '*.swift' 2>/dev/null || true)
+fi
+
+for f in $FILES; do
+  [ -f "$f" ] || continue
+  if [ ! -s "$f" ]; then
+    printf '%s\n' "[claude-hook] Advisory: empty Swift file detected: $f" >&2
+    continue
+  fi
+  if grep -Eq 'TODO|FIXME' "$f"; then
+    printf '%s\n' "[claude-hook] Advisory: TODO/FIXME found in $f" >&2
+  fi
+done
+exit 0
+`,
+		"check-a11y-dynamic-type.sh": `#!/bin/sh
+set -eu
+
+HOOK_MODE=0
+if [ "${1:-}" = "--hook" ]; then
+  HOOK_MODE=1
+fi
+
+ROOT="${CLAUDE_PROJECT_DIR:-$(pwd)}"
+cd "$ROOT"
+
+FILES=$(find App Features Targets Shared -type f -name '*.swift' 2>/dev/null || true)
+MATCHES=""
+for f in $FILES; do
+  [ -f "$f" ] || continue
+  HITS=$(grep -nH -E '\.font[[:space:]]*\([[:space:]]*\.system[[:space:]]*\([[:space:]]*size[[:space:]]*:' "$f" 2>/dev/null | grep -v 'claude-a11y:ignore fixed-font' || true)
+  if [ -n "$HITS" ]; then
+    MATCHES="${MATCHES}${HITS}\n"
+  fi
+done
+
+if [ -n "$MATCHES" ]; then
+  printf '%b' "$MATCHES" >&2
+  if [ "$HOOK_MODE" -eq 1 ]; then
+    printf '%s\n' "[claude-hook] Advisory: fixed font size usage detected. Prefer SwiftUI text styles (.body/.headline/etc.) or add 'claude-a11y:ignore fixed-font' with justification." >&2
+    exit 0
+  fi
+  printf '%s\n' "[claude-check] Fixed font size usage detected. Prefer Dynamic Type-friendly SwiftUI text styles or add 'claude-a11y:ignore fixed-font' with justification." >&2
+  exit 1
+fi
+exit 0
+`,
+		"check-a11y-icon-buttons.sh": `#!/bin/sh
+set -eu
+
+HOOK_MODE=0
+if [ "${1:-}" = "--hook" ]; then
+  HOOK_MODE=1
+fi
+
+ROOT="${CLAUDE_PROJECT_DIR:-$(pwd)}"
+cd "$ROOT"
+
+FILES=$(find App Features Targets Shared -type f -name '*.swift' 2>/dev/null || true)
+TMP_OUT=$(mktemp)
+trap 'rm -f "$TMP_OUT"' EXIT
+
+for f in $FILES; do
+  [ -f "$f" ] || continue
+  awk '
+    { lines[NR] = $0 }
+    END {
+      for (i = 1; i <= NR; i++) {
+        if (lines[i] !~ /Image[[:space:]]*\([[:space:]]*systemName:[[:space:]]*"/) {
+          continue
+        }
+        start = i - 4
+        if (start < 1) start = 1
+        stop = i + 12
+        if (stop > NR) stop = NR
+
+        hasButton = 0
+        hasLabel = 0
+        hasText = 0
+        ignore = 0
+        for (j = start; j <= stop; j++) {
+          line = lines[j]
+          if (line ~ /claude-a11y:ignore icon-button-label/) ignore = 1
+          if (line ~ /Button[[:space:]]*(\(|\{)/) hasButton = 1
+          if (line ~ /\.accessibilityLabel[[:space:]]*\(/) hasLabel = 1
+          if (line ~ /Text[[:space:]]*\(|Label[[:space:]]*\(/) hasText = 1
+        }
+
+        if (hasButton && !hasLabel && !hasText && !ignore) {
+          printf "%s:%d: icon-only button may be missing accessibilityLabel\n", FILENAME, i
+        }
+      }
+    }
+  ' "$f" >> "$TMP_OUT"
+done
+
+if [ -s "$TMP_OUT" ]; then
+  cat "$TMP_OUT" >&2
+  if [ "$HOOK_MODE" -eq 1 ]; then
+    printf '%s\n' "[claude-hook] Advisory: icon-only button without accessibilityLabel detected. Add .accessibilityLabel(...) or annotate with 'claude-a11y:ignore icon-button-label' and justification." >&2
+    exit 0
+  fi
+  printf '%s\n' "[claude-check] Icon-only button without accessibilityLabel detected. Add .accessibilityLabel(...) or annotate with 'claude-a11y:ignore icon-button-label' and justification." >&2
+  exit 1
+fi
+exit 0
+`,
+		"run-build-check.sh": fmt.Sprintf(`#!/bin/sh
+set -eu
+
+HOOK_MODE=0
+if [ "${1:-}" = "--hook" ]; then
+  HOOK_MODE=1
+fi
+
+ROOT="${CLAUDE_PROJECT_DIR:-$(pwd)}"
+cd "$ROOT"
+
+APP_NAME="%s"
+BUILD_CMD="%s"
+LOGFILE="${TMPDIR:-/tmp}/claude-build-check.log"
+
+warn() {
+  printf '%%s\n' "$1" >&2
+}
+
+if ! command -v xcodebuild >/dev/null 2>&1; then
+  warn "[claude-build] xcodebuild not found; skipping build check."
+  [ "$HOOK_MODE" -eq 1 ] && exit 0
+  exit 1
+fi
+
+if [ ! -d "$APP_NAME.xcodeproj" ]; then
+  warn "[claude-build] $APP_NAME.xcodeproj not found; skipping build check."
+  [ "$HOOK_MODE" -eq 1 ] && exit 0
+  exit 1
+fi
+
+if [ "$HOOK_MODE" -eq 1 ]; then
+  if ! sh -c "$BUILD_CMD" >"$LOGFILE" 2>&1; then
+    warn "[claude-hook] Advisory: build check failed. Inspect $LOGFILE or run /build-green."
+  fi
+  exit 0
+fi
+
+exec sh -c "$BUILD_CMD"
+`, appName, buildCmd),
+		"mcp-health.sh": `#!/bin/sh
+set -eu
+
+ROOT="${CLAUDE_PROJECT_DIR:-$(pwd)}"
+cd "$ROOT"
+
+FAIL=0
+warn() { printf '%s\n' "$1" >&2; }
+
+if [ ! -f .mcp.json ]; then
+  warn "[mcp-health] .mcp.json not found"
+  exit 1
+fi
+
+if command -v plutil >/dev/null 2>&1; then
+  if ! plutil -lint .mcp.json >/dev/null; then
+    warn "[mcp-health] .mcp.json is not valid JSON"
+    FAIL=1
+  fi
+fi
+
+for cmd in xcodegen npx nanowave; do
+  if ! command -v "$cmd" >/dev/null 2>&1; then
+    warn "[mcp-health] Missing required command in PATH: $cmd"
+    FAIL=1
+  fi
+done
+
+if [ "$FAIL" -eq 0 ]; then
+  printf '%s\n' "[mcp-health] OK (command availability + config syntax)"
+  exit 0
+fi
+exit 1
+`,
+		"validate-skills.sh": `#!/bin/sh
+set -eu
+
+ROOT="${CLAUDE_PROJECT_DIR:-$(pwd)}"
+cd "$ROOT"
+
+SKILLS_DIR=".claude/skills"
+if [ ! -d "$SKILLS_DIR" ]; then
+  printf '%s\n' "[validate-skills] skills directory not found: $SKILLS_DIR" >&2
+  exit 1
+fi
+
+TMP_NAMES=$(mktemp)
+trap 'rm -f "$TMP_NAMES"' EXIT
+FAIL=0
+
+for d in "$SKILLS_DIR"/*; do
+  [ -d "$d" ] || continue
+  SKILL_MD="$d/SKILL.md"
+  if [ ! -f "$SKILL_MD" ]; then
+    printf '%s\n' "[validate-skills] Missing SKILL.md in $d" >&2
+    FAIL=1
+    continue
+  fi
+  if [ ! -s "$SKILL_MD" ]; then
+    printf '%s\n' "[validate-skills] Empty SKILL.md in $d" >&2
+    FAIL=1
+    continue
+  fi
+  if ! head -1 "$SKILL_MD" | grep -q '^---$'; then
+    printf '%s\n' "[validate-skills] Missing YAML frontmatter in $SKILL_MD" >&2
+    FAIL=1
+  fi
+  for field in name description user-invocable; do
+    if ! grep -Eq "^${field}:" "$SKILL_MD"; then
+      printf '%s\n' "[validate-skills] Missing frontmatter field '${field}' in $SKILL_MD" >&2
+      FAIL=1
+    fi
+  done
+
+  NAME=$(sed -n 's/^name:[[:space:]]*//p' "$SKILL_MD" | head -1 | sed "s/^['\"]//; s/['\"]$//")
+  if [ -n "$NAME" ]; then
+    printf '%s\n' "$NAME" >> "$TMP_NAMES"
+  fi
+
+  BODY_HAS_CONTENT=$(awk '
+    BEGIN { in_fm = 0; fm_done = 0; has = 0 }
+    NR == 1 && $0 == "---" { in_fm = 1; next }
+    in_fm && $0 == "---" { in_fm = 0; fm_done = 1; next }
+    !in_fm && fm_done {
+      line = $0
+      gsub(/[[:space:]]/, "", line)
+      if (length(line) > 0) { has = 1; exit }
+    }
+    END { if (has) print "1"; else print "0" }
+  ' "$SKILL_MD")
+  if [ "$BODY_HAS_CONTENT" != "1" ]; then
+    printf '%s\n' "[validate-skills] Skill body is empty in $SKILL_MD" >&2
+    FAIL=1
+  fi
+
+  LINKS=$(grep -Eo '\[[^]]+\]\([^)]+\.md\)' "$SKILL_MD" | sed -E 's/.*\(([^)]+)\)/\1/' || true)
+  for link in $LINKS; do
+    case "$link" in
+      http*|/*|*#*)
+        continue
+        ;;
+    esac
+    if [ ! -f "$d/$link" ]; then
+      printf '%s\n' "[validate-skills] Referenced companion file missing: $d/$link (from $SKILL_MD)" >&2
+      FAIL=1
+    fi
+  done
+done
+
+DUPES=$(sort "$TMP_NAMES" | uniq -d || true)
+if [ -n "$DUPES" ]; then
+  printf '%s\n' "$DUPES" | while IFS= read -r n; do
+    [ -n "$n" ] && printf '%s\n' "[validate-skills] Duplicate skill name in frontmatter: $n" >&2
+  done
+  FAIL=1
+fi
+
+if [ "$FAIL" -ne 0 ]; then
+  exit 1
+fi
+printf '%s\n' "[validate-skills] OK"
+exit 0
+`,
+	}
+
+	for name, content := range files {
+		if err := writeExecutableFile(filepath.Join(scriptsDir, name), content); err != nil {
+			return fmt.Errorf("failed to write script %s: %w", name, err)
+		}
 	}
 	return nil
 }

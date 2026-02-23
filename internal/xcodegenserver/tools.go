@@ -72,6 +72,18 @@ func handleAddExtension(ctx context.Context, req *mcp.CallToolRequest, input add
 		return nil, textOutput{}, err
 	}
 
+	// Validate extension kind against platform
+	platform := cfg.Platform
+	if platform == "watchos" {
+		unsupported := map[string]bool{
+			"live_activity": true, "share": true,
+			"notification_service": true, "safari": true, "app_clip": true,
+		}
+		if unsupported[input.Kind] {
+			return nil, textOutput{}, fmt.Errorf("extension kind %q is not supported on watchOS (only widget is supported)", input.Kind)
+		}
+	}
+
 	ext := ExtensionPlan{
 		Kind:    input.Kind,
 		Name:    input.Name,
@@ -294,6 +306,13 @@ func handleGetProjectConfig(ctx context.Context, req *mcp.CallToolRequest, input
 
 	var summary strings.Builder
 	summary.WriteString(fmt.Sprintf("App: %s (bundle: %s)\n", cfg.AppName, cfg.BundleID))
+
+	if cfg.Platform != "" {
+		summary.WriteString(fmt.Sprintf("Platform: %s\n", cfg.Platform))
+	}
+	if cfg.WatchProjectShape != "" {
+		summary.WriteString(fmt.Sprintf("Watch project shape: %s\n", cfg.WatchProjectShape))
+	}
 
 	if len(cfg.Permissions) > 0 {
 		summary.WriteString(fmt.Sprintf("Permissions: %d\n", len(cfg.Permissions)))

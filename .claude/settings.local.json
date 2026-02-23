@@ -9,7 +9,17 @@
       "WebSearch",
       "WebFetch(domain:raw.githubusercontent.com)",
       "Bash(go build:*)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(xxd:*)",
+      "WebFetch(domain:api.github.com)",
+      "WebFetch(domain:wwdcnotes.com)",
+      "WebFetch(domain:www.kodeco.com)",
+      "WebFetch(domain:medium.com)",
+      "WebFetch(domain:zoewave.medium.com)",
+      "WebFetch(domain:stratigrafia.org)",
+      "WebFetch(domain:icab.de)",
+      "Bash(gh search:*)",
+      "Bash(grep:*)"
     ]
   },
   "disabledMcpjsonServers": [

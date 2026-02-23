@@ -46,6 +46,27 @@ func writeIOSDestinationSettings(b *strings.Builder, family string) {
 }
 
 func generateProjectYAML(appName string, plan *PlannerResult) string {
+	platform := PlatformIOS
+	if plan != nil {
+		platform = plan.GetPlatform()
+	}
+
+	if IsWatchOS(platform) {
+		shape := WatchShapeStandalone
+		if plan != nil {
+			shape = plan.GetWatchProjectShape()
+		}
+		if shape == WatchShapePaired {
+			return generatePairedYAML(appName, plan)
+		}
+		return generateWatchOnlyYAML(appName, plan)
+	}
+
+	return generateIOSProjectYAML(appName, plan)
+}
+
+// generateIOSProjectYAML produces the iOS project.yml (existing behavior).
+func generateIOSProjectYAML(appName string, plan *PlannerResult) string {
 	var b strings.Builder
 
 	bundleID := fmt.Sprintf("%s.%s", bundleIDPrefix(), strings.ToLower(appName))
@@ -239,6 +260,357 @@ func generateProjectYAML(appName string, plan *PlannerResult) string {
 		b.WriteString("    run:\n")
 		fmt.Fprintf(&b, "      executable: %s\n", appName)
 	}
+
+	return b.String()
+}
+
+// writeWatchOSBuildSettings writes watchOS-specific build settings.
+func writeWatchOSBuildSettings(b *strings.Builder) {
+	b.WriteString("        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon\n")
+	b.WriteString("        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor\n")
+	b.WriteString("        ENABLE_PREVIEWS: YES\n")
+	b.WriteString("        SWIFT_EMIT_LOC_STRINGS: YES\n")
+	b.WriteString("        SWIFT_APPROACHABLE_CONCURRENCY: YES\n")
+	b.WriteString("        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor\n")
+}
+
+// generateWatchOnlyYAML produces project.yml for a standalone watchOS app.
+func generateWatchOnlyYAML(appName string, plan *PlannerResult) string {
+	var b strings.Builder
+
+	bundleID := fmt.Sprintf("%s.%s", bundleIDPrefix(), strings.ToLower(appName))
+	hasExtensions := plan != nil && len(plan.Extensions) > 0
+
+	fmt.Fprintf(&b, "name: %s\n", appName)
+	b.WriteString("options:\n")
+	fmt.Fprintf(&b, "  bundleIdPrefix: %s\n", bundleIDPrefix())
+	b.WriteString("  deploymentTarget:\n")
+	b.WriteString("    watchOS: \"26.0\"\n")
+	b.WriteString("  xcodeVersion: \"16.0\"\n")
+	b.WriteString("  createIntermediateGroups: true\n")
+	b.WriteString("  generateEmptyDirectories: true\n")
+	b.WriteString("  useBaseInternationalization: false\n")
+
+	if plan != nil && len(plan.Localizations) > 0 {
+		b.WriteString("  knownRegions:\n")
+		for _, lang := range plan.Localizations {
+			fmt.Fprintf(&b, "    - %s\n", lang)
+		}
+	}
+	b.WriteString("\n")
+
+	b.WriteString("targets:\n")
+	fmt.Fprintf(&b, "  %s:\n", appName)
+	b.WriteString("    type: application.watchapp2-container\n")
+	b.WriteString("    platform: watchOS\n")
+	b.WriteString("    sources:\n")
+	fmt.Fprintf(&b, "      - path: %s\n", appName)
+	b.WriteString("        type: syncedFolder\n")
+	if hasExtensions {
+		b.WriteString("      - path: Shared\n")
+		b.WriteString("        type: syncedFolder\n")
+		b.WriteString("        optional: true\n")
+	}
+
+	b.WriteString("    settings:\n")
+	b.WriteString("      base:\n")
+	b.WriteString("        SWIFT_VERSION: \"6.0\"\n")
+	fmt.Fprintf(&b, "        PRODUCT_BUNDLE_IDENTIFIER: %s\n", bundleID)
+	b.WriteString("        CODE_SIGN_STYLE: Automatic\n")
+	b.WriteString("        CURRENT_PROJECT_VERSION: 1\n")
+	b.WriteString("        MARKETING_VERSION: \"1.0\"\n")
+	b.WriteString("        GENERATE_INFOPLIST_FILE: YES\n")
+	writeWatchOSBuildSettings(&b)
+
+	if plan != nil {
+		for _, perm := range plan.Permissions {
+			fmt.Fprintf(&b, "        INFOPLIST_KEY_%s: %s\n", perm.Key, xcodeYAMLQuote(perm.Description))
+		}
+	}
+
+	// Entitlements
+	b.WriteString("    entitlements:\n")
+	fmt.Fprintf(&b, "      path: %s/%s.entitlements\n", appName, appName)
+	b.WriteString("      properties: {}\n")
+
+	// Info.plist with WKWatchOnly
+	b.WriteString("    info:\n")
+	fmt.Fprintf(&b, "      path: %s/Info.plist\n", appName)
+	b.WriteString("      properties:\n")
+	b.WriteString("        WKWatchOnly: true\n")
+
+	// Dependencies: embed extension targets
+	if hasExtensions {
+		b.WriteString("    dependencies:\n")
+		for _, ext := range plan.Extensions {
+			name := extensionTargetName(ext, appName)
+			fmt.Fprintf(&b, "      - target: %s\n", name)
+			b.WriteString("        embed: true\n")
+		}
+	}
+
+	// Extension targets (only widget is supported on watchOS)
+	if plan != nil {
+		for _, ext := range plan.Extensions {
+			name := extensionTargetName(ext, appName)
+			kind := ext.Kind
+			extBundleID := fmt.Sprintf("%s.%s", bundleID, strings.ReplaceAll(kind, "_", ""))
+			sourcePath := fmt.Sprintf("Targets/%s", name)
+
+			b.WriteString("\n")
+			fmt.Fprintf(&b, "  %s:\n", name)
+			fmt.Fprintf(&b, "    type: %s\n", xcodegenTargetType(kind))
+			b.WriteString("    platform: watchOS\n")
+			b.WriteString("    sources:\n")
+			fmt.Fprintf(&b, "      - path: %s\n", sourcePath)
+			b.WriteString("        type: syncedFolder\n")
+			b.WriteString("      - path: Shared\n")
+			b.WriteString("        type: syncedFolder\n")
+			b.WriteString("        optional: true\n")
+			b.WriteString("    settings:\n")
+			b.WriteString("      base:\n")
+			fmt.Fprintf(&b, "        PRODUCT_BUNDLE_IDENTIFIER: %s\n", extBundleID)
+			b.WriteString("        CODE_SIGN_STYLE: Automatic\n")
+			b.WriteString("        SWIFT_VERSION: \"6.0\"\n")
+			b.WriteString("        GENERATE_INFOPLIST_FILE: YES\n")
+			b.WriteString("        SKIP_INSTALL: YES\n")
+			b.WriteString("        DEAD_CODE_STRIPPING: NO\n")
+			b.WriteString("        CURRENT_PROJECT_VERSION: 1\n")
+			b.WriteString("        MARKETING_VERSION: \"1.0\"\n")
+			b.WriteString("        SWIFT_APPROACHABLE_CONCURRENCY: YES\n")
+			b.WriteString("        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor\n")
+
+			for k, v := range ext.Settings {
+				fmt.Fprintf(&b, "        %s: %s\n", k, xcodeYAMLQuote(v))
+			}
+
+			infoPlist := mergeInfoPlistDefaults(kind, ext.InfoPlist)
+			if len(infoPlist) > 0 {
+				b.WriteString("    info:\n")
+				fmt.Fprintf(&b, "      path: %s/Info.plist\n", sourcePath)
+				b.WriteString("      properties:\n")
+				writeXcodeYAMLMap(&b, infoPlist, 8)
+			}
+
+			entitlements := mergeEntitlementDefaults(kind, ext.Entitlements, bundleID)
+			if len(entitlements) > 0 {
+				b.WriteString("    entitlements:\n")
+				fmt.Fprintf(&b, "      path: %s/%s.entitlements\n", sourcePath, name)
+				b.WriteString("      properties:\n")
+				writeXcodeYAMLMap(&b, entitlements, 8)
+			}
+		}
+	}
+
+	if hasExtensions {
+		b.WriteString("\nschemes:\n")
+		fmt.Fprintf(&b, "  %s:\n", appName)
+		b.WriteString("    build:\n")
+		b.WriteString("      targets:\n")
+		fmt.Fprintf(&b, "        %s: all\n", appName)
+		for _, ext := range plan.Extensions {
+			name := extensionTargetName(ext, appName)
+			fmt.Fprintf(&b, "        %s: all\n", name)
+		}
+		b.WriteString("    run:\n")
+		fmt.Fprintf(&b, "      executable: %s\n", appName)
+	}
+
+	return b.String()
+}
+
+// generatePairedYAML produces project.yml for a paired iOS+watchOS app.
+func generatePairedYAML(appName string, plan *PlannerResult) string {
+	var b strings.Builder
+
+	bundleID := fmt.Sprintf("%s.%s", bundleIDPrefix(), strings.ToLower(appName))
+	watchAppName := appName + "Watch"
+	watchBundleID := bundleID + ".watchkitapp"
+	hasExtensions := plan != nil && len(plan.Extensions) > 0
+
+	fmt.Fprintf(&b, "name: %s\n", appName)
+	b.WriteString("options:\n")
+	fmt.Fprintf(&b, "  bundleIdPrefix: %s\n", bundleIDPrefix())
+	b.WriteString("  deploymentTarget:\n")
+	b.WriteString("    iOS: \"26.0\"\n")
+	b.WriteString("    watchOS: \"26.0\"\n")
+	b.WriteString("  xcodeVersion: \"16.0\"\n")
+	b.WriteString("  createIntermediateGroups: true\n")
+	b.WriteString("  generateEmptyDirectories: true\n")
+	b.WriteString("  useBaseInternationalization: false\n")
+
+	if plan != nil && len(plan.Localizations) > 0 {
+		b.WriteString("  knownRegions:\n")
+		for _, lang := range plan.Localizations {
+			fmt.Fprintf(&b, "    - %s\n", lang)
+		}
+	}
+	b.WriteString("\n")
+
+	b.WriteString("targets:\n")
+
+	// iOS parent target
+	fmt.Fprintf(&b, "  %s:\n", appName)
+	b.WriteString("    type: application\n")
+	b.WriteString("    platform: iOS\n")
+	b.WriteString("    supportedDestinations:\n")
+	b.WriteString("      - iOS\n")
+	b.WriteString("    sources:\n")
+	fmt.Fprintf(&b, "      - path: %s\n", appName)
+	b.WriteString("        type: syncedFolder\n")
+	if hasExtensions {
+		b.WriteString("      - path: Shared\n")
+		b.WriteString("        type: syncedFolder\n")
+		b.WriteString("        optional: true\n")
+	}
+
+	b.WriteString("    settings:\n")
+	b.WriteString("      base:\n")
+	b.WriteString("        SWIFT_VERSION: \"6.0\"\n")
+	fmt.Fprintf(&b, "        PRODUCT_BUNDLE_IDENTIFIER: %s\n", bundleID)
+	b.WriteString("        CODE_SIGN_STYLE: Automatic\n")
+	b.WriteString("        CURRENT_PROJECT_VERSION: 1\n")
+	b.WriteString("        MARKETING_VERSION: \"1.0\"\n")
+	b.WriteString("        GENERATE_INFOPLIST_FILE: YES\n")
+	b.WriteString("        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES\n")
+	b.WriteString("        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES\n")
+	b.WriteString("        INFOPLIST_KEY_UILaunchScreen_Generation: YES\n")
+	b.WriteString("        TARGETED_DEVICE_FAMILY: \"1\"\n")
+	b.WriteString("        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait\n")
+	b.WriteString("        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon\n")
+	b.WriteString("        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor\n")
+	b.WriteString("        ENABLE_PREVIEWS: YES\n")
+	b.WriteString("        SWIFT_EMIT_LOC_STRINGS: YES\n")
+	b.WriteString("        LD_RUNPATH_SEARCH_PATHS:\n")
+	b.WriteString("          - \"$(inherited)\"\n")
+	b.WriteString("          - \"@executable_path/Frameworks\"\n")
+	b.WriteString("        SWIFT_APPROACHABLE_CONCURRENCY: YES\n")
+	b.WriteString("        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor\n")
+
+	if plan != nil {
+		for _, perm := range plan.Permissions {
+			fmt.Fprintf(&b, "        INFOPLIST_KEY_%s: %s\n", perm.Key, xcodeYAMLQuote(perm.Description))
+		}
+	}
+
+	b.WriteString("    entitlements:\n")
+	fmt.Fprintf(&b, "      path: %s/%s.entitlements\n", appName, appName)
+	b.WriteString("      properties: {}\n")
+
+	// iOS target depends on watch target
+	b.WriteString("    dependencies:\n")
+	fmt.Fprintf(&b, "      - target: %s\n", watchAppName)
+	b.WriteString("        embed: true\n")
+	if hasExtensions {
+		for _, ext := range plan.Extensions {
+			name := extensionTargetName(ext, appName)
+			fmt.Fprintf(&b, "      - target: %s\n", name)
+			b.WriteString("        embed: true\n")
+		}
+	}
+
+	// Watch target
+	b.WriteString("\n")
+	fmt.Fprintf(&b, "  %s:\n", watchAppName)
+	b.WriteString("    type: application.watchapp2\n")
+	b.WriteString("    platform: watchOS\n")
+	b.WriteString("    sources:\n")
+	fmt.Fprintf(&b, "      - path: %s\n", watchAppName)
+	b.WriteString("        type: syncedFolder\n")
+	if hasExtensions {
+		b.WriteString("      - path: Shared\n")
+		b.WriteString("        type: syncedFolder\n")
+		b.WriteString("        optional: true\n")
+	}
+
+	b.WriteString("    settings:\n")
+	b.WriteString("      base:\n")
+	b.WriteString("        SWIFT_VERSION: \"6.0\"\n")
+	fmt.Fprintf(&b, "        PRODUCT_BUNDLE_IDENTIFIER: %s\n", watchBundleID)
+	b.WriteString("        CODE_SIGN_STYLE: Automatic\n")
+	b.WriteString("        CURRENT_PROJECT_VERSION: 1\n")
+	b.WriteString("        MARKETING_VERSION: \"1.0\"\n")
+	b.WriteString("        GENERATE_INFOPLIST_FILE: YES\n")
+	writeWatchOSBuildSettings(&b)
+
+	b.WriteString("    entitlements:\n")
+	fmt.Fprintf(&b, "      path: %s/%s.entitlements\n", watchAppName, watchAppName)
+	b.WriteString("      properties: {}\n")
+
+	// Info.plist with WKRunsIndependentlyOfCompanionApp
+	b.WriteString("    info:\n")
+	fmt.Fprintf(&b, "      path: %s/Info.plist\n", watchAppName)
+	b.WriteString("      properties:\n")
+	b.WriteString("        WKRunsIndependentlyOfCompanionApp: true\n")
+
+	// Watch extension targets (widget only on watchOS)
+	if plan != nil {
+		for _, ext := range plan.Extensions {
+			name := extensionTargetName(ext, appName)
+			kind := ext.Kind
+			extBundleID := fmt.Sprintf("%s.%s", watchBundleID, strings.ReplaceAll(kind, "_", ""))
+			sourcePath := fmt.Sprintf("Targets/%s", name)
+
+			b.WriteString("\n")
+			fmt.Fprintf(&b, "  %s:\n", name)
+			fmt.Fprintf(&b, "    type: %s\n", xcodegenTargetType(kind))
+			b.WriteString("    platform: watchOS\n")
+			b.WriteString("    sources:\n")
+			fmt.Fprintf(&b, "      - path: %s\n", sourcePath)
+			b.WriteString("        type: syncedFolder\n")
+			b.WriteString("      - path: Shared\n")
+			b.WriteString("        type: syncedFolder\n")
+			b.WriteString("        optional: true\n")
+			b.WriteString("    settings:\n")
+			b.WriteString("      base:\n")
+			fmt.Fprintf(&b, "        PRODUCT_BUNDLE_IDENTIFIER: %s\n", extBundleID)
+			b.WriteString("        CODE_SIGN_STYLE: Automatic\n")
+			b.WriteString("        SWIFT_VERSION: \"6.0\"\n")
+			b.WriteString("        GENERATE_INFOPLIST_FILE: YES\n")
+			b.WriteString("        SKIP_INSTALL: YES\n")
+			b.WriteString("        DEAD_CODE_STRIPPING: NO\n")
+			b.WriteString("        CURRENT_PROJECT_VERSION: 1\n")
+			b.WriteString("        MARKETING_VERSION: \"1.0\"\n")
+			b.WriteString("        SWIFT_APPROACHABLE_CONCURRENCY: YES\n")
+			b.WriteString("        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor\n")
+
+			for k, v := range ext.Settings {
+				fmt.Fprintf(&b, "        %s: %s\n", k, xcodeYAMLQuote(v))
+			}
+
+			infoPlist := mergeInfoPlistDefaults(kind, ext.InfoPlist)
+			if len(infoPlist) > 0 {
+				b.WriteString("    info:\n")
+				fmt.Fprintf(&b, "      path: %s/Info.plist\n", sourcePath)
+				b.WriteString("      properties:\n")
+				writeXcodeYAMLMap(&b, infoPlist, 8)
+			}
+
+			entitlements := mergeEntitlementDefaults(kind, ext.Entitlements, watchBundleID)
+			if len(entitlements) > 0 {
+				b.WriteString("    entitlements:\n")
+				fmt.Fprintf(&b, "      path: %s/%s.entitlements\n", sourcePath, name)
+				b.WriteString("      properties:\n")
+				writeXcodeYAMLMap(&b, entitlements, 8)
+			}
+		}
+	}
+
+	// Scheme — run the iOS app by default
+	b.WriteString("\nschemes:\n")
+	fmt.Fprintf(&b, "  %s:\n", appName)
+	b.WriteString("    build:\n")
+	b.WriteString("      targets:\n")
+	fmt.Fprintf(&b, "        %s: all\n", appName)
+	fmt.Fprintf(&b, "        %s: all\n", watchAppName)
+	if plan != nil {
+		for _, ext := range plan.Extensions {
+			name := extensionTargetName(ext, appName)
+			fmt.Fprintf(&b, "        %s: all\n", name)
+		}
+	}
+	b.WriteString("    run:\n")
+	fmt.Fprintf(&b, "      executable: %s\n", appName)
 
 	return b.String()
 }

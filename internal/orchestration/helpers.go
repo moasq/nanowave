@@ -65,6 +65,30 @@ func parsePlan(result string) (*PlannerResult, error) {
 		return nil, fmt.Errorf("plan has no files")
 	}
 
+	// Platform validation
+	if err := ValidatePlatform(plan.Platform); err != nil {
+		return nil, err
+	}
+	if err := ValidateWatchShape(plan.WatchProjectShape); err != nil {
+		return nil, err
+	}
+
+	// Reject device_family when platform is watchOS
+	if IsWatchOS(plan.Platform) && plan.DeviceFamily != "" {
+		return nil, fmt.Errorf("device_family must not be set when platform is watchOS (got %q)", plan.DeviceFamily)
+	}
+
+	// Filter rule_keys for platform compatibility
+	if IsWatchOS(plan.Platform) {
+		filtered, _ := FilterRuleKeysForPlatform(plan.Platform, plan.RuleKeys)
+		plan.RuleKeys = filtered
+	}
+
+	// Validate extensions for platform compatibility
+	if err := ValidateExtensionsForPlatform(plan.Platform, plan.Extensions); err != nil {
+		return nil, err
+	}
+
 	return &plan, nil
 }
 

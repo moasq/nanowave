@@ -14,6 +14,54 @@ import (
 )
 
 const maxBuildCompletionPasses = 6
+const maxPhaseRetries = 2 // retry analyze/plan up to 2 times on transient failures
+
+// retryPhase retries a phase function up to maxRetries times on transient errors.
+// Permanent errors (context cancellation) are not retried.
+func retryPhase[T any](ctx context.Context, maxRetries int, fn func() (T, error)) (T, error) {
+	var lastErr error
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		if ctx.Err() != nil {
+			var zero T
+			return zero, ctx.Err()
+		}
+		result, err := fn()
+		if err == nil {
+			return result, nil
+		}
+		lastErr = err
+		// Don't retry if the parent context was cancelled
+		if ctx.Err() != nil {
+			break
+		}
+	}
+	var zero T
+	return zero, lastErr
+}
+
+// canonicalBuildDestination returns the Xcode build destination for the given platform.
+func canonicalBuildDestination(platform string) string {
+	if IsWatchOS(platform) {
+		return "generic/platform=watchOS Simulator"
+	}
+	return "generic/platform=iOS Simulator"
+}
+
+// detectProjectPlatform reads project_config.json and extracts the platform field.
+// Returns "ios" if missing or unreadable (backward compat).
+func detectProjectPlatform(projectDir string) string {
+	data, err := os.ReadFile(filepath.Join(projectDir, "project_config.json"))
+	if err != nil {
+		return PlatformIOS
+	}
+	var cfg struct {
+		Platform string `json:"platform"`
+	}
+	if err := json.Unmarshal(data, &cfg); err != nil || cfg.Platform == "" {
+		return PlatformIOS
+	}
+	return cfg.Platform
+}
 
 // agenticTools is the set of tools Claude Code needs for writing code, building, and fixing.
 var agenticTools = []string{
@@ -77,11 +125,13 @@ func (p *Pipeline) Build(ctx context.Context, prompt string, images []string) (*
 
 	spinner.StopWithMessage(fmt.Sprintf("%s%s✓%s Workspace ready", terminal.Bold, terminal.Green, terminal.Reset))
 
-	// Phase 2: Analyze
+	// Phase 2: Analyze (with retry for transient failures)
 	analyzeProgress := terminal.NewProgressDisplay("analyze", 0)
 	analyzeProgress.Start()
 
-	analysis, err := p.analyze(ctx, prompt, analyzeProgress)
+	analysis, err := retryPhase(ctx, maxPhaseRetries, func() (*AnalysisResult, error) {
+		return p.analyze(ctx, prompt, analyzeProgress)
+	})
 	if err != nil {
 		analyzeProgress.StopWithError("Analysis failed")
 		return nil, fmt.Errorf("analysis failed: %w", err)
@@ -103,11 +153,13 @@ func (p *Pipeline) Build(ctx context.Context, prompt string, images []string) (*
 		terminal.Detail("Deferred", strings.Join(analysis.Deferred, ", "))
 	}
 
-	// Phase 3: Plan
+	// Phase 3: Plan (with retry for transient failures)
 	planProgress := terminal.NewProgressDisplay("plan", 0)
 	planProgress.Start()
 
-	plan, err := p.plan(ctx, analysis, planProgress)
+	plan, err := retryPhase(ctx, maxPhaseRetries, func() (*PlannerResult, error) {
+		return p.plan(ctx, analysis, planProgress)
+	})
 	if err != nil {
 		planProgress.StopWithError("Planning failed")
 		return nil, fmt.Errorf("planning failed: %w", err)
@@ -130,7 +182,7 @@ func (p *Pipeline) Build(ctx context.Context, prompt string, images []string) (*
 		return nil, fmt.Errorf("workspace setup failed: %w", err)
 	}
 
-	if err := writeInitialCLAUDEMD(projectDir, appName, plan.GetDeviceFamily()); err != nil {
+	if err := writeInitialCLAUDEMD(projectDir, appName, plan.GetPlatform(), plan.GetDeviceFamily()); err != nil {
 		return nil, fmt.Errorf("failed to write CLAUDE.md: %w", err)
 	}
 
@@ -142,26 +194,32 @@ func (p *Pipeline) Build(ctx context.Context, prompt string, images []string) (*
 		return nil, fmt.Errorf("failed to write core rules: %w", err)
 	}
 
-	if err := writeAlwaysSkills(projectDir); err != nil {
+	if err := writeAlwaysSkills(projectDir, plan.GetPlatform()); err != nil {
 		return nil, fmt.Errorf("failed to write always skills: %w", err)
 	}
 
-	// Auto-inject adaptive_layout skill for iPad/universal apps
-	if family := plan.GetDeviceFamily(); family == "ipad" || family == "universal" {
-		hasAdaptive := false
-		for _, k := range plan.RuleKeys {
-			if k == "adaptive_layout" {
-				hasAdaptive = true
-				break
+	// Auto-inject adaptive_layout skill for iPad/universal apps (iOS only)
+	if plan.GetPlatform() == PlatformIOS {
+		if family := plan.GetDeviceFamily(); family == "ipad" || family == "universal" {
+			hasAdaptive := false
+			for _, k := range plan.RuleKeys {
+				if k == "adaptive_layout" {
+					hasAdaptive = true
+					break
+				}
 			}
-		}
-		if !hasAdaptive {
-			plan.RuleKeys = append(plan.RuleKeys, "adaptive_layout")
+			if !hasAdaptive {
+				plan.RuleKeys = append(plan.RuleKeys, "adaptive_layout")
+			}
 		}
 	}
 
-	if err := writeConditionalSkills(projectDir, plan.RuleKeys); err != nil {
+	if err := writeConditionalSkills(projectDir, plan.RuleKeys, plan.GetPlatform()); err != nil {
 		return nil, fmt.Errorf("failed to write conditional skills: %w", err)
+	}
+
+	if err := writeClaudeProjectScaffold(projectDir, appName, plan.GetPlatform()); err != nil {
+		return nil, fmt.Errorf("failed to write Claude project scaffold: %w", err)
 	}
 
 	if err := writeMCPConfig(projectDir); err != nil {
@@ -184,8 +242,18 @@ func (p *Pipeline) Build(ctx context.Context, prompt string, images []string) (*
 		return nil, fmt.Errorf("failed to write .gitignore: %w", err)
 	}
 
-	if err := writeAssetCatalog(projectDir, appName); err != nil {
-		return nil, fmt.Errorf("failed to write asset catalog: %w", err)
+	if IsWatchOS(plan.GetPlatform()) && plan.GetWatchProjectShape() == WatchShapePaired {
+		// Paired: iOS asset catalog for the main app, watchOS for the watch app
+		if err := writeAssetCatalog(projectDir, appName, PlatformIOS); err != nil {
+			return nil, fmt.Errorf("failed to write asset catalog: %w", err)
+		}
+		if err := writeAssetCatalog(projectDir, appName+"Watch", PlatformWatchOS); err != nil {
+			return nil, fmt.Errorf("failed to write watch asset catalog: %w", err)
+		}
+	} else {
+		if err := writeAssetCatalog(projectDir, appName, plan.GetPlatform()); err != nil {
+			return nil, fmt.Errorf("failed to write asset catalog: %w", err)
+		}
 	}
 
 	if err := scaffoldSourceDirs(projectDir, appName, plan); err != nil {
@@ -270,12 +338,14 @@ func (p *Pipeline) Build(ctx context.Context, prompt string, images []string) (*
 	p.finalize(ctx, projectDir, appName)
 
 	return &BuildResult{
-		AppName:          analysis.AppName,
-		Description:      analysis.Description,
-		ProjectDir:       projectDir,
-		BundleID:         fmt.Sprintf("%s.%s", bundleIDPrefix(), strings.ToLower(appName)),
-		DeviceFamily:     plan.GetDeviceFamily(),
-		Features:         analysis.Features,
+		AppName:           analysis.AppName,
+		Description:       analysis.Description,
+		ProjectDir:        projectDir,
+		BundleID:          fmt.Sprintf("%s.%s", bundleIDPrefix(), strings.ToLower(appName)),
+		DeviceFamily:      plan.GetDeviceFamily(),
+		Platform:          plan.GetPlatform(),
+		WatchProjectShape: plan.GetWatchProjectShape(),
+		Features:          analysis.Features,
 		FileCount:        len(plan.Files),
 		PlannedFiles:     len(plan.Files),
 		CompletedFiles:   report.ValidCount,
@@ -306,8 +376,11 @@ func (p *Pipeline) Edit(ctx context.Context, prompt, projectDir, sessionID strin
 	appName := filepath.Base(projectDir)
 	ensureMCPConfig(projectDir)
 
+	platform := detectProjectPlatform(projectDir)
+	destination := canonicalBuildDestination(platform)
+
 	appendPrompt := coderPrompt + "\n\n" + sharedConstraints
-	appendPrompt += fmt.Sprintf("\n\nBuild command:\nxcodebuild -project %s.xcodeproj -scheme %s -destination 'generic/platform=iOS Simulator' -quiet build", appName, appName)
+	appendPrompt += fmt.Sprintf("\n\nBuild command:\nxcodebuild -project %s.xcodeproj -scheme %s -destination '%s' -quiet build", appName, appName, destination)
 
 	userMsg := fmt.Sprintf(`Edit this app based on the following request:
 
@@ -315,9 +388,9 @@ func (p *Pipeline) Edit(ctx context.Context, prompt, projectDir, sessionID strin
 
 After making changes:
 1. If you need new permissions, extensions, or entitlements, use the xcodegen MCP tools (add_permission, add_extension, etc.)
-2. Run: xcodebuild -project %s.xcodeproj -scheme %s -destination 'generic/platform=iOS Simulator' -quiet build
+2. Run: xcodebuild -project %s.xcodeproj -scheme %s -destination '%s' -quiet build
 3. If build fails, read the errors carefully, fix the code, and rebuild
-4. Repeat until the build succeeds`, prompt, appName, appName)
+4. Repeat until the build succeeds`, prompt, appName, appName, destination)
 
 	progress := terminal.NewProgressDisplay("edit", 0)
 	progress.Start()
@@ -367,16 +440,19 @@ func (p *Pipeline) Fix(ctx context.Context, projectDir, sessionID string) (*FixR
 	appName := filepath.Base(projectDir)
 	ensureMCPConfig(projectDir)
 
+	platform := detectProjectPlatform(projectDir)
+	destination := canonicalBuildDestination(platform)
+
 	appendPrompt := coderPrompt + "\n\n" + sharedConstraints
 
 	userMsg := fmt.Sprintf(`Fix any build errors in this project.
 
-1. Run: xcodebuild -project %s.xcodeproj -scheme %s -destination 'generic/platform=iOS Simulator' -quiet build
+1. Run: xcodebuild -project %s.xcodeproj -scheme %s -destination '%s' -quiet build
 2. Read the error output carefully
 3. Investigate: read the relevant source files to understand context
 4. Fix the errors in the Swift source code
 5. If the error is a project configuration issue, use the xcodegen MCP tools (add_permission, add_extension, regenerate_project, etc.)
-6. Rebuild and repeat until the build succeeds`, appName, appName)
+6. Rebuild and repeat until the build succeeds`, appName, appName, destination)
 
 	progress := terminal.NewProgressDisplay("fix", 0)
 	progress.Start()

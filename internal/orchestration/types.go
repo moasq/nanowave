@@ -2,22 +2,24 @@ package orchestration
 
 // BuildResult is the final output of a successful Build pipeline.
 type BuildResult struct {
-	AppName          string
-	Description      string
-	ProjectDir       string
-	BundleID         string
-	DeviceFamily     string
-	Features         []Feature
-	FileCount        int
-	PlannedFiles     int
-	CompletedFiles   int
-	CompletionPasses int
-	SessionID        string
-	TotalCostUSD     float64
-	InputTokens      int
-	OutputTokens     int
-	CacheRead        int
-	CacheCreated     int
+	AppName            string
+	Description        string
+	ProjectDir         string
+	BundleID           string
+	DeviceFamily       string
+	Platform           string
+	WatchProjectShape  string
+	Features           []Feature
+	FileCount          int
+	PlannedFiles       int
+	CompletedFiles     int
+	CompletionPasses   int
+	SessionID          string
+	TotalCostUSD       float64
+	InputTokens        int
+	OutputTokens       int
+	CacheRead          int
+	CacheCreated       int
 }
 
 // AnalysisResult is the parsed output from the analyzer phase.
@@ -37,15 +39,17 @@ type Feature struct {
 
 // PlannerResult is the parsed output from the planner phase.
 type PlannerResult struct {
-	Design        DesignSystem    `json:"design"`
-	DeviceFamily  string          `json:"device_family"`
-	Files         []FilePlan      `json:"files"`
-	Models        []ModelPlan     `json:"models"`
-	Permissions   []Permission    `json:"permissions"`
-	Extensions    []ExtensionPlan `json:"extensions"`
-	Localizations []string        `json:"localizations"`
-	RuleKeys      []string        `json:"rule_keys"`
-	BuildOrder    []string        `json:"build_order"`
+	Design            DesignSystem    `json:"design"`
+	DeviceFamily      string          `json:"device_family"`
+	Platform          string          `json:"platform"`
+	WatchProjectShape string          `json:"watch_project_shape"`
+	Files             []FilePlan      `json:"files"`
+	Models            []ModelPlan     `json:"models"`
+	Permissions       []Permission    `json:"permissions"`
+	Extensions        []ExtensionPlan `json:"extensions"`
+	Localizations     []string        `json:"localizations"`
+	RuleKeys          []string        `json:"rule_keys"`
+	BuildOrder        []string        `json:"build_order"`
 }
 
 // GetDeviceFamily returns the device family, defaulting to "iphone".
@@ -54,6 +58,25 @@ func (p *PlannerResult) GetDeviceFamily() string {
 		return "iphone"
 	}
 	return p.DeviceFamily
+}
+
+// GetPlatform returns the target platform, defaulting to "ios".
+func (p *PlannerResult) GetPlatform() string {
+	if p == nil || p.Platform == "" {
+		return PlatformIOS
+	}
+	return p.Platform
+}
+
+// GetWatchProjectShape returns the watch project shape, defaulting to "watch_only" when watchOS.
+func (p *PlannerResult) GetWatchProjectShape() string {
+	if p == nil || p.WatchProjectShape == "" {
+		if p != nil && IsWatchOS(p.Platform) {
+			return WatchShapeStandalone
+		}
+		return ""
+	}
+	return p.WatchProjectShape
 }
 
 // ExtensionPlan describes a secondary Xcode target (widget, live activity, etc.)

@@ -137,6 +137,8 @@ Output ONLY valid JSON. No markdown, no explanation. Structure:
  "permissions": [{"key": "NSXxxUsageDescription", "description": "app-specific reason", "framework": "FrameworkName"}],
  "extensions": [{"kind": "widget", "name": "MyAppWidget", "purpose": "Shows daily summary on home screen"}],
  "localizations": ["en", "ar", "es"],
+ "platform": "ios",
+ "watch_project_shape": "",
  "device_family": "iphone",
  "rule_keys": ["localization", "dark_mode"],
  "build_order": ["Models/...", "Theme/...", "Features/...", "App/..."]}
@@ -169,7 +171,9 @@ Available keys by category:
   UI refinement: view_complexity, typography, color_contrast, spacing_layout, feedback_states, view-composition, accessibility, gestures, adaptive_layout, liquid_glass, animations
   Extensions: widgets, live_activities, share_extension, notification_service, safari_extension, app_clips
 
-device_family: Target devices — "iphone" (default), "ipad" (tablet-focused apps), "universal" (both).
+platform: Target platform — "ios" (default) or "watchos". Only use "watchos" if the user EXPLICITLY mentions watch, watchOS, Apple Watch, or wrist. Do NOT set device_family when platform is "watchos".
+watch_project_shape: Only set when platform is "watchos" — "watch_only" (standalone watch app, default) or "paired_ios_watch" (iOS companion + watch app). Leave empty for iOS.
+device_family: Target devices (iOS only) — "iphone" (default), "ipad" (tablet-focused apps), "universal" (both).
 ALWAYS default to "iphone". Only use "ipad" or "universal" if the user EXPLICITLY mentions iPad, tablet, or universal in their request. Never infer iPad from the app concept alone.
 When device_family is "ipad" or "universal", you MUST include "adaptive_layout" in rule_keys.
 
@@ -195,7 +199,7 @@ Before returning, verify:
 
 // coderPrompt is the unified prompt for build, edit, and fix phases.
 // It replaces the separate builderPrompt, editPrompt, fixerPrompt, and editProjectYMLGuidance.
-const coderPrompt = `You are an expert iOS developer writing Swift 6 for iOS 26+.
+const coderPrompt = `You are an expert Apple platform developer writing Swift 6 for iOS 26+ and watchOS 26+.
 You have access to ALL tools — write files, edit files, run terminal commands, search Apple docs, and configure the Xcode project.
 
 APPLE DOCS ACCESS:
@@ -251,6 +255,17 @@ ADAPTIVE LAYOUT (iPad / universal apps):
 - NEVER hardcode frame widths. Use .frame(maxWidth:) or containerRelativeFrame.
 - Always provide a detail placeholder in NavigationSplitView for iPad empty state.
 
+WATCHOS CODING CONSTRAINTS (when targeting watchOS):
+- Design for glanceable, wrist-sized UIs — keep interactions short and focused
+- Use Digital Crown via .digitalCrownRotation() for scrolling and value picking
+- For haptics, use WKInterfaceDevice.default().play(.click) — NOT UIFeedbackGenerator or CoreHaptics
+- For authentication, use wrist detection and optic ID — NOT Face ID/Touch ID APIs
+- No UIKit APIs — watchOS is SwiftUI-only
+- No camera, ARKit, or CoreML-heavy features
+- Use NavigationStack (not NavigationSplitView) — watch apps are single-column
+- Prefer List and Form for content — they adapt well to small screens
+- Use .containerBackground() for watch complications and widgets
+
 EDITING EXISTING CODE:
 - Read files before editing — understand existing patterns
 - Keep all existing functionality — don't break things
@@ -292,7 +307,13 @@ Minimize generated tokens — NO doc comments, NO // MARK:, NO blank lines betwe
 
 // planningConstraints limits scope for analyzer/planner phases.
 const planningConstraints = `PLATFORM & SCOPE:
-- Target: iOS 26+, Swift 6. Default to iPhone only. iPad/universal only if the user explicitly requests it. No macOS/watchOS/tvOS/visionOS.
+- Target: iOS 26+ or watchOS 26+, Swift 6.
+- Default platform: iOS (iPhone only). iPad/universal only if the user explicitly requests it.
+- watchOS: Only select platform "watchos" if the user EXPLICITLY mentions watch, watchOS, Apple Watch, or wrist in their request. Never infer watchOS from the app concept alone.
+- When watchOS is selected: emit "platform": "watchos" and "watch_project_shape": "watch_only" (standalone) or "paired_ios_watch" (iOS companion + watch app). Default to "watch_only" unless the user explicitly mentions a companion iOS app.
+- watchOS feature restrictions: no camera, foundation_models, apple_translation, adaptive_layout, liquid_glass, speech, or app_review. Only widget extensions are supported (no live_activity, share, notification_service, safari, app_clip).
+- watchOS conditional features: haptics (use WKInterfaceDevice.default().play(.click) instead of UIFeedbackGenerator), biometrics (wrist detection/optic ID instead of Face ID/Touch ID).
+- No macOS/tvOS/visionOS.
 - SwiftUI-first architecture. UIKit/AppKit bridges are allowed only when a feature has no viable SwiftUI API.
 - No Storyboard/XIB.
 
@@ -320,8 +341,8 @@ const sharedConstraints = `USER STYLING OVERRIDES:
 - Only apply default rules for aspects the user did NOT specify.
 
 PLATFORM & SCOPE:
-- iOS 26+, Swift 6.
-- Prefer SwiftUI. UIKit/AppKit bridges are allowed only when required by specific APIs or unavailable SwiftUI equivalents.
+- iOS 26+ or watchOS 26+, Swift 6.
+- Prefer SwiftUI. UIKit/AppKit bridges are allowed only when required by specific APIs or unavailable SwiftUI equivalents (iOS only — watchOS is SwiftUI-only).
 - No Storyboard/XIB.
 
 DEPENDENCIES & SERVICES — APPLE-ONLY [TEMPORARY]:

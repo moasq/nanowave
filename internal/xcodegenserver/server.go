@@ -19,12 +19,12 @@ func Run(ctx context.Context) error {
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "add_permission",
-		Description: "Add an iOS permission to the Xcode project. Adds the INFOPLIST_KEY entry to project.yml and regenerates the .xcodeproj. Example: add_permission(key: \"NSCameraUsageDescription\", description: \"Take photos for your profile\", framework: \"AVFoundation\")",
+		Description: "Add a permission to the Xcode project. Adds the INFOPLIST_KEY entry to project.yml and regenerates the .xcodeproj. Works for iOS and watchOS projects. Example: add_permission(key: \"NSCameraUsageDescription\", description: \"Take photos for your profile\", framework: \"AVFoundation\")",
 	}, handleAddPermission)
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "add_extension",
-		Description: "Add an extension target (widget, live activity, share sheet, etc.) to the Xcode project. Creates the full target configuration, scaffolds Targets/{Name}/ and Shared/ directories, sets up entitlements and Info.plist, and regenerates .xcodeproj.",
+		Description: "Add an extension target (widget, live activity, share sheet, etc.) to the Xcode project. Creates the full target configuration, scaffolds Targets/{Name}/ and Shared/ directories, sets up entitlements and Info.plist, and regenerates .xcodeproj. Note: watchOS only supports widget extensions.",
 	}, handleAddExtension)
 
 	mcp.AddTool(server, &mcp.Tool{

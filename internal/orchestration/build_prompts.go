@@ -7,7 +7,8 @@ import (
 )
 
 // buildPrompts constructs the system and user prompts for the build phase.
-func (p *Pipeline) buildPrompts(_, appName, _ string, analysis *AnalysisResult, plan *PlannerResult) (string, string) {
+func (p *Pipeline) buildPrompts(_ string, appName string, _ string, analysis *AnalysisResult, plan *PlannerResult) (string, string) {
+	destination := canonicalBuildDestination(plan.GetPlatform())
 	// Build the append system prompt with coder rules + plan context
 	var appendPrompt strings.Builder
 	appendPrompt.WriteString(coderPrompt)
@@ -119,7 +120,7 @@ INSTRUCTIONS:
 2. Extension files go under Targets/{ExtensionName}/.
 3. Shared types (e.g. ActivityAttributes) go under Shared/.
 4. If you need additional permissions, extensions, or entitlements beyond the plan, use the xcodegen MCP tools.
-5. After writing ALL files, run: xcodebuild -project %s.xcodeproj -scheme %s -destination 'generic/platform=iOS Simulator' -quiet build
+5. After writing ALL files, run: xcodebuild -project %s.xcodeproj -scheme %s -destination '%s' -quiet build
 6. If the build fails, read the errors, fix the Swift code, and rebuild.
 7. Repeat until the build succeeds.
 
@@ -129,13 +130,14 @@ IMPORTANT:
 - Reference AppTheme for all design tokens — never hardcode colors
 - Every View must have a #Preview block`,
 		analysis.AppName, analysis.Description, featureList.String(), analysis.CoreFlow,
-		appName, appName, appName)
+		appName, appName, appName, destination)
 
 	return appendPrompt.String(), userMsg
 }
 
 // completionPrompts builds targeted prompts for unresolved planned files.
-func (p *Pipeline) completionPrompts(appName, projectDir string, plan *PlannerResult, report *FileCompletionReport) (string, string) {
+func (p *Pipeline) completionPrompts(appName string, projectDir string, plan *PlannerResult, report *FileCompletionReport) (string, string) {
+	destination := canonicalBuildDestination(plan.GetPlatform())
 	var appendPrompt strings.Builder
 	appendPrompt.WriteString(coderPrompt)
 	appendPrompt.WriteString("\n\n")
@@ -179,9 +181,9 @@ Required process:
 1. Create/fix ONLY the unresolved files listed above.
 2. Ensure each file contains the expected type name exactly.
 3. Keep existing already-valid files unchanged unless required for imports/signatures.
-4. Run: xcodebuild -project %s.xcodeproj -scheme %s -destination 'generic/platform=iOS Simulator' -quiet build
+4. Run: xcodebuild -project %s.xcodeproj -scheme %s -destination '%s' -quiet build
 5. If build fails, fix issues and rebuild.
-6. Stop only when every unresolved file is complete and the build succeeds.`, fileList.String(), appName, appName)
+6. Stop only when every unresolved file is complete and the build succeeds.`, fileList.String(), appName, appName, destination)
 
 	return appendPrompt.String(), userMsg
 }
