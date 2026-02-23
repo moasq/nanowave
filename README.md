@@ -1,6 +1,6 @@
 # Nanowave
 
-Autonomous iOS app builder powered by [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Describe what you want, Nanowave builds it.
+Autonomous app builder powered by [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Describe what you want, Nanowave builds it — for iPhone, iPad, Apple Watch, and Apple TV.
 
 ```
 $ nanowave
@@ -78,6 +78,8 @@ All projects are stored in `~/nanowave/projects/`.
 
 ### Build a new app
 
+By default, Nanowave creates **iOS (iPhone)** apps. To target other platforms, mention them in your description.
+
 ```
 > A habit tracker with a weekly grid, streak counter, and haptic feedback
 
@@ -96,6 +98,29 @@ All projects are stored in `~/nanowave/projects/`.
   Location ~/nanowave/projects/HabitGrid
   ✓ Launched on iPhone 17 Pro
 ```
+
+#### Multi-platform builds
+
+Mention the platforms you want and Nanowave generates a single Xcode project with separate targets:
+
+```
+> A weather app for iPhone, iPad, Apple Watch, and Apple TV that shows
+  current conditions and a 5-day forecast
+
+  ✓ Analyzed: Skies
+  ✓ Plan ready (29 files, 4 models) — iOS, watchOS, tvOS
+  ✓ Build complete — 29 files
+  ✓ Skies is ready!
+```
+
+| Platform | How to request it |
+|---|---|
+| iPhone (default) | No extra description needed |
+| iPad | Mention "iPad" — creates a universal iOS app |
+| Apple Watch | Mention "Apple Watch" or "watchOS" |
+| Apple TV | Mention "Apple TV" or "tvOS" |
+
+You can combine any platforms in a single prompt. Each gets its own source directory, target, and scheme.
 
 ### Edit an existing app
 
@@ -198,7 +223,25 @@ Generated projects follow a consistent layout:
     └── HabitGrid.xcodeproj
 ```
 
-All projects target **Swift 6**, **SwiftUI**, **iOS 26+**, with zero external dependencies. Currently builds **iPhone apps only** — more platforms coming in upcoming releases.
+Multi-platform projects add separate source directories per platform:
+
+```
+└── Skies/
+    ├── Skies/               # iOS source
+    ├── SkiesWatch/          # watchOS source
+    ├── SkiesTV/             # tvOS source
+    ├── Shared/              # Cross-platform code
+    ├── project.yml          # Multi-target XcodeGen spec
+    └── Skies.xcodeproj
+```
+
+All projects target **Swift 6**, **SwiftUI**, with zero external dependencies. Deployment targets: **iOS 26+**, **watchOS 26+**, **tvOS 26+**.
+
+## Examples
+
+| Example | Platforms | Description |
+|---|---|---|
+| [Skies](examples/skies/) | iOS, watchOS, tvOS | Multi-platform weather app with condition-driven gradients, animated icons, and ambient TV dashboard |
 
 ## Models
 

@@ -36,7 +36,9 @@
       "WebFetch(domain:www.tothenew.com)",
       "WebFetch(domain:en.wikipedia.org)",
       "Bash(wc:*)",
-      "Bash(cd /Users/mohammedal-quraini/nanowave/projects/Skies && xcodegen generate 2>&1)"
+      "Bash(cd /Users/mohammedal-quraini/nanowave/projects/Skies && xcodegen generate 2>&1)",
+      "Bash(sort:*)",
+      "Bash(cd:*)"
     ]
   },
   "disabledMcpjsonServers": [
