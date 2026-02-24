@@ -25,7 +25,7 @@
 8. Every list/collection MUST have an empty state (ContentUnavailableView or styled VStack).
 9. Screen-aware layouts: Use adaptive layouts for different screen sizes. Use ScrollView for overflow.
 10. Sheet sizing: ALWAYS use .presentationDetents on .sheet.
-11. Use AppTheme tokens and semantic colors — never hardcode colors in feature views.
+11. Use AppTheme tokens for ALL styling — never hardcode colors, fonts, or spacing in feature views. Every .foregroundStyle must use AppTheme.Colors.*, every .font must use AppTheme.Fonts.*, every padding/spacing must use AppTheme.Spacing.*.
 12. Minimize generated tokens — NO doc comments, NO // MARK:, NO blank lines between properties.
 
 ## Apple Docs Access

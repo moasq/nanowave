@@ -155,7 +155,7 @@ INSTRUCTIONS:
 IMPORTANT:
 - Write files in the build order specified in the plan
 - Use the exact type names and file paths from the plan
-- Reference AppTheme for all design tokens — never hardcode colors
+- Reference AppTheme for ALL design tokens — never hardcode colors, fonts, or spacing in views
 - Every View must have a #Preview block
 - Each platform has its own @main App entry point`,
 			analysis.AppName, analysis.Description, featureList.String(), analysis.CoreFlow,
@@ -188,7 +188,7 @@ INSTRUCTIONS:
 IMPORTANT:
 - Write files in the build order specified in the plan
 - Use the exact type names and file paths from the plan
-- Reference AppTheme for all design tokens — never hardcode colors
+- Reference AppTheme for ALL design tokens — never hardcode colors, fonts, or spacing in views
 - Every View must have a #Preview block`,
 			analysis.AppName, analysis.Description, featureList.String(), analysis.CoreFlow,
 			appName, appName, appName, destination, appName)

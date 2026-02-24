@@ -1,6 +1,6 @@
 name: Skies
 options:
-  bundleIdPrefix: com.mohammedalquraini
+  bundleIdPrefix: com.example
   deploymentTarget:
     iOS: "26.0"
     watchOS: "26.0"
@@ -30,7 +30,7 @@ targets:
     settings:
       base:
         SWIFT_VERSION: "6.0"
-        PRODUCT_BUNDLE_IDENTIFIER: com.mohammedalquraini.skies
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.skies
         CODE_SIGN_STYLE: Automatic
         CURRENT_PROJECT_VERSION: 1
         MARKETING_VERSION: "1.0"
@@ -70,7 +70,7 @@ targets:
     settings:
       base:
         SWIFT_VERSION: "6.0"
-        PRODUCT_BUNDLE_IDENTIFIER: com.mohammedalquraini.skies.watchkitapp
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.skies.watchkitapp
         CODE_SIGN_STYLE: Automatic
         CURRENT_PROJECT_VERSION: 1
         MARKETING_VERSION: "1.0"
@@ -87,7 +87,7 @@ targets:
     info:
       path: SkiesWatch/Info.plist
       properties:
-        WKCompanionAppBundleIdentifier: com.mohammedalquraini.skies
+        WKCompanionAppBundleIdentifier: com.example.skies
         WKRunsIndependentlyOfCompanionApp: true
     dependencies:
       - target: SkiesWatchExtension
@@ -107,7 +107,7 @@ targets:
         optional: true
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.mohammedalquraini.skies.watchkitapp.watchkitextension
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.skies.watchkitapp.watchkitextension
         CODE_SIGN_STYLE: Automatic
         SWIFT_VERSION: "6.0"
         GENERATE_INFOPLIST_FILE: YES
@@ -125,7 +125,7 @@ targets:
         NSExtension:
           NSExtensionPointIdentifier: com.apple.watchkit
           NSExtensionAttributes:
-            WKAppBundleIdentifier: com.mohammedalquraini.skies.watchkitapp
+            WKAppBundleIdentifier: com.example.skies.watchkitapp
 
   SkiesTV:
     type: application
@@ -141,7 +141,7 @@ targets:
     settings:
       base:
         SWIFT_VERSION: "6.0"
-        PRODUCT_BUNDLE_IDENTIFIER: com.mohammedalquraini.skies.tv
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.skies.tv
         CODE_SIGN_STYLE: Automatic
         CURRENT_PROJECT_VERSION: 1
         MARKETING_VERSION: "1.0"

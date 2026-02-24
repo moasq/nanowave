@@ -3,7 +3,9 @@ package orchestration
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/user"
+	"path/filepath"
 	"strings"
 	"unicode"
 
@@ -12,7 +14,7 @@ import (
 )
 
 // bundleIDPrefix returns a user-specific bundle ID prefix derived from the macOS username.
-// Example: "mohammedal-quraini" → "com.mohammedalquraini"
+// Example: "jane-doe" → "com.janedoe"
 func bundleIDPrefix() string {
 	u, err := user.Current()
 	if err != nil || u.Username == "" {
@@ -319,6 +321,23 @@ func truncateStr(s string, maxLen int) string {
 		return s
 	}
 	return s[:maxLen] + "..."
+}
+
+// uniqueProjectDir returns a project directory path that does not already exist.
+// If <catalogDir>/<appName> is free it is returned as-is.
+// Otherwise it appends a counter: <appName>2, <appName>3, …
+func uniqueProjectDir(catalogDir, appName string) string {
+	candidate := filepath.Join(catalogDir, appName)
+	if _, err := os.Stat(candidate); os.IsNotExist(err) {
+		return candidate
+	}
+	for n := 2; n <= 999; n++ {
+		candidate = filepath.Join(catalogDir, fmt.Sprintf("%s%d", appName, n))
+		if _, err := os.Stat(candidate); os.IsNotExist(err) {
+			return candidate
+		}
+	}
+	return candidate
 }
 
 func sanitizeToPascalCase(name string) string {

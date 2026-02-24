@@ -37,7 +37,11 @@ const sharedConstraints = `ARCHITECTURE:
 - App structure: @main App -> RootView -> MainView -> content.
 - Apple frameworks only. No external services, external AI SDKs, or secrets.
 - App-wide settings (@AppStorage) must be wired at the root app level.
-- Use AppTheme tokens instead of ad-hoc feature colors.
+- ALL colors MUST come from AppTheme.Colors.* tokens — NEVER use .white, .black, Color.red, or raw SwiftUI colors in views.
+- ALL fonts MUST come from AppTheme.Fonts.* tokens — NEVER use .font(.title2), .font(.system(size:)), or raw font modifiers in views.
+- ALL spacing MUST come from AppTheme.Spacing.* tokens — NEVER use raw numeric padding/spacing values.
+- AppTheme MUST include Colors (with textPrimary/textSecondary/textTertiary), Fonts, Spacing, and Style enums.
+- If a needed design token doesn't exist, add it to AppTheme first, then reference it.
 - User-requested styling overrides defaults.
 
 LAYOUT:

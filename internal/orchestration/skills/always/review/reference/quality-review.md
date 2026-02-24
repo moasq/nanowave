@@ -5,7 +5,7 @@ Use for general project quality reviews (not full a11y audits unless explicitly 
 Checklist focus:
 - placeholders removed
 - previews present for new `View` files
-- theme token usage vs hardcoded values
+- AppTheme compliance: ALL colors via AppTheme.Colors.*, ALL fonts via AppTheme.Fonts.*, ALL spacing via AppTheme.Spacing.* — flag any .white, .black, raw .font(.title2), .font(.system(size:)), or numeric padding/spacing as violations
 - reachable navigation / no dead feature screens
 - root wiring for app-wide settings
 - xcodegen configuration policy compliance

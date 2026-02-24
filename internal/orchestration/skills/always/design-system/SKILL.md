@@ -1,10 +1,62 @@
 ---
 name: "design-system"
-description: "Design system rules: AppTheme token pattern, Color(hex:) extension, Colors/Spacing/Style enums, SF Symbols, typography tokens. Use when defining colors, spacing, fonts, or any visual design tokens, or when creating/editing AppTheme. Triggers: AppTheme, Color, .primary, .secondary, spacing, cornerRadius, font, SF Symbol."
+description: "Design system rules: AppTheme token pattern, Color(hex:) extension, Colors/Fonts/Spacing/Style enums, SF Symbols, typography tokens. Use when defining colors, spacing, fonts, or any visual design tokens, or when creating/editing AppTheme. Triggers: AppTheme, Color, .primary, .secondary, spacing, cornerRadius, font, SF Symbol."
 ---
 # Design System Rules
 
+## MANDATORY — AppTheme Is the Single Source of Truth
+
+Every color, font, and spacing value in the app MUST come from `AppTheme`. No exceptions.
+
+Before writing ANY view code, verify:
+1. Does `AppTheme.Colors` have a token for the color I need? If not, add one.
+2. Does `AppTheme.Fonts` have a token for the font I need? If not, add one.
+3. Am I using `AppTheme.Spacing` for padding/spacing? If not, switch to it.
+
+## FORBIDDEN — Hardcoded Styling (Zero Tolerance)
+
+These patterns are **BANNED** everywhere in feature views. Violations MUST be caught and fixed.
+
+```swift
+// BANNED — hardcoded colors
+.foregroundStyle(.white)                    // use AppTheme.Colors.textPrimary
+.foregroundStyle(.white.opacity(0.8))       // use AppTheme.Colors.textSecondary
+.foregroundStyle(.white.opacity(0.6))       // use AppTheme.Colors.textTertiary
+.foregroundStyle(.black)                    // use AppTheme.Colors.textPrimary (or appropriate token)
+.foregroundStyle(Color.red)                 // define AppTheme.Colors.error or semantic token
+.foregroundStyle(Color.blue)                // define AppTheme.Colors.accent or semantic token
+.background(.blue)                          // use AppTheme.Colors.* token
+.background(Color(hex: "FF0000"))           // define in AppTheme.Colors, reference the token
+.tint(.white)                               // use AppTheme.Colors.* token
+
+// BANNED — hardcoded fonts
+.font(.system(size: 48))                    // use AppTheme.Fonts.* token
+.font(.system(size: 64))                    // use AppTheme.Fonts.* token
+.font(.system(.largeTitle, design: .rounded, weight: .bold))  // define in AppTheme.Fonts
+.font(.title2)                              // use AppTheme.Fonts.title2
+.font(.caption)                             // use AppTheme.Fonts.caption
+.font(.headline)                            // use AppTheme.Fonts.headline
+
+// BANNED — hardcoded spacing
+.padding(20)                                // use AppTheme.Spacing.*
+.padding(.horizontal, 12)                   // use AppTheme.Spacing.*
+VStack(spacing: 10)                         // use AppTheme.Spacing.*
+```
+
+```swift
+// CORRECT — always use AppTheme tokens
+.foregroundStyle(AppTheme.Colors.textPrimary)
+.foregroundStyle(AppTheme.Colors.textSecondary)
+.font(AppTheme.Fonts.title2)
+.font(AppTheme.Fonts.caption)
+.padding(AppTheme.Spacing.md)
+.padding(.horizontal, AppTheme.Spacing.sm)
+VStack(spacing: AppTheme.Spacing.sm)
+.background(AppTheme.Colors.surface)
+```
+
 ## AppTheme Pattern
+
 Every app **MUST** use a centralized theme with **nested enums** for `Colors`, `Fonts`, and `Spacing`. Do NOT use a flat enum with top-level static properties.
 
 ```swift
@@ -13,27 +65,43 @@ import SwiftUI
 
 enum AppTheme {
     enum Colors {
-        static let accent = Color.blue       // one accent per app
-        static let textPrimary = Color.primary
-        static let textSecondary = Color.secondary
-        static let background = Color(.systemBackground)
-        static let surface = Color(.secondarySystemBackground)
-        static let cardBackground = Color(.secondarySystemGroupedBackground)
+        static let primary = Color(hex: "...")
+        static let secondary = Color(hex: "...")
+        static let accent = Color(hex: "...")
+        static let background = Color(hex: "...")
+        static let surface = Color(hex: "...")
+
+        // Text colors — REQUIRED for every app
+        static let textPrimary = Color.white           // or Color.primary for light bg apps
+        static let textSecondary = Color.white.opacity(0.8)
+        static let textTertiary = Color.white.opacity(0.6)
     }
 
     enum Fonts {
-        static let largeTitle = Font.largeTitle
-        static let title = Font.title
-        static let headline = Font.headline
-        static let body = Font.body
-        static let caption = Font.caption
+        static let largeTitle = Font.system(.largeTitle, design: .rounded, weight: .bold)
+        static let title = Font.system(.title, design: .rounded, weight: .bold)
+        static let title2 = Font.system(.title2, design: .rounded, weight: .semibold)
+        static let title3 = Font.system(.title3, design: .rounded, weight: .semibold)
+        static let headline = Font.system(.headline, design: .rounded)
+        static let body = Font.system(.body, design: .rounded)
+        static let callout = Font.system(.callout, design: .rounded)
+        static let subheadline = Font.system(.subheadline, design: .rounded)
+        static let footnote = Font.system(.footnote, design: .rounded)
+        static let caption = Font.system(.caption, design: .rounded)
+        static let caption2 = Font.system(.caption2, design: .rounded)
     }
 
     enum Spacing {
-        static let small: CGFloat = 8
-        static let medium: CGFloat = 16
-        static let large: CGFloat = 24
+        static let xs: CGFloat = 4
+        static let sm: CGFloat = 8
+        static let md: CGFloat = 16
+        static let lg: CGFloat = 24
+        static let xl: CGFloat = 40
+    }
+
+    enum Style {
         static let cornerRadius: CGFloat = 12
+        static let cardCornerRadius: CGFloat = 16
     }
 }
 ```
@@ -41,17 +109,34 @@ enum AppTheme {
 ```swift
 // FORBIDDEN — never use flat structure
 enum AppTheme {
-    static let accentColor = Color.blue   // ❌ wrong
-    static let spacing: CGFloat = 8       // ❌ wrong
+    static let accentColor = Color.blue   // wrong
+    static let spacing: CGFloat = 8       // wrong
 }
 ```
 
-Reference as: `AppTheme.Colors.accent`, `AppTheme.Fonts.headline`, `AppTheme.Spacing.medium`
+Reference as: `AppTheme.Colors.accent`, `AppTheme.Fonts.headline`, `AppTheme.Spacing.md`
 
-## Typography
+## Fonts — AppTheme.Fonts Required
+
+The `Fonts` enum MUST exist in every AppTheme. It defines the app's typography tokens using the font design from the plan.
+
+Rules:
 - **System fonts only** — use SwiftUI font styles: `.largeTitle`, `.title`, `.headline`, `.body`, `.caption`
+- Apply the plan's `fontDesign` (rounded, serif, monospaced, default) via `Font.system(.style, design: .rounded)`
+- **NEVER** use raw `.font(.title2)` or `.font(.headline)` in views — always `AppTheme.Fonts.title2`
+- **NEVER** use `.font(.system(size: N))` — it opts out of Dynamic Type
 - No custom fonts, no downloaded fonts
-- Use `AppTheme.Fonts` for consistent sizing
+
+## Text Colors — AppTheme.Colors.textPrimary Required
+
+Every AppTheme MUST define text color tokens. Views MUST use these instead of `.white`, `.black`, or `.primary`:
+
+| Instead of | Use |
+|---|---|
+| `.foregroundStyle(.white)` | `AppTheme.Colors.textPrimary` |
+| `.foregroundStyle(.white.opacity(0.8))` | `AppTheme.Colors.textSecondary` |
+| `.foregroundStyle(.white.opacity(0.6))` | `AppTheme.Colors.textTertiary` |
+| `.foregroundStyle(.secondary)` | `AppTheme.Colors.textSecondary` |
 
 ## Icons (SF Symbols)
 - **SF Symbols only** for all icons — required for every list row, button, empty state, and tab
@@ -93,7 +178,7 @@ extension Color {
 
 ## Colors
 - **One accent color** that fits the app's purpose
-- Use semantic colors: `.primary`, `.secondary`, `Color(.systemBackground)`
+- Use semantic colors via `AppTheme.Colors.*` tokens — never raw SwiftUI colors
 - Do NOT add dark mode support, colorScheme checks, or custom dark/light color handling unless the user explicitly requests it
 - Use `Color(hex:)` with palette values — NEVER hardcoded SwiftUI colors like `.blue` or `.orange`
 - Keep brand/surface tokens explicit in AppTheme so appearance changes do not shift core palette identity
@@ -102,13 +187,12 @@ extension Color {
 - **16pt** standard padding (outer margins, section spacing)
 - **8pt** compact spacing (between related elements)
 - **24pt** large spacing (between major sections)
-- Use `AppTheme.Spacing` constants throughout
+- Use `AppTheme.Spacing` constants throughout — never raw numeric values
 
 ## Empty States
 Every list or collection MUST have an empty state. Use `ContentUnavailableView` (iOS 17+) for a polished look:
 
 ```swift
-// Required — show when collection is empty
 if items.isEmpty {
     ContentUnavailableView(
         "No Notes Yet",
@@ -120,53 +204,30 @@ if items.isEmpty {
 }
 ```
 
-For custom empty states, use a styled VStack with SF Symbol + descriptive text:
-
-```swift
-VStack(spacing: 16) {
-    Image(systemName: "tray")
-        .font(.system(size: 48))
-        .foregroundStyle(.secondary)
-    Text("Nothing here yet")
-        .font(.title3)
-    Text("Add your first item to get started")
-        .font(.subheadline)
-        .foregroundStyle(.secondary)
-}
-```
-
 ## Surface Materials
 Map the design `surfaces` token to SwiftUI materials:
-- **glass** → `.ultraThinMaterial` (modern/translucent)
-- **material** → `.regularMaterial` (depth/layers)
-- **solid** → opaque `Color` from palette (clean/opaque)
-- **flat** → no shadows, no materials (minimal)
+- **glass** -> `.ultraThinMaterial` (modern/translucent)
+- **material** -> `.regularMaterial` (depth/layers)
+- **solid** -> opaque `Color` from palette (clean/opaque)
+- **flat** -> no shadows, no materials (minimal)
 
 ## Sheet Sizing
 Always specify `presentationDetents` on `.sheet`:
-- Small option pickers → `.height(N)` (calculate based on content)
-- Medium forms → `.medium`
-- Complex multi-section → `.large`
-- Prefer card-style rows (background, cornerRadius, shadow) over plain List rows
-- Horizontal button bars with 4+ items → make scrollable
+- Small option pickers -> `.height(N)` (calculate based on content)
+- Medium forms -> `.medium`
+- Complex multi-section -> `.large`
 - Use `.sheet` / `.fullScreenCover` for creation forms
 
 ## Animations
 Use subtle, purposeful animations for state changes and list mutations:
 
 ```swift
-// Toggle/complete actions — spring animation
 withAnimation(.spring) {
     item.isComplete.toggle()
 }
 
-// List insertions/removals — combine opacity + scale
 .transition(.opacity.combined(with: .scale))
-
-// Numeric text changes
 .contentTransition(.numericText())
-
-// Filter/tab changes
 .animation(.default, value: selectedFilter)
 ```
 
