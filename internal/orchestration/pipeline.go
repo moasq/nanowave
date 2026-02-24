@@ -72,6 +72,23 @@ func detectProjectBuildHints(projectDir string) (platform string, platforms []st
 	return cfg.Platform, cfg.Platforms, cfg.WatchProjectShape
 }
 
+// readProjectAppName returns the Xcode app name for an existing project.
+// It reads app_name from project_config.json (the canonical source of truth written at build time).
+// Falls back to filepath.Base(projectDir) for projects predating the suffixed-dir feature.
+func readProjectAppName(projectDir string) string {
+	data, err := os.ReadFile(filepath.Join(projectDir, "project_config.json"))
+	if err != nil {
+		return filepath.Base(projectDir)
+	}
+	var cfg struct {
+		AppName string `json:"app_name"`
+	}
+	if err := json.Unmarshal(data, &cfg); err != nil || cfg.AppName == "" {
+		return filepath.Base(projectDir)
+	}
+	return cfg.AppName
+}
+
 // agenticTools is the set of tools Claude Code needs for writing code, building, and fixing.
 var agenticTools = []string{
 	"Write", "Edit", "Read", "Bash", "Glob", "Grep",
@@ -169,7 +186,9 @@ func (p *Pipeline) Build(ctx context.Context, prompt string, images []string) (*
 	}
 
 	appName = sanitizeToPascalCase(analysis.AppName)
-	projectDir = filepath.Join(p.config.ProjectDir, appName)
+	projectDir = uniqueProjectDir(p.config.ProjectDir, appName)
+	// appName stays clean (e.g. "Skies") for Xcode project name, bundle ID, scheme, source dirs.
+	// projectDir may have a numeric suffix (e.g. ".../Skies2") to avoid collisions on disk.
 
 	analyzeProgress.StopWithSuccess(fmt.Sprintf("Analyzed: %s", analysis.AppName))
 
@@ -447,7 +466,7 @@ type EditResult struct {
 // Edit modifies an existing project using Claude Code.
 // images is an optional list of image file paths to include in the edit prompt.
 func (p *Pipeline) Edit(ctx context.Context, prompt, projectDir, sessionID string, images []string) (*EditResult, error) {
-	appName := filepath.Base(projectDir)
+	appName := readProjectAppName(projectDir)
 	ensureMCPConfig(projectDir)
 
 	platform, platforms, watchProjectShape := detectProjectBuildHints(projectDir)
@@ -542,7 +561,7 @@ type FixResult struct {
 
 // Fix auto-fixes build errors in an existing project.
 func (p *Pipeline) Fix(ctx context.Context, projectDir, sessionID string) (*FixResult, error) {
-	appName := filepath.Base(projectDir)
+	appName := readProjectAppName(projectDir)
 	ensureMCPConfig(projectDir)
 
 	platform, platforms, watchProjectShape := detectProjectBuildHints(projectDir)

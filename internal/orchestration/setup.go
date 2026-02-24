@@ -278,8 +278,14 @@ func writeClaudeMemoryFiles(projectDir, appName, platform, deviceFamily string, 
 	// design-system.md
 	var design strings.Builder
 	design.WriteString("# Design System\n\n")
-	design.WriteString("- `AppTheme` is the only place for colors, spacing, typography tokens\n")
-	design.WriteString("- Avoid hardcoded ad-hoc colors in feature views\n")
+	design.WriteString("## Strict Enforcement\n")
+	design.WriteString("- `AppTheme` is the **ONLY** place for colors, fonts, spacing, and style tokens\n")
+	design.WriteString("- **NEVER** use hardcoded colors in views (`.white`, `.black`, `Color.red`, `.opacity()` on raw colors)\n")
+	design.WriteString("- **NEVER** use hardcoded fonts in views (`.font(.title2)`, `.font(.system(size:))`)\n")
+	design.WriteString("- **NEVER** use hardcoded spacing in views (`.padding(20)`, `VStack(spacing: 10)`)\n")
+	design.WriteString("- ALL colors → `AppTheme.Colors.*` (including `textPrimary`, `textSecondary`, `textTertiary`)\n")
+	design.WriteString("- ALL fonts → `AppTheme.Fonts.*` (with plan's font design applied)\n")
+	design.WriteString("- ALL spacing → `AppTheme.Spacing.*`\n")
 	design.WriteString("- Every view should use semantic theme tokens and include `#Preview`\n")
 	design.WriteString("- Keep adaptive layout and accessibility in mind for iPad/universal apps\n")
 	if plan != nil {
@@ -378,7 +384,9 @@ func writeClaudeMemoryFiles(projectDir, appName, platform, deviceFamily string, 
 		"- New View files include #Preview\n" +
 		"- Project configuration changes are done via xcodegen MCP tools\n" +
 		"- Extensions compile and include required @main entry points (when applicable)\n" +
-		"- Shared app/extension types live in Shared/\n\n" +
+		"- Shared app/extension types live in Shared/\n" +
+		"- **AppTheme compliance**: no hardcoded colors (use AppTheme.Colors.*), no hardcoded fonts (use AppTheme.Fonts.*), no hardcoded spacing (use AppTheme.Spacing.*)\n" +
+		"- **AppTheme completeness**: Colors enum includes textPrimary/textSecondary/textTertiary; Fonts enum exists with plan's fontDesign applied\n\n" +
 		"## Local Checks\n" +
 		"- make claude-check\n" +
 		"- /quality-review\n" +

@@ -1,5 +1,5 @@
 ---
-description: "Forbidden patterns - no networking, no third-party packages, no type re-declarations; UIKit only when required"
+description: "Forbidden patterns - no networking, no third-party packages, no type re-declarations, no hardcoded styling; UIKit only when required"
 ---
 # Forbidden Patterns
 
@@ -31,6 +31,29 @@ description: "Forbidden patterns - no networking, no third-party packages, no ty
 - No CloudKit, no iCloud sync
 - No push notifications
 - No Firebase, no Supabase, no backend services
+
+## Hardcoded Styling — BANNED
+- **NEVER** use hardcoded colors in views: `.white`, `.black`, `Color.red`, `Color.blue`, `.orange`, or `.opacity()` on raw colors
+- **NEVER** use hardcoded fonts in views: `.font(.system(size:))`, `.font(.title2)`, `.font(.headline)`, etc.
+- **NEVER** use hardcoded spacing: `.padding(20)`, `VStack(spacing: 10)`, etc.
+- **ALL** colors must come from `AppTheme.Colors.*` tokens
+- **ALL** fonts must come from `AppTheme.Fonts.*` tokens
+- **ALL** spacing must come from `AppTheme.Spacing.*` tokens
+- If a needed token doesn't exist in AppTheme, **add it to AppTheme first**, then reference it
+
+```swift
+// BANNED — hardcoded styling
+.foregroundStyle(.white)
+.font(.title2)
+.font(.system(size: 48))
+.padding(20)
+
+// CORRECT — AppTheme tokens
+.foregroundStyle(AppTheme.Colors.textPrimary)
+.font(AppTheme.Fonts.title2)
+.font(AppTheme.Fonts.largeTitle)
+.padding(AppTheme.Spacing.lg)
+```
 
 ## Type Re-declarations — BANNED
 - **NEVER** re-declare types that exist in other project files

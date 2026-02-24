@@ -19,7 +19,11 @@
 - Missing #Preview blocks on View files.
 - Missing empty states on lists and collections.
 - Re-declaring types already defined in other project files.
-- Hardcoding colors instead of using AppTheme tokens.
+- Hardcoding colors (.white, .black, Color.red) instead of AppTheme.Colors.* tokens.
+- Hardcoding fonts (.font(.title2), .font(.system(size:))) instead of AppTheme.Fonts.* tokens.
+- Hardcoding spacing (.padding(20), VStack(spacing: 10)) instead of AppTheme.Spacing.* tokens.
+- Forgetting to add textPrimary/textSecondary/textTertiary to AppTheme.Colors.
+- Forgetting to add Fonts enum to AppTheme with the plan's fontDesign applied.
 - Guessing Apple API signatures instead of searching docs first.
 - Using NavigationStack for list-detail in universal/iPad apps — use NavigationSplitView instead (auto-collapses to stack on iPhone).
 

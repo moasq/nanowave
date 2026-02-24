@@ -52,7 +52,7 @@
 4. Models conform to Identifiable, Hashable, Codable with static sampleData.
 5. System framework usage → matching permission entry; shared service for repeated framework usage.
 6. Palette has 5 valid hex colors (#RRGGBB). Primary is NOT #007AFF unless intentional.
-7. AppTheme components list Color(hex:) extension, Colors/Spacing/Style structs.
+7. AppTheme components list Color(hex:) extension, Colors (with textPrimary/textSecondary/textTertiary), Fonts (with plan's fontDesign applied), Spacing, and Style enums.
 8. If user specified colors, EXACT hex value appears as design.palette.primary.
 9. @AppStorage values written in child views → root App file MUST read and apply them.
 10. Extension files under Targets/{ExtensionName}/ with @main entry points.

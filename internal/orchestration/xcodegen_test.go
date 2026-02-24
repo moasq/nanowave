@@ -141,12 +141,12 @@ func TestGenerateProjectYAMLPaired(t *testing.T) {
 		{"has watch extension target name", "PairedAppWatchExtension:"},
 		{"has watch bundle ID", ".watchkitapp"},
 		{"has watch extension bundle ID", ".watchkitapp.watchkitextension"},
-		{"has WKCompanionAppBundleIdentifier", "WKCompanionAppBundleIdentifier: com.mohammedalquraini.pairedapp"},
+		{"has WKCompanionAppBundleIdentifier", "WKCompanionAppBundleIdentifier: " + bundleIDPrefix() + ".pairedapp"},
 		{"has WKRunsIndependentlyOfCompanionApp", "WKRunsIndependentlyOfCompanionApp: true"},
 		{"iOS depends on watch target", "target: PairedAppWatch"},
 		{"watch app depends on watch extension", "target: PairedAppWatchExtension"},
 		{"has watchkit extension point", "NSExtensionPointIdentifier: com.apple.watchkit"},
-		{"has WKAppBundleIdentifier", "WKAppBundleIdentifier: com.mohammedalquraini.pairedapp.watchkitapp"},
+		{"has WKAppBundleIdentifier", "WKAppBundleIdentifier: " + bundleIDPrefix() + ".pairedapp.watchkitapp"},
 		{"watch app excludes swift", "\"**/*.swift\""},
 	}
 
@@ -256,7 +256,7 @@ func TestGenerateProjectYAMLPairedWatchHasInstallableTargetGraph(t *testing.T) {
 		"target: TapCounterWatch",
 		"target: TapCounterWatchExtension",
 		"NSExtensionPointIdentifier: com.apple.watchkit",
-		"WKAppBundleIdentifier: com.mohammedalquraini.tapcounter.watchkitapp",
+		"WKAppBundleIdentifier: " + bundleIDPrefix() + ".tapcounter.watchkitapp",
 	}
 	for _, m := range markers {
 		if !strings.Contains(yml, m) {
@@ -379,7 +379,7 @@ func TestGenerateProjectYAMLEmptyExtensionKindSafeBundleID(t *testing.T) {
 	yml := generateProjectYAML("FocusFlow", plan)
 
 	// Bundle ID should use lowercase target name, NOT have a trailing dot
-	if strings.Contains(yml, "PRODUCT_BUNDLE_IDENTIFIER: com.mohammedalquraini.focusflow.\n") {
+	if strings.Contains(yml, "PRODUCT_BUNDLE_IDENTIFIER: "+bundleIDPrefix()+".focusflow.\n") {
 		t.Error("extension bundle ID should not end with a trailing dot when kind is empty")
 	}
 	if !strings.Contains(yml, "focusflowwidget") {

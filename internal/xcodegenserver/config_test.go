@@ -8,14 +8,14 @@ import (
 func TestGenerateProjectYAMLPairedWatchIncludesCompanionBundleIdentifier(t *testing.T) {
 	cfg := &ProjectConfig{
 		AppName:           "PulseTrack",
-		BundleID:          "com.mohammedalquraini.pulsetrack",
+		BundleID:          bundleIDPrefix() + ".pulsetrack",
 		Platform:          "watchos",
 		WatchProjectShape: "paired_ios_watch",
 	}
 
 	yml := generateProjectYAML(cfg)
 
-	if !strings.Contains(yml, "WKCompanionAppBundleIdentifier: com.mohammedalquraini.pulsetrack") {
+	if !strings.Contains(yml, "WKCompanionAppBundleIdentifier: "+bundleIDPrefix()+".pulsetrack") {
 		t.Fatalf("paired watch YAML missing WKCompanionAppBundleIdentifier for iOS companion bundle ID:\n%s", yml)
 	}
 	if !strings.Contains(yml, "WKRunsIndependentlyOfCompanionApp: true") {
@@ -26,7 +26,7 @@ func TestGenerateProjectYAMLPairedWatchIncludesCompanionBundleIdentifier(t *test
 		"type: watchkit2-extension",
 		"target: PulseTrackWatchExtension",
 		"NSExtensionPointIdentifier: com.apple.watchkit",
-		"WKAppBundleIdentifier: com.mohammedalquraini.pulsetrack.watchkitapp",
+		"WKAppBundleIdentifier: " + bundleIDPrefix() + ".pulsetrack.watchkitapp",
 	}
 	for _, want := range checks {
 		if !strings.Contains(yml, want) {
@@ -38,7 +38,7 @@ func TestGenerateProjectYAMLPairedWatchIncludesCompanionBundleIdentifier(t *test
 func TestGenerateProjectYAMLWatchOnlyOmitsCompanionBundleIdentifier(t *testing.T) {
 	cfg := &ProjectConfig{
 		AppName:           "PulseTrack",
-		BundleID:          "com.mohammedalquraini.pulsetrack",
+		BundleID:          bundleIDPrefix() + ".pulsetrack",
 		Platform:          "watchos",
 		WatchProjectShape: "watch_only",
 	}
@@ -60,7 +60,7 @@ func TestGenerateProjectYAMLWatchOnlyOmitsCompanionBundleIdentifier(t *testing.T
 		"target: PulseTrackWatch",
 		"target: PulseTrackWatchExtension",
 		"NSExtensionPointIdentifier: com.apple.watchkit",
-		"WKAppBundleIdentifier: com.mohammedalquraini.pulsetrack.watchkitapp",
+		"WKAppBundleIdentifier: " + bundleIDPrefix() + ".pulsetrack.watchkitapp",
 	}
 	for _, want := range checks {
 		if !strings.Contains(yml, want) {
