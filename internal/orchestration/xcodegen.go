@@ -25,10 +25,10 @@ func deviceFamilyBuildSettings(b *strings.Builder, family string) {
 }
 
 // appearanceBuildSettings writes Info.plist keys to lock the app to a single
-// appearance mode when dark mode is not supported. For iOS/tvOS/visionOS this
-// uses the INFOPLIST_KEY_UIUserInterfaceStyle build setting. For macOS this
-// writes an info: section with NSRequiresAquaSystemAppearance since there is
-// no INFOPLIST_KEY equivalent for that macOS-specific key.
+// appearance mode when dark mode is not supported. Only iOS and tvOS get locked
+// via INFOPLIST_KEY_UIUserInterfaceStyle. macOS and visionOS are excluded:
+// macOS apps should always follow system appearance, and visionOS has no
+// light/dark concept (glass auto-adapts).
 func appearanceBuildSettings(b *strings.Builder, plan *PlannerResult, platform string) {
 	if plan != nil && plan.HasRuleKey("dark-mode") {
 		return // app supports both modes — don't lock
@@ -46,17 +46,12 @@ func appearanceBuildSettings(b *strings.Builder, plan *PlannerResult, platform s
 	}
 }
 
-// appearanceInfoPlistMacOS writes the info: section for a macOS target to force
-// light appearance when dark mode is not supported. Call this after the settings
-// block and before entitlements.
+// appearanceInfoPlistMacOS is intentionally a no-op. macOS apps should always
+// follow the system appearance (dark/light). Unlike iOS where apps often have
+// branded light backgrounds, macOS users expect apps to respect their system
+// preference. Forcing Aqua with a dark custom palette creates visual mismatch.
 func appearanceInfoPlistMacOS(b *strings.Builder, appName, sourceDir string, plan *PlannerResult) {
-	if plan != nil && plan.HasRuleKey("dark-mode") {
-		return // app supports both modes — don't lock
-	}
-	b.WriteString("    info:\n")
-	fmt.Fprintf(b, "      path: %s/Info.plist\n", sourceDir)
-	b.WriteString("      properties:\n")
-	b.WriteString("        NSRequiresAquaSystemAppearance: true\n")
+	// No-op: macOS apps follow system appearance by default.
 }
 
 // writeIOSDestinationSettings constrains Xcode "Supported Destinations" for iOS apps.

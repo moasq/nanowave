@@ -213,7 +213,7 @@ When the app does NOT support both light and dark appearances (no `dark-mode` ru
 
 - **iOS / tvOS**: `UIUserInterfaceStyle` is set to `Light` in the generated Info.plist (via `INFOPLIST_KEY_UIUserInterfaceStyle` build setting).
 - **visionOS**: No appearance lock needed — visionOS has no dark mode. The glass material auto-adapts to the physical environment.
-- **macOS**: `NSRequiresAquaSystemAppearance: true` is set in the generated Info.plist, forcing the Aqua (light) appearance.
+- **macOS**: No appearance lock. macOS apps always follow the system appearance (dark/light). Users expect Mac apps to respect their system preference.
 
 This is handled at the XcodeGen project generation level — **do NOT use `.preferredColorScheme()` for this purpose**. The Info.plist approach ensures the entire app (including system chrome, alerts, and sheets) respects the locked appearance, not just SwiftUI views.
 

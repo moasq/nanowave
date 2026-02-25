@@ -596,19 +596,11 @@ func TestAppearanceLockIOSOmittedWithDarkMode(t *testing.T) {
 	}
 }
 
-func TestAppearanceLockMacOSInfoPlist(t *testing.T) {
+func TestAppearanceLockMacOSNoLock(t *testing.T) {
 	plan := &PlannerResult{Platform: "macos"}
 	yml := generateProjectYAML("App", plan)
-	if !strings.Contains(yml, "NSRequiresAquaSystemAppearance: true") {
-		t.Error("macOS YAML without dark-mode rule should contain NSRequiresAquaSystemAppearance")
-	}
-}
-
-func TestAppearanceLockMacOSOmittedWithDarkMode(t *testing.T) {
-	plan := &PlannerResult{Platform: "macos", RuleKeys: []string{"dark-mode"}}
-	yml := generateProjectYAML("App", plan)
 	if strings.Contains(yml, "NSRequiresAquaSystemAppearance") {
-		t.Error("macOS YAML with dark-mode rule should NOT contain NSRequiresAquaSystemAppearance")
+		t.Error("macOS YAML should NEVER contain NSRequiresAquaSystemAppearance — macOS follows system appearance")
 	}
 }
 
@@ -633,8 +625,8 @@ func TestAppearanceLockMultiPlatform(t *testing.T) {
 	if !strings.Contains(yml, "INFOPLIST_KEY_UIUserInterfaceStyle: Light") {
 		t.Error("multi-platform YAML should lock iOS appearance")
 	}
-	if !strings.Contains(yml, "NSRequiresAquaSystemAppearance: true") {
-		t.Error("multi-platform YAML should lock macOS appearance")
+	if strings.Contains(yml, "NSRequiresAquaSystemAppearance") {
+		t.Error("multi-platform YAML should NOT lock macOS appearance — macOS follows system")
 	}
 }
 
