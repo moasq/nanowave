@@ -20,12 +20,12 @@ Glanceable design: users interact with Apple Watch for 1-2 seconds. Every view m
 // Good - simple vertical stack, fills naturally
 VStack(spacing: 8) {
     Text("Heart Rate")
-        .font(.caption2)
+        .font(AppTheme.Fonts.caption2)
         .foregroundStyle(.secondary)
     Text("72")
-        .font(.system(.largeTitle, design: .rounded))
+        .font(AppTheme.Fonts.largeTitle)
     Text("BPM")
-        .font(.caption)
+        .font(AppTheme.Fonts.caption)
         .foregroundStyle(.secondary)
 }
 ```
@@ -74,9 +74,9 @@ struct MetricDisplay: View {
     var body: some View {
         VStack {
             Text("\(value)")
-                .font(.title2)
+                .font(AppTheme.Fonts.title2)
             Text(unit)
-                .font(.caption2)
+                .font(AppTheme.Fonts.caption2)
                 .foregroundStyle(.secondary)
         }
     }

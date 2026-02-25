@@ -196,7 +196,7 @@ struct MorphingExample: View {
 ```swift
 // CORRECT order
 Text("Label")
-    .font(.headline)           // 1. Typography
+    .font(AppTheme.Fonts.headline)  // 1. Typography
     .foregroundStyle(.primary) // 2. Color
     .padding()                 // 3. Layout
     .glassEffect()             // 4. Glass effect LAST
@@ -205,7 +205,7 @@ Text("Label")
 Text("Label")
     .glassEffect()             // Wrong position
     .padding()
-    .font(.headline)
+    .font(AppTheme.Fonts.headline)
 ```
 
 ## Complete Examples
@@ -242,7 +242,7 @@ struct ToolbarButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: icon)
-                .font(.title2)
+                .font(AppTheme.Fonts.title2)
                 .frame(width: 44, height: 44)
         }
         .glassEffect(.regular.interactive(), in: .circle)
@@ -270,9 +270,9 @@ struct GlassCard: View {
     private var cardContent: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
-                .font(.headline)
+                .font(AppTheme.Fonts.headline)
             Text(subtitle)
-                .font(.subheadline)
+                .font(AppTheme.Fonts.subheadline)
                 .foregroundStyle(.secondary)
         }
         .padding()

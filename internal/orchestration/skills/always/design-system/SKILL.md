@@ -166,6 +166,7 @@ extension Color {
 
 When the app has appearance switching (dark/light/system), also define:
 
+**iOS / tvOS / visionOS** (UIKit available):
 ```swift
 extension Color {
     init(light: String, dark: String) {
@@ -176,12 +177,60 @@ extension Color {
 }
 ```
 
+**macOS** (AppKit, no UIKit):
+```swift
+extension Color {
+    init(light: String, dark: String) {
+        self.init(nsColor: NSColor(name: nil, dynamicProvider: { appearance in
+            let isDark = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            return isDark ? NSColor(Color(hex: dark)) : NSColor(Color(hex: light))
+        }))
+    }
+}
+```
+
+**Multi-platform shared code** — use `#if canImport`:
+```swift
+extension Color {
+    init(light: String, dark: String) {
+        #if canImport(UIKit)
+        self.init(uiColor: UIColor { traits in
+            traits.userInterfaceStyle == .dark ? UIColor(Color(hex: dark)) : UIColor(Color(hex: light))
+        })
+        #elseif canImport(AppKit)
+        self.init(nsColor: NSColor(name: nil, dynamicProvider: { appearance in
+            let isDark = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            return isDark ? NSColor(Color(hex: dark)) : NSColor(Color(hex: light))
+        }))
+        #endif
+    }
+}
+```
+
+## Appearance Mode — Single-Appearance Lock via Info.plist
+
+When the app does NOT support both light and dark appearances (no `dark-mode` rule key), the pipeline automatically locks appearance via Info.plist:
+
+- **iOS / tvOS**: `UIUserInterfaceStyle` is set to `Light` in the generated Info.plist (via `INFOPLIST_KEY_UIUserInterfaceStyle` build setting).
+- **visionOS**: No appearance lock needed — visionOS has no dark mode. The glass material auto-adapts to the physical environment.
+- **macOS**: No appearance lock. macOS apps always follow the system appearance (dark/light). Users expect Mac apps to respect their system preference.
+
+This is handled at the XcodeGen project generation level — **do NOT use `.preferredColorScheme()` for this purpose**. The Info.plist approach ensures the entire app (including system chrome, alerts, and sheets) respects the locked appearance, not just SwiftUI views.
+
+**When the app supports dark mode** (`dark-mode` in rule_keys with `Color(light:dark:)` adaptive tokens), the pipeline omits these keys and the app follows the system appearance.
+
 ## Colors
 - **One accent color** that fits the app's purpose
 - Use semantic colors via `AppTheme.Colors.*` tokens — never raw SwiftUI colors
 - Do NOT add dark mode support, colorScheme checks, or custom dark/light color handling unless the user explicitly requests it
 - Use `Color(hex:)` with palette values — NEVER hardcoded SwiftUI colors like `.blue` or `.orange`
 - Keep brand/surface tokens explicit in AppTheme so appearance changes do not shift core palette identity
+
+### Platform-Specific Color Rules
+- **visionOS**: AppTheme colors are ONLY for accent buttons, badges, and small decorative elements. NEVER use AppTheme.Colors for backgrounds or body text. Use system glass and vibrancy instead.
+- **tvOS**: AppTheme palette must use muted, desaturated colors. Saturation is overwhelming on large TV screens. Dark-first design — light text on dark backgrounds.
+- **macOS**: Standard color usage similar to iOS. Sidebar icons should be monochrome (system handles tinting).
+- **iOS**: Full AppTheme color palette usage is appropriate.
 
 ## Spacing Standards
 - **16pt** standard padding (outer margins, section spacing)

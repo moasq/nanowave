@@ -19,13 +19,10 @@
 - Missing #Preview blocks on View files.
 - Missing empty states on lists and collections.
 - Re-declaring types already defined in other project files.
-- Hardcoding colors (.white, .black, Color.red) instead of AppTheme.Colors.* tokens.
-- Hardcoding fonts (.font(.title2), .font(.system(size:))) instead of AppTheme.Fonts.* tokens.
-- Hardcoding spacing (.padding(20), VStack(spacing: 10)) instead of AppTheme.Spacing.* tokens.
-- Forgetting to add textPrimary/textSecondary/textTertiary to AppTheme.Colors.
-- Forgetting to add Fonts enum to AppTheme with the plan's fontDesign applied.
+- Violating AppTheme token rules (see `<constraints>` block for full list — colors, fonts, spacing must all come from AppTheme.*).
 - Guessing Apple API signatures instead of searching docs first.
 - Using NavigationStack for list-detail in universal/iPad apps — use NavigationSplitView instead (auto-collapses to stack on iPhone).
+- Using `.preferredColorScheme()` to lock appearance — appearance locking is handled via Info.plist at the XcodeGen level, not in SwiftUI code.
 
 ## Build Loop Errors
 
@@ -51,6 +48,13 @@ Error "Generic struct 'StateObject' requires..." → Change @StateObject to @Sta
 | ForEach iteration      | Identifiable      |
 | @AppStorage            | RawRepresentable  |
 | JSON encoding/decoding | Codable           |
+
+## visionOS Mistakes
+
+- Using `.glassBackgroundEffect()` on `.listRowBackground()` — creates glass-on-glass rendering where text becomes invisible. Let the system handle list row styling.
+- Using `.scrollContentBackground(.hidden)` on Lists — removes the contrast needed for text visibility on visionOS.
+- Using opaque `AppTheme.Colors.background` or `.surface` on visionOS containers — visionOS windows are glass, opaque backgrounds break this.
+- Using `AppTheme.Colors.textPrimary` for body text instead of system vibrancy (`.foregroundStyle(.primary)`, `.secondary`, `.tertiary`).
 
 ## Multi-Platform Mistakes
 

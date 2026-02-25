@@ -59,10 +59,10 @@ struct ComplicationView: View {
         case .accessoryRectangular:
             VStack(alignment: .leading) {
                 Text(entry.label)
-                    .font(.headline)
+                    .font(AppTheme.Fonts.headline)
                     .widgetAccentable()
                 Text("\(entry.value)")
-                    .font(.title2)
+                    .font(AppTheme.Fonts.title2)
             }
 
         case .accessoryInline:

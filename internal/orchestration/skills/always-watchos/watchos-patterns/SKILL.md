@@ -63,7 +63,7 @@ var body: some View {
         if isLuminanceReduced {
             // Simplified, dim view — reduce updates and brightness
             Text(Date.now, style: .time)
-                .font(.title)
+                .font(AppTheme.Fonts.title)
         } else {
             // Full interactive view
             DetailedContentView()

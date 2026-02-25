@@ -74,8 +74,8 @@ if let error = emailError {
         Image(systemName: "exclamationmark.circle.fill")
         Text(error)
     }
-    .font(.caption)
-    .foregroundStyle(.red)
+    .font(AppTheme.Fonts.caption)
+    .foregroundStyle(AppTheme.Colors.error)
 }
 ```
 
@@ -94,12 +94,12 @@ if let error = emailError {
 if let error = bannerError {
     HStack {
         Image(systemName: "exclamationmark.triangle.fill")
-            .foregroundStyle(.orange)
+            .foregroundStyle(AppTheme.Colors.warning)
         Text(error)
-            .font(.subheadline)
+            .font(AppTheme.Fonts.subheadline)
         Spacer()
         Button("Dismiss") { bannerError = nil }
-            .font(.caption)
+            .font(AppTheme.Fonts.caption)
     }
     .padding(AppTheme.Spacing.small)
     .background(.orange.opacity(0.1))

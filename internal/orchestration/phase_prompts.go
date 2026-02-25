@@ -78,6 +78,23 @@ func appendPromptSection(b *strings.Builder, title, content string) {
 	b.WriteString(content)
 }
 
+func appendXMLSection(b *strings.Builder, tag, content string) {
+	content = strings.TrimSpace(content)
+	if content == "" {
+		return
+	}
+	if b.Len() > 0 {
+		b.WriteString("\n\n")
+	}
+	b.WriteString("<")
+	b.WriteString(tag)
+	b.WriteString(">\n")
+	b.WriteString(content)
+	b.WriteString("\n</")
+	b.WriteString(tag)
+	b.WriteString(">")
+}
+
 func formatIntentHintsForPrompt(intent *IntentDecision) string {
 	if intent == nil {
 		return ""
@@ -124,7 +141,7 @@ func composeAnalyzerSystemPrompt(intent *IntentDecision) (string, error) {
 
 	var b strings.Builder
 	appendPromptSection(&b, "Analyzer Base", analyzerPrompt)
-	appendPromptSection(&b, "Planning Constraints", planningConstraints)
+	appendXMLSection(&b, "constraints", planningConstraints)
 	appendPromptSection(&b, "Phase Skill", phaseSkill)
 	if hints := formatIntentHintsForPrompt(intent); hints != "" {
 		appendPromptSection(&b, "Intent Hints", hints)
@@ -132,15 +149,15 @@ func composeAnalyzerSystemPrompt(intent *IntentDecision) (string, error) {
 	return b.String(), nil
 }
 
-func composePlannerSystemPrompt(intent *IntentDecision) (string, error) {
+func composePlannerSystemPrompt(intent *IntentDecision, platform string) (string, error) {
 	phaseSkill, err := loadPhaseSkillContent("planner")
 	if err != nil {
 		return "", err
 	}
 
 	var b strings.Builder
-	appendPromptSection(&b, "Planner Base", plannerPrompt)
-	appendPromptSection(&b, "Planning Constraints", planningConstraints)
+	appendPromptSection(&b, "Planner Base", plannerPromptForPlatform(platform))
+	appendXMLSection(&b, "constraints", planningConstraints)
 	appendPromptSection(&b, "Phase Skill", phaseSkill)
 	if hints := formatIntentHintsForPrompt(intent); hints != "" {
 		appendPromptSection(&b, "Intent Hints", hints)
@@ -148,15 +165,49 @@ func composePlannerSystemPrompt(intent *IntentDecision) (string, error) {
 	return b.String(), nil
 }
 
-func composeCoderAppendPrompt(phaseSkillName string) (string, error) {
+func composeCoderAppendPrompt(phaseSkillName, platform string) (string, error) {
 	phaseSkill, err := loadPhaseSkillContent(phaseSkillName)
 	if err != nil {
 		return "", err
 	}
 
 	var b strings.Builder
-	appendPromptSection(&b, "Coder Base", coderPrompt)
-	appendPromptSection(&b, "Shared Constraints", sharedConstraints)
+	appendPromptSection(&b, "Coder Base", coderPromptForPlatform(platform))
+	appendXMLSection(&b, "constraints", sharedConstraints)
 	appendPromptSection(&b, "Phase Skill", phaseSkill)
+	appendXMLSection(&b, "verification", composeSelfCheck(platform))
+
 	return b.String(), nil
+}
+
+func composeSelfCheck(platform string) string {
+	base := `Before completing each file, verify every item:
+- [ ] No raw .font() — all fonts via AppTheme.Fonts.* (reason: centralized tokens enable theme changes)
+- [ ] No raw .foregroundStyle(.white/.black/.red) — all colors via AppTheme.Colors.* (reason: consistency)
+- [ ] No raw .padding(N) or VStack(spacing: N) — all spacing via AppTheme.Spacing.* (reason: consistency)
+- [ ] @Observable used, NOT ObservableObject. @State with @Observable, NOT @StateObject.
+- [ ] No type re-declarations — each type defined in exactly one file
+- [ ] Every View file includes #Preview`
+
+	switch {
+	case IsMacOS(platform):
+		base += `
+- [ ] Settings scene present for preferences (auto-wires Cmd+,)
+- [ ] CommandMenu actions wired via @FocusedValue — not empty closures
+- [ ] .keyboardShortcut() on every primary action and menu item
+- [ ] .disabled(value == nil) on every CommandMenu button`
+	case IsWatchOS(platform):
+		base += `
+- [ ] No UIKit imports — watchOS is SwiftUI-only
+- [ ] NavigationStack used (not NavigationSplitView) for watch navigation`
+	case IsTvOS(platform):
+		base += `
+- [ ] Focus-based navigation with .focusable() on interactive elements
+- [ ] No small tap targets — tvOS uses focus system, not touch`
+	case IsVisionOS(platform):
+		base += `
+- [ ] RealityView used for 3D content, SwiftUI for 2D chrome
+- [ ] No UIKit imports — visionOS is SwiftUI + RealityKit`
+	}
+	return base
 }

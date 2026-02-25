@@ -14,7 +14,7 @@ var (
 	markdownLinkTargetRE   = regexp.MustCompile(`\[[^\]]+\]\(([^)]+)\)`)
 	contentsHeadingLineRE  = regexp.MustCompile(`(?i)^\s{0,3}#{1,6}\s+contents\s*$`)
 	tableOfContentsLineRE  = regexp.MustCompile(`(?i)table of contents`)
-	sourceSkillCategories  = []string{"always", "always-watchos", "always-tvos", "features", "ui", "extensions", "watchos", "tvos", "phases"}
+	sourceSkillCategories  = []string{"always", "always-watchos", "always-tvos", "always-visionos", "always-macos", "features", "ui", "extensions", "watchos", "tvos", "visionos", "macos", "phases"}
 	reservedSkillNameWords = []string{"anthropic", "claude"}
 )
 

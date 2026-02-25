@@ -52,7 +52,7 @@ func finalizeBuildIntentDecision(parsed, fallback *IntentDecision) *IntentDecisi
 	if out.Reason == "" {
 		out.Reason = fallback.Reason
 	}
-	if out.PlatformHint != PlatformWatchOS && out.PlatformHint != PlatformTvOS && out.DeviceFamilyHint == "" {
+	if out.PlatformHint != PlatformWatchOS && out.PlatformHint != PlatformTvOS && out.PlatformHint != PlatformVisionOS && out.PlatformHint != PlatformMacOS && out.DeviceFamilyHint == "" {
 		out.DeviceFamilyHint = fallback.DeviceFamilyHint
 	}
 

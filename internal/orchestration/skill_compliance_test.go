@@ -200,7 +200,7 @@ func TestValidateAnthropicSourceSkillsStrictFixtureFailures(t *testing.T) {
 
 func writeValidSourceSkillsFixture(t *testing.T, root string) {
 	t.Helper()
-	cats := []string{"always", "always-watchos", "always-tvos", "features", "ui", "extensions", "watchos", "tvos", "phases"}
+	cats := []string{"always", "always-watchos", "always-tvos", "always-visionos", "always-macos", "features", "ui", "extensions", "watchos", "tvos", "visionos", "macos", "phases"}
 	for _, cat := range cats {
 		skillDirName := "sample-" + cat
 		skillName := "sample-" + strings.ReplaceAll(cat, "_", "-")

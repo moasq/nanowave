@@ -21,7 +21,7 @@ struct TaskListView: View {
 
     private var headerView: some View {
         Text("My Tasks")
-            .font(.largeTitle)
+            .font(AppTheme.Fonts.largeTitle)
             .padding()
     }
 
@@ -78,7 +78,7 @@ var body: some View {
     ScrollView {
         VStack(alignment: .leading) {
             Text("Welcome")
-                .font(.largeTitle)
+                .font(AppTheme.Fonts.largeTitle)
             // ... 50 more lines
         }
     }

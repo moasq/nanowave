@@ -13,9 +13,9 @@ func TestValidatePlatform(t *testing.T) {
 		{"ios", false},
 		{"watchos", false},
 		{"", false},
-		{"macos", true},
+		{"macos", false},
 		{"tvos", false},
-		{"visionos", true},
+		{"visionos", false},
 	}
 
 	for _, tc := range tests {
@@ -260,11 +260,12 @@ func TestValidatePlatforms(t *testing.T) {
 		input []string
 		want  []string
 	}{
-		{"all valid", []string{"ios", "watchos", "tvos"}, []string{"ios", "watchos", "tvos"}},
-		{"drops invalid", []string{"ios", "macos", "tvos"}, []string{"ios", "tvos"}},
+		{"all valid", []string{"ios", "watchos", "tvos", "visionos", "macos"}, []string{"ios", "watchos", "tvos", "visionos", "macos"}},
+		{"drops invalid", []string{"ios", "android", "tvos"}, []string{"ios", "tvos"}},
 		{"empty input", nil, nil},
-		{"all invalid", []string{"macos", "visionos"}, nil},
+		{"all invalid", []string{"android", "linux"}, nil},
 		{"single valid", []string{"watchos"}, []string{"watchos"}},
+		{"macos valid", []string{"ios", "macos"}, []string{"ios", "macos"}},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -347,5 +348,240 @@ func TestValidateExtensionsForPlatformWatchOS(t *testing.T) {
 		if err == nil {
 			t.Errorf("watchOS should reject extension kind %q", kind)
 		}
+	}
+}
+
+func TestIsVisionOS(t *testing.T) {
+	if !IsVisionOS("visionos") {
+		t.Error("IsVisionOS(visionos) should be true")
+	}
+	if IsVisionOS("ios") {
+		t.Error("IsVisionOS(ios) should be false")
+	}
+	if IsVisionOS("") {
+		t.Error("IsVisionOS('') should be false")
+	}
+}
+
+func TestFilterRuleKeysForPlatformVisionOS(t *testing.T) {
+	keys := []string{"camera", "healthkit", "haptics", "maps", "speech", "app-review", "dark-mode", "biometrics", "gestures", "storage"}
+	filtered, warnings := FilterRuleKeysForPlatform("visionos", keys)
+
+	// camera, healthkit, haptics, maps, speech, app-review, dark-mode should be removed
+	unsupported := map[string]bool{
+		"camera": true, "healthkit": true, "haptics": true,
+		"maps": true, "speech": true, "app-review": true, "dark-mode": true,
+	}
+	for _, f := range filtered {
+		if unsupported[f] {
+			t.Errorf("visionOS should remove %q from keys", f)
+		}
+	}
+
+	// biometrics and gestures should remain (conditional)
+	foundBiometrics := false
+	foundGestures := false
+	for _, f := range filtered {
+		if f == "biometrics" {
+			foundBiometrics = true
+		}
+		if f == "gestures" {
+			foundGestures = true
+		}
+	}
+	if !foundBiometrics {
+		t.Error("biometrics should remain in filtered keys (conditional)")
+	}
+	if !foundGestures {
+		t.Error("gestures should remain in filtered keys (conditional)")
+	}
+
+	// storage should remain (supported)
+	foundStorage := false
+	for _, f := range filtered {
+		if f == "storage" {
+			foundStorage = true
+		}
+	}
+	if !foundStorage {
+		t.Error("storage should remain in filtered keys")
+	}
+
+	// Check warnings
+	hasRemovedWarning := false
+	hasConditionalWarning := false
+	for _, w := range warnings {
+		if strings.Contains(w, "removed") {
+			hasRemovedWarning = true
+		}
+		if strings.Contains(w, "biometrics") || strings.Contains(w, "gestures") {
+			hasConditionalWarning = true
+		}
+	}
+	if !hasRemovedWarning {
+		t.Error("should have removal warnings for visionOS unsupported keys")
+	}
+	if !hasConditionalWarning {
+		t.Error("should have conditional warnings for biometrics or gestures")
+	}
+}
+
+func TestValidateExtensionsForPlatformVisionOS(t *testing.T) {
+	// Widget is supported
+	err := ValidateExtensionsForPlatform("visionos", []ExtensionPlan{{Kind: "widget"}})
+	if err != nil {
+		t.Errorf("visionOS should support widget, got: %v", err)
+	}
+
+	// Other kinds are not
+	unsupported := []string{"live_activity", "share", "notification_service", "safari", "app_clip"}
+	for _, kind := range unsupported {
+		err := ValidateExtensionsForPlatform("visionos", []ExtensionPlan{{Kind: kind}})
+		if err == nil {
+			t.Errorf("visionOS should reject extension kind %q", kind)
+		}
+	}
+}
+
+func TestPlatformSourceDirSuffixVisionOS(t *testing.T) {
+	got := PlatformSourceDirSuffix("visionos")
+	if got != "Vision" {
+		t.Fatalf("PlatformSourceDirSuffix(visionos) = %q, want %q", got, "Vision")
+	}
+}
+
+func TestPlatformBuildDestinationVisionOS(t *testing.T) {
+	got := PlatformBuildDestination("visionos")
+	if !strings.Contains(got, "visionOS Simulator") {
+		t.Fatalf("PlatformBuildDestination(visionos) = %q, want to contain %q", got, "visionOS Simulator")
+	}
+}
+
+func TestIsMacOS(t *testing.T) {
+	if !IsMacOS("macos") {
+		t.Error("IsMacOS(macos) should be true")
+	}
+	if IsMacOS("ios") {
+		t.Error("IsMacOS(ios) should be false")
+	}
+	if IsMacOS("") {
+		t.Error("IsMacOS('') should be false")
+	}
+}
+
+func TestFilterRuleKeysForPlatformMacOS(t *testing.T) {
+	keys := []string{"healthkit", "haptics", "speech", "biometrics", "gestures", "camera", "storage", "widgets"}
+	filtered, warnings := FilterRuleKeysForPlatform("macos", keys)
+
+	// healthkit, haptics, speech should be removed
+	unsupported := map[string]bool{
+		"healthkit": true, "haptics": true, "speech": true,
+	}
+	for _, f := range filtered {
+		if unsupported[f] {
+			t.Errorf("macOS should remove %q from keys", f)
+		}
+	}
+
+	// biometrics, gestures, camera should remain (conditional)
+	conditional := map[string]bool{"biometrics": true, "gestures": true, "camera": true}
+	for key := range conditional {
+		found := false
+		for _, f := range filtered {
+			if f == key {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("%s should remain in filtered keys (conditional)", key)
+		}
+	}
+
+	// storage and widgets should remain (supported)
+	for _, key := range []string{"storage", "widgets"} {
+		found := false
+		for _, f := range filtered {
+			if f == key {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("%s should remain in filtered keys", key)
+		}
+	}
+
+	// Check warnings
+	hasRemovedWarning := false
+	hasConditionalWarning := false
+	for _, w := range warnings {
+		if strings.Contains(w, "removed") {
+			hasRemovedWarning = true
+		}
+		if strings.Contains(w, "biometrics") || strings.Contains(w, "gestures") || strings.Contains(w, "camera") {
+			hasConditionalWarning = true
+		}
+	}
+	if !hasRemovedWarning {
+		t.Error("should have removal warnings for macOS unsupported keys")
+	}
+	if !hasConditionalWarning {
+		t.Error("should have conditional warnings for biometrics, gestures, or camera")
+	}
+}
+
+func TestValidateExtensionsForPlatformMacOS(t *testing.T) {
+	// Widget, share, and notification_service are supported
+	supported := []string{"widget", "share", "notification_service"}
+	for _, kind := range supported {
+		err := ValidateExtensionsForPlatform("macos", []ExtensionPlan{{Kind: kind}})
+		if err != nil {
+			t.Errorf("macOS should support extension kind %q, got: %v", kind, err)
+		}
+	}
+
+	// live_activity, app_clip, safari are not
+	unsupported := []string{"live_activity", "app_clip", "safari"}
+	for _, kind := range unsupported {
+		err := ValidateExtensionsForPlatform("macos", []ExtensionPlan{{Kind: kind}})
+		if err == nil {
+			t.Errorf("macOS should reject extension kind %q", kind)
+		}
+	}
+}
+
+func TestPlatformSourceDirSuffixMacOS(t *testing.T) {
+	got := PlatformSourceDirSuffix("macos")
+	if got != "Mac" {
+		t.Fatalf("PlatformSourceDirSuffix(macos) = %q, want %q", got, "Mac")
+	}
+}
+
+func TestPlatformBuildDestinationMacOS(t *testing.T) {
+	got := PlatformBuildDestination("macos")
+	if got != "generic/platform=macOS" {
+		t.Fatalf("PlatformBuildDestination(macos) = %q, want %q", got, "generic/platform=macOS")
+	}
+}
+
+func TestPlatformDisplayNameMacOS(t *testing.T) {
+	got := PlatformDisplayName("macos")
+	if got != "macOS" {
+		t.Fatalf("PlatformDisplayName(macos) = %q, want %q", got, "macOS")
+	}
+}
+
+func TestPlatformDeploymentTargetKeyMacOS(t *testing.T) {
+	got := PlatformDeploymentTargetKey("macos")
+	if got != "macOS" {
+		t.Fatalf("PlatformDeploymentTargetKey(macos) = %q, want %q", got, "macOS")
+	}
+}
+
+func TestPlatformXcodegenValueMacOS(t *testing.T) {
+	got := PlatformXcodegenValue("macos")
+	if got != "macOS" {
+		t.Fatalf("PlatformXcodegenValue(macos) = %q, want %q", got, "macOS")
 	}
 }

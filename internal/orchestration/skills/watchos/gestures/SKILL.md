@@ -43,7 +43,7 @@ DIGITAL CROWN FOR VALUE SELECTION:
 VStack {
     Text("Temperature")
     Text("\(Int(selectedIndex + 60))\u{00B0}F")
-        .font(.title2)
+        .font(AppTheme.Fonts.title2)
 }
 .digitalCrownRotation(
     $selectedIndex,

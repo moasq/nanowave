@@ -16,7 +16,7 @@ Every file entry must include:
 - components: key Swift types and signatures as a single string summary (NOT an array)
 - data_access: "in-memory", "@AppStorage", "none", etc.
 - depends_on: array of file path strings this file imports from (must exist in files array)
-- platform: which platform this file belongs to — `"ios"`, `"watchos"`, `"tvos"`, or `""` for shared/cross-platform files
+- platform: which platform this file belongs to — `"ios"`, `"watchos"`, `"tvos"`, `"visionos"`, `"macos"`, or `""` for shared/cross-platform files
 
 ## Extension Entry Fields
 
@@ -34,8 +34,8 @@ An extension with an empty `kind` will produce a broken Xcode project (invalid b
 - `extensions[].kind` MUST be non-empty — it determines the bundle ID suffix and Info.plist configuration.
 - `watch_project_shape` values are only `watch_only` or `paired_ios_watch`.
 - If `watch_project_shape` is present, `platform` must be `watchos`.
-- `platform` values: `ios` (default), `watchos`, `tvos`.
-- `platforms`: array of platform strings when targeting multiple platforms, e.g. `["ios", "watchos", "tvos"]`. Each element must be `"ios"`, `"watchos"`, or `"tvos"`. Omit or use `[]` for single-platform projects.
+- `platform` values: `ios` (default), `watchos`, `tvos`, `visionos`, `macos`.
+- `platforms`: array of platform strings when targeting multiple platforms, e.g. `["ios", "watchos", "tvos"]`. Each element must be `"ios"`, `"watchos"`, `"tvos"`, `"visionos"`, or `"macos"`. Omit or use `[]` for single-platform projects.
 - For `tvos`, do not set `device_family` or `watch_project_shape`.
 - `build_order`: Models → Theme → ViewModels → Views → App. Respects depends_on.
 

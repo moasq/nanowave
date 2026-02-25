@@ -387,6 +387,186 @@ func TestGenerateProjectYAMLEmptyExtensionKindSafeBundleID(t *testing.T) {
 	}
 }
 
+func TestGenerateProjectYAMLVisionOS(t *testing.T) {
+	plan := &PlannerResult{
+		Platform: "visionos",
+	}
+
+	yml := generateProjectYAML("VisionApp", plan)
+
+	checks := []struct {
+		desc string
+		want string
+	}{
+		{"has visionOS deployment target", "visionOS: \"26.0\""},
+		{"has application type", "type: application"},
+		{"has visionOS platform", "platform: visionOS"},
+		{"has supportedDestinations", "supportedDestinations:"},
+		{"has visionOS destination", "- visionOS"},
+		{"has TARGETED_DEVICE_FAMILY 7", "TARGETED_DEVICE_FAMILY: \"7\""},
+	}
+
+	for _, c := range checks {
+		if !strings.Contains(yml, c.want) {
+			t.Errorf("visionOS YAML: %s — expected to contain %q", c.desc, c.want)
+		}
+	}
+
+	// Should NOT have iOS/watchOS markers
+	if strings.Contains(yml, "iOS: \"26.0\"") {
+		t.Error("visionOS YAML should not contain iOS deployment target")
+	}
+	if strings.Contains(yml, "watchOS") {
+		t.Error("visionOS YAML should not contain watchOS references")
+	}
+	if strings.Contains(yml, "UILaunchScreen") {
+		t.Error("visionOS YAML should not contain UILaunchScreen")
+	}
+	if strings.Contains(yml, "UIApplicationSceneManifest") {
+		t.Error("visionOS YAML should not contain UIApplicationSceneManifest")
+	}
+}
+
+func TestGenerateMultiPlatformProjectYAMLWithVisionOS(t *testing.T) {
+	plan := &PlannerResult{
+		Platform:     "ios",
+		Platforms:    []string{"ios", "visionos"},
+		DeviceFamily: "iphone",
+	}
+
+	yml := generateProjectYAML("SpatialApp", plan)
+
+	checks := []struct {
+		desc string
+		want string
+	}{
+		{"has iOS deployment target", "iOS: \"26.0\""},
+		{"has visionOS deployment target", "visionOS: \"26.0\""},
+		{"has iOS main target", "SpatialApp:"},
+		{"has visionOS target", "SpatialAppVision:"},
+		{"has visionOS platform", "platform: visionOS"},
+		{"has TARGETED_DEVICE_FAMILY 7", "TARGETED_DEVICE_FAMILY: \"7\""},
+		{"has Shared sources", "path: Shared"},
+		{"has visionOS source dir", "path: SpatialAppVision"},
+		{"has visionOS bundle ID suffix", ".vision"},
+	}
+
+	for _, c := range checks {
+		if !strings.Contains(yml, c.want) {
+			t.Errorf("Multi-platform with visionOS YAML: %s — expected to contain %q", c.desc, c.want)
+		}
+	}
+}
+
+func TestGenerateProjectYAMLMacOS(t *testing.T) {
+	plan := &PlannerResult{
+		Platform: "macos",
+	}
+
+	yml := generateProjectYAML("MacApp", plan)
+
+	checks := []struct {
+		desc string
+		want string
+	}{
+		{"has macOS deployment target", "macOS: \"26.0\""},
+		{"has application type", "type: application"},
+		{"has macOS platform", "platform: macOS"},
+		{"has supportedDestinations", "supportedDestinations:"},
+		{"has macOS destination", "- macOS"},
+		{"has COMBINE_HIDPI_IMAGES", "COMBINE_HIDPI_IMAGES: YES"},
+	}
+
+	for _, c := range checks {
+		if !strings.Contains(yml, c.want) {
+			t.Errorf("macOS YAML: %s — expected to contain %q", c.desc, c.want)
+		}
+	}
+
+	// macOS should NOT have TARGETED_DEVICE_FAMILY
+	if strings.Contains(yml, "TARGETED_DEVICE_FAMILY") {
+		t.Error("macOS YAML should not contain TARGETED_DEVICE_FAMILY")
+	}
+	// Should NOT have iOS/watchOS markers
+	if strings.Contains(yml, "iOS: \"26.0\"") {
+		t.Error("macOS YAML should not contain iOS deployment target")
+	}
+	if strings.Contains(yml, "watchOS") {
+		t.Error("macOS YAML should not contain watchOS references")
+	}
+	if strings.Contains(yml, "UILaunchScreen") {
+		t.Error("macOS YAML should not contain UILaunchScreen")
+	}
+	if strings.Contains(yml, "UIApplicationSceneManifest") {
+		t.Error("macOS YAML should not contain UIApplicationSceneManifest")
+	}
+	if strings.Contains(yml, "UISupportedInterfaceOrientations") {
+		t.Error("macOS YAML should not contain orientation settings")
+	}
+}
+
+func TestGenerateMultiPlatformProjectYAMLWithMacOS(t *testing.T) {
+	plan := &PlannerResult{
+		Platform:     "ios",
+		Platforms:    []string{"ios", "macos"},
+		DeviceFamily: "iphone",
+	}
+
+	yml := generateProjectYAML("ProdApp", plan)
+
+	checks := []struct {
+		desc string
+		want string
+	}{
+		{"has iOS deployment target", "iOS: \"26.0\""},
+		{"has macOS deployment target", "macOS: \"26.0\""},
+		{"has iOS main target", "ProdApp:"},
+		{"has macOS target", "ProdAppMac:"},
+		{"has macOS platform", "platform: macOS"},
+		{"has Shared sources", "path: Shared"},
+		{"has macOS source dir", "path: ProdAppMac"},
+		{"has macOS bundle ID suffix", ".mac"},
+	}
+
+	for _, c := range checks {
+		if !strings.Contains(yml, c.want) {
+			t.Errorf("Multi-platform with macOS YAML: %s — expected to contain %q", c.desc, c.want)
+		}
+	}
+
+	// macOS target should NOT have TARGETED_DEVICE_FAMILY
+	// (iOS target will have it, but we check that macOS section doesn't)
+	macIdx := strings.Index(yml, "ProdAppMac:")
+	if macIdx < 0 {
+		t.Fatal("ProdAppMac target not found")
+	}
+	macSection := yml[macIdx:]
+	if strings.Contains(macSection, "TARGETED_DEVICE_FAMILY") {
+		t.Error("macOS target in multi-platform YAML should not contain TARGETED_DEVICE_FAMILY")
+	}
+}
+
+func TestGenerateMultiPlatformYAMLiOSMacOSNoDependencies(t *testing.T) {
+	plan := &PlannerResult{
+		Platform:     "ios",
+		Platforms:    []string{"ios", "macos"},
+		DeviceFamily: "iphone",
+	}
+
+	yml := generateProjectYAML("RecipeBook", plan)
+
+	// iOS target without watch or extensions should NOT have an empty dependencies key
+	iosIdx := strings.Index(yml, "  RecipeBook:")
+	macIdx := strings.Index(yml, "  RecipeBookMac:")
+	if iosIdx < 0 || macIdx < 0 {
+		t.Fatalf("expected both targets; iOS=%d, macOS=%d", iosIdx, macIdx)
+	}
+	iosSection := yml[iosIdx:macIdx]
+	if strings.Contains(iosSection, "dependencies:") {
+		t.Error("iOS target should not have empty dependencies when no watch/extensions are present")
+	}
+}
+
 func TestGenerateProjectYAMLDefaultsToIOS(t *testing.T) {
 	plan := &PlannerResult{}
 
@@ -397,5 +577,68 @@ func TestGenerateProjectYAMLDefaultsToIOS(t *testing.T) {
 	}
 	if strings.Contains(yml, "watchOS") {
 		t.Error("default should not produce watchOS YAML")
+	}
+}
+
+func TestAppearanceLockIOSLightByDefault(t *testing.T) {
+	plan := &PlannerResult{Platform: "ios", DeviceFamily: "iphone"}
+	yml := generateProjectYAML("App", plan)
+	if !strings.Contains(yml, "INFOPLIST_KEY_UIUserInterfaceStyle: Light") {
+		t.Error("iOS YAML without dark-mode rule should contain UIUserInterfaceStyle: Light")
+	}
+}
+
+func TestAppearanceLockIOSOmittedWithDarkMode(t *testing.T) {
+	plan := &PlannerResult{Platform: "ios", DeviceFamily: "iphone", RuleKeys: []string{"dark-mode"}}
+	yml := generateProjectYAML("App", plan)
+	if strings.Contains(yml, "UIUserInterfaceStyle") {
+		t.Error("iOS YAML with dark-mode rule should NOT contain UIUserInterfaceStyle")
+	}
+}
+
+func TestAppearanceLockMacOSNoLock(t *testing.T) {
+	plan := &PlannerResult{Platform: "macos"}
+	yml := generateProjectYAML("App", plan)
+	if strings.Contains(yml, "NSRequiresAquaSystemAppearance") {
+		t.Error("macOS YAML should NEVER contain NSRequiresAquaSystemAppearance — macOS follows system appearance")
+	}
+}
+
+func TestAppearanceLockVisionOSNoLock(t *testing.T) {
+	plan := &PlannerResult{Platform: "visionos"}
+	yml := generateProjectYAML("App", plan)
+	if strings.Contains(yml, "UIUserInterfaceStyle") {
+		t.Error("visionOS YAML should NOT contain UIUserInterfaceStyle — glass auto-adapts")
+	}
+	if strings.Contains(yml, "NSRequiresAquaSystemAppearance") {
+		t.Error("visionOS YAML should NOT contain NSRequiresAquaSystemAppearance")
+	}
+}
+
+func TestAppearanceLockMultiPlatform(t *testing.T) {
+	plan := &PlannerResult{
+		Platform:     "ios",
+		Platforms:    []string{"ios", "macos", "tvos"},
+		DeviceFamily: "iphone",
+	}
+	yml := generateProjectYAML("App", plan)
+	if !strings.Contains(yml, "INFOPLIST_KEY_UIUserInterfaceStyle: Light") {
+		t.Error("multi-platform YAML should lock iOS appearance")
+	}
+	if strings.Contains(yml, "NSRequiresAquaSystemAppearance") {
+		t.Error("multi-platform YAML should NOT lock macOS appearance — macOS follows system")
+	}
+}
+
+func TestAppearanceLockMultiPlatformVisionOSExcluded(t *testing.T) {
+	plan := &PlannerResult{
+		Platform:  "ios",
+		Platforms: []string{"ios", "visionos"},
+	}
+	yml := generateProjectYAML("App", plan)
+	// Count occurrences of UIUserInterfaceStyle — should only appear for iOS, not visionOS
+	count := strings.Count(yml, "INFOPLIST_KEY_UIUserInterfaceStyle: Light")
+	if count != 1 {
+		t.Errorf("multi-platform iOS+visionOS should have exactly 1 UIUserInterfaceStyle (iOS only), got %d", count)
 	}
 }

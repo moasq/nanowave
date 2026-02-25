@@ -240,7 +240,7 @@ func (p *Pipeline) Build(ctx context.Context, prompt string, images []string) (*
 		return nil, fmt.Errorf("failed to enrich CLAUDE.md: %w", err)
 	}
 
-	if err := writeCoreRules(projectDir); err != nil {
+	if err := writeCoreRules(projectDir, plan.GetPlatform()); err != nil {
 		return nil, fmt.Errorf("failed to write core rules: %w", err)
 	}
 
@@ -472,7 +472,7 @@ func (p *Pipeline) Edit(ctx context.Context, prompt, projectDir, sessionID strin
 	platform, platforms, watchProjectShape := detectProjectBuildHints(projectDir)
 	isMulti := len(platforms) > 1
 
-	appendPrompt, err := composeCoderAppendPrompt("editor")
+	appendPrompt, err := composeCoderAppendPrompt("editor", platform)
 	if err != nil {
 		return nil, err
 	}
@@ -567,7 +567,7 @@ func (p *Pipeline) Fix(ctx context.Context, projectDir, sessionID string) (*FixR
 	platform, platforms, watchProjectShape := detectProjectBuildHints(projectDir)
 	isMulti := len(platforms) > 1
 
-	appendPrompt, err := composeCoderAppendPrompt("fixer")
+	appendPrompt, err := composeCoderAppendPrompt("fixer", platform)
 	if err != nil {
 		return nil, err
 	}
@@ -691,7 +691,7 @@ func (p *Pipeline) analyze(ctx context.Context, prompt string, intent *IntentDec
 
 // plan runs Phase 3: analysis → PlannerResult.
 func (p *Pipeline) plan(ctx context.Context, analysis *AnalysisResult, intent *IntentDecision, progress *terminal.ProgressDisplay) (*PlannerResult, error) {
-	systemPrompt, err := composePlannerSystemPrompt(intent)
+	systemPrompt, err := composePlannerSystemPrompt(intent, intent.PlatformHint)
 	if err != nil {
 		return nil, err
 	}

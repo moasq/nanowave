@@ -16,3 +16,9 @@ dist/
 
 # Test output
 coverage.out
+
+# Claude Code Docker
+claude-docker/
+
+# generated project files
+examples/projects/

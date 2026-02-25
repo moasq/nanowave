@@ -279,7 +279,7 @@ struct OptimizedImageView: View {
 
 ```swift
 Image(systemName: "star.fill")
-    .foregroundStyle(.yellow)
+    .foregroundStyle(AppTheme.Colors.warning)
 
 Image(systemName: "heart.fill")
     .symbolRenderingMode(.multicolor)

@@ -41,9 +41,9 @@ struct MyWidgetView: View {
     var body: some View {
         switch family {
         case .systemSmall:
-            VStack { Text(entry.title).font(.headline); Text("\(Int(entry.value))").font(.largeTitle) }
+            VStack { Text(entry.title).font(AppTheme.Fonts.headline); Text("\(Int(entry.value))").font(AppTheme.Fonts.largeTitle) }
         case .systemMedium:
-            HStack { VStack(alignment: .leading) { Text(entry.title); Text("\(Int(entry.value))").font(.title) }; Spacer() }
+            HStack { VStack(alignment: .leading) { Text(entry.title); Text("\(Int(entry.value))").font(AppTheme.Fonts.title) }; Spacer() }
         default:
             Text(entry.title)
         }

@@ -23,6 +23,20 @@ func normalizeWatchShapeIntentHints(decision *IntentDecision) {
 		return
 	}
 
+	if decision.PlatformHint == PlatformVisionOS {
+		// visionOS does not use device_family or watch project shape hints.
+		decision.DeviceFamilyHint = ""
+		decision.WatchProjectShapeHint = ""
+		return
+	}
+
+	if decision.PlatformHint == PlatformMacOS {
+		// macOS does not use device_family or watch project shape hints.
+		decision.DeviceFamilyHint = ""
+		decision.WatchProjectShapeHint = ""
+		return
+	}
+
 	// Non-watch routes must not carry watch-only shape hints.
 	decision.WatchProjectShapeHint = ""
 }
