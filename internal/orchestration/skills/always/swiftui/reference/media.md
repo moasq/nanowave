@@ -80,8 +80,8 @@ Map(position: $position) {
     ForEach(places) { place in
         Annotation(place.name, coordinate: place.coordinate) {
             Image(systemName: "mappin.circle.fill")
-                .foregroundStyle(.red)
-                .font(.title)
+                .foregroundStyle(AppTheme.Colors.error)
+                .font(AppTheme.Fonts.title)
         }
     }
 }

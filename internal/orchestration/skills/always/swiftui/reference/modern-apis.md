@@ -31,7 +31,7 @@ Text("Hello")
     .foregroundStyle(.primary)
 
 Image(systemName: "star")
-    .foregroundStyle(.blue)
+    .foregroundStyle(AppTheme.Colors.accent)
 
 // Legacy (Avoid)
 Text("Hello")
@@ -352,10 +352,10 @@ var body: some View {
 ```swift
 // Correct - respects user's text size preferences
 Text("Title")
-    .font(.title)
+    .font(AppTheme.Fonts.title)
 
 Text("Body")
-    .font(.body)
+    .font(AppTheme.Fonts.body)
 
 // Avoid - fixed size doesn't scale
 Text("Title")
@@ -369,7 +369,7 @@ Text("Title")
 ```swift
 // Correct - SwiftUI colors
 Text("Hello")
-    .foregroundStyle(.blue)
+    .foregroundStyle(AppTheme.Colors.accent)
     .background(.gray.opacity(0.2))
 
 // Wrong - UIKit colors

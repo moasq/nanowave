@@ -59,7 +59,7 @@ VStack(alignment: .leading, spacing: 20) {
     // Metadata row
     HStack(spacing: 24) {
         Text(item.title)
-            .font(.title)
+            .font(AppTheme.Fonts.title)
         Text(item.subtitle)
             .foregroundStyle(.secondary)
     }
@@ -74,7 +74,7 @@ VStack(spacing: 60) {
     // Section 1
     VStack(alignment: .leading) {
         Text("Trending")
-            .font(.title3)
+            .font(AppTheme.Fonts.title3)
             .padding(.horizontal, 80)
         ShelfRow(items: trending)
     }
@@ -83,7 +83,7 @@ VStack(spacing: 60) {
     // Section 2
     VStack(alignment: .leading) {
         Text("New Releases")
-            .font(.title3)
+            .font(AppTheme.Fonts.title3)
             .padding(.horizontal, 80)
         ShelfRow(items: newReleases)
     }

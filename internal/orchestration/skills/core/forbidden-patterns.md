@@ -4,35 +4,41 @@ description: "Forbidden patterns - no networking, no third-party packages, no ty
 # Forbidden Patterns
 
 ## Networking — BANNED
+**Why:** Generated apps must work 100% offline.
 - No `URLSession`, no `Alamofire`, no REST clients
 - No API calls of any kind
 - No `async let` URL fetches
 - The app is fully on-device
 
 ## UIKit — AVOID BY DEFAULT
+**Why:** SwiftUI-first ensures cross-platform consistency.
 - Prefer SwiftUI-first architecture
 - `UIKit` imports are allowed only when a required feature has no viable SwiftUI equivalent
 - `UIViewRepresentable` / `UIViewControllerRepresentable` are allowed only as minimal bridges for those required UIKit features
 - No Storyboards, no XIBs, no Interface Builder
 
 ## Third-Party Packages — BANNED
+**Why:** Dependencies add build complexity and supply chain risk.
 - No SPM (Swift Package Manager) dependencies
 - No CocoaPods
 - No Carthage
 - Use only Apple-native frameworks
 
 ## CoreData — BANNED
+**Why:** SwiftData is Apple's modern replacement.
 - Use **SwiftData** instead of CoreData
 - No `NSManagedObject`, no `NSPersistentContainer`
 - No `.xcdatamodeld` files
 
 ## Authentication & Cloud — BANNED
+**Why:** Beyond on-device MVP scope.
 - No authentication screens, login flows, or token management
 - No CloudKit, no iCloud sync
 - No push notifications
 - No Firebase, no Supabase, no backend services
 
 ## Hardcoded Styling — BANNED
+**Why:** Centralized tokens ensure consistency, enable theme changes.
 - **NEVER** use hardcoded colors in views: `.white`, `.black`, `Color.red`, `Color.blue`, `.orange`, or `.opacity()` on raw colors
 - **NEVER** use hardcoded fonts in views: `.font(.system(size:))`, `.font(.title2)`, `.font(.headline)`, etc.
 - **NEVER** use hardcoded spacing: `.padding(20)`, `VStack(spacing: 10)`, etc.
@@ -56,6 +62,7 @@ description: "Forbidden patterns - no networking, no third-party packages, no ty
 ```
 
 ## Type Re-declarations — BANNED
+**Why:** Duplicates cause ambiguous type errors.
 - **NEVER** re-declare types that exist in other project files
 - **NEVER** re-declare types from SwiftUI/Foundation (`Color`, `CGPoint`, `Font`, etc.)
 - Import the module or file that defines the type

@@ -19,7 +19,7 @@ func appendBuildPlanFileEntry(b *strings.Builder, f FilePlan) {
 func (p *Pipeline) buildPrompts(_ string, appName string, _ string, analysis *AnalysisResult, plan *PlannerResult) (string, string, error) {
 	destination := canonicalBuildDestinationForShape(plan.GetPlatform(), plan.GetWatchProjectShape())
 	// Build the append system prompt with coder rules + plan context
-	basePrompt, err := composeCoderAppendPrompt("builder")
+	basePrompt, err := composeCoderAppendPrompt("builder", plan.GetPlatform())
 	if err != nil {
 		return "", "", err
 	}
@@ -27,9 +27,9 @@ func (p *Pipeline) buildPrompts(_ string, appName string, _ string, analysis *An
 	appendPrompt.WriteString(basePrompt)
 
 	// Add plan context
-	appendPrompt.WriteString("\n\n## Build Plan\n\n")
+	appendPrompt.WriteString("\n\n<build-plan>\n")
 
-	appendPrompt.WriteString("### Design\n")
+	appendPrompt.WriteString("## Design\n")
 	appendPrompt.WriteString(fmt.Sprintf("Navigation: %s\n", plan.Design.Navigation))
 	appendPrompt.WriteString(fmt.Sprintf("Palette: primary=%s, secondary=%s, accent=%s, background=%s, surface=%s\n",
 		plan.Design.Palette.Primary, plan.Design.Palette.Secondary, plan.Design.Palette.Accent,
@@ -49,7 +49,7 @@ func (p *Pipeline) buildPrompts(_ string, appName string, _ string, analysis *An
 		}
 	}
 
-	appendPrompt.WriteString("\n### Files (build in this order)\n")
+	appendPrompt.WriteString("\n## Files (build in this order)\n")
 	filesByPath := make(map[string]FilePlan, len(plan.Files))
 	for _, f := range plan.Files {
 		filesByPath[f.Path] = f
@@ -90,9 +90,11 @@ func (p *Pipeline) buildPrompts(_ string, appName string, _ string, analysis *An
 		appendPrompt.WriteString(fmt.Sprintf("\n### Localizations: %s\n", strings.Join(plan.Localizations, ", ")))
 	}
 
+	appendPrompt.WriteString("\n</build-plan>\n")
+
 	// Inject rule content for each rule_key from embedded skill files
 	if len(plan.RuleKeys) > 0 {
-		appendPrompt.WriteString("\n## Feature Implementation Rules\n")
+		appendPrompt.WriteString("\n<feature-rules>\n")
 		for _, key := range plan.RuleKeys {
 			content := loadRuleContent(key)
 			if content != "" {
@@ -101,6 +103,7 @@ func (p *Pipeline) buildPrompts(_ string, appName string, _ string, analysis *An
 				appendPrompt.WriteString("\n")
 			}
 		}
+		appendPrompt.WriteString("</feature-rules>\n")
 	}
 
 	// Build user message
@@ -155,7 +158,6 @@ INSTRUCTIONS:
 IMPORTANT:
 - Write files in the build order specified in the plan
 - Use the exact type names and file paths from the plan
-- Reference AppTheme for ALL design tokens — never hardcode colors, fonts, or spacing in views
 - Every View must have a #Preview block
 - Each platform has its own @main App entry point`,
 			analysis.AppName, analysis.Description, featureList.String(), analysis.CoreFlow,
@@ -188,7 +190,6 @@ INSTRUCTIONS:
 IMPORTANT:
 - Write files in the build order specified in the plan
 - Use the exact type names and file paths from the plan
-- Reference AppTheme for ALL design tokens — never hardcode colors, fonts, or spacing in views
 - Every View must have a #Preview block`,
 			analysis.AppName, analysis.Description, featureList.String(), analysis.CoreFlow,
 			appName, appName, appName, destination, appName)
@@ -200,7 +201,7 @@ IMPORTANT:
 // completionPrompts builds targeted prompts for unresolved planned files.
 func (p *Pipeline) completionPrompts(appName string, projectDir string, plan *PlannerResult, report *FileCompletionReport) (string, string, error) {
 	destination := canonicalBuildDestinationForShape(plan.GetPlatform(), plan.GetWatchProjectShape())
-	basePrompt, err := composeCoderAppendPrompt("completion-recovery")
+	basePrompt, err := composeCoderAppendPrompt("completion-recovery", plan.GetPlatform())
 	if err != nil {
 		return "", "", err
 	}

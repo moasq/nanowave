@@ -73,9 +73,13 @@ type PlannerResult struct {
 	BuildOrder        []string        `json:"build_order"`
 }
 
-// GetDeviceFamily returns the device family, defaulting to "iphone".
+// GetDeviceFamily returns the device family, defaulting to "iphone" for iOS.
+// Non-iOS platforms (macOS, tvOS, visionOS, watchOS) return "" when unset.
 func (p *PlannerResult) GetDeviceFamily() string {
 	if p == nil || p.DeviceFamily == "" {
+		if p != nil && (IsMacOS(p.Platform) || IsTvOS(p.Platform) || IsVisionOS(p.Platform) || IsWatchOS(p.Platform)) {
+			return ""
+		}
 		return "iphone"
 	}
 	return p.DeviceFamily
@@ -122,6 +126,19 @@ func (p *PlannerResult) GetWatchProjectShape() string {
 		return ""
 	}
 	return p.WatchProjectShape
+}
+
+// HasRuleKey returns true if the plan includes the given rule key.
+func (p *PlannerResult) HasRuleKey(key string) bool {
+	if p == nil {
+		return false
+	}
+	for _, k := range p.RuleKeys {
+		if k == key {
+			return true
+		}
+	}
+	return false
 }
 
 // ExtensionPlan describes a secondary Xcode target (widget, live activity, etc.)

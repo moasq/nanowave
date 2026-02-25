@@ -23,17 +23,17 @@ CARD DESIGN PATTERN:
 VStack(alignment: .leading, spacing: AppTheme.Spacing.xSmall) {
     HStack {
         Image(systemName: "icon.name")
-            .font(.title3)
+            .font(AppTheme.Fonts.title3)
             .foregroundStyle(AppTheme.Colors.primary)
         Spacer()
         Text("metadata")
-            .font(.caption)
+            .font(AppTheme.Fonts.caption)
             .foregroundStyle(.secondary)
     }
     Text("Title")
-        .font(.headline)
+        .font(AppTheme.Fonts.headline)
     Text("Description text goes here")
-        .font(.subheadline)
+        .font(AppTheme.Fonts.subheadline)
         .foregroundStyle(.secondary)
 }
 .padding(AppTheme.Spacing.medium)
@@ -55,8 +55,8 @@ TextField("Email", text: $email)
     )
 if let error = emailError {
     Text(error)
-        .font(.caption)
-        .foregroundStyle(.red)
+        .font(AppTheme.Fonts.caption)
+        .foregroundStyle(AppTheme.Colors.error)
 }
 ```
 - Disabled: .disabled(true) — auto grays out.
@@ -78,7 +78,7 @@ LOADING STATES:
 BADGE/CHIP PATTERN:
 ```swift
 Text("Label")
-    .font(.caption)
+    .font(AppTheme.Fonts.caption)
     .fontWeight(.medium)
     .padding(.horizontal, 8)
     .padding(.vertical, 4)

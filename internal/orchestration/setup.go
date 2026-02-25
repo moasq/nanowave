@@ -60,6 +60,12 @@ func platformSummary(platform, deviceFamily string) string {
 	if IsTvOS(platform) {
 		return "Apple TV, tvOS 26+, Swift 6"
 	}
+	if IsVisionOS(platform) {
+		return "Apple Vision Pro, visionOS 26+, Swift 6"
+	}
+	if IsMacOS(platform) {
+		return "Mac, macOS 26+, Swift 6"
+	}
 	switch deviceFamily {
 	case "ipad":
 		return "iPad only, iOS 26+, Swift 6"
@@ -82,6 +88,12 @@ func canonicalBuildDestinationForShape(platform, watchProjectShape string) strin
 	if IsTvOS(platform) {
 		return "generic/platform=tvOS Simulator"
 	}
+	if IsVisionOS(platform) {
+		return "generic/platform=visionOS Simulator"
+	}
+	if IsMacOS(platform) {
+		return "generic/platform=macOS"
+	}
 	return "generic/platform=iOS Simulator"
 }
 
@@ -103,6 +115,12 @@ func multiPlatformBuildCommands(appName string, platforms []string) []string {
 		case PlatformTvOS:
 			scheme = appName + "TV"
 			destination = PlatformBuildDestination(PlatformTvOS)
+		case PlatformVisionOS:
+			scheme = appName + "Vision"
+			destination = PlatformBuildDestination(PlatformVisionOS)
+		case PlatformMacOS:
+			scheme = appName + "Mac"
+			destination = PlatformBuildDestination(PlatformMacOS)
 		case PlatformWatchOS:
 			// In multi-platform, watchOS is built via the iOS scheme (paired)
 			continue
@@ -213,6 +231,10 @@ func writeClaudeMemoryFiles(projectDir, appName, platform, deviceFamily string, 
 			overview.WriteString("- Stack: SwiftUI (no third-party packages, no UIKit)\n")
 		} else if IsTvOS(platform) {
 			overview.WriteString("- Stack: SwiftUI (no third-party packages, no UIKit)\n")
+		} else if IsVisionOS(platform) {
+			overview.WriteString("- Stack: SwiftUI + RealityKit (no third-party packages, no UIKit)\n")
+		} else if IsMacOS(platform) {
+			overview.WriteString("- Stack: SwiftUI native macOS, AppKit bridge when needed, no UIKit. Menu bar, keyboard shortcuts, Settings scene, multiple windows.\n")
 		} else {
 			overview.WriteString("- Stack: SwiftUI + SwiftData (no third-party packages)\n")
 		}
@@ -280,14 +302,8 @@ func writeClaudeMemoryFiles(projectDir, appName, platform, deviceFamily string, 
 	design.WriteString("# Design System\n\n")
 	design.WriteString("## Strict Enforcement\n")
 	design.WriteString("- `AppTheme` is the **ONLY** place for colors, fonts, spacing, and style tokens\n")
-	design.WriteString("- **NEVER** use hardcoded colors in views (`.white`, `.black`, `Color.red`, `.opacity()` on raw colors)\n")
-	design.WriteString("- **NEVER** use hardcoded fonts in views (`.font(.title2)`, `.font(.system(size:))`)\n")
-	design.WriteString("- **NEVER** use hardcoded spacing in views (`.padding(20)`, `VStack(spacing: 10)`)\n")
-	design.WriteString("- ALL colors → `AppTheme.Colors.*` (including `textPrimary`, `textSecondary`, `textTertiary`)\n")
-	design.WriteString("- ALL fonts → `AppTheme.Fonts.*` (with plan's font design applied)\n")
-	design.WriteString("- ALL spacing → `AppTheme.Spacing.*`\n")
+	design.WriteString("- See `.claude/rules/forbidden-patterns.md` \"Hardcoded Styling\" section for full banned patterns\n")
 	design.WriteString("- Every view should use semantic theme tokens and include `#Preview`\n")
-	design.WriteString("- Keep adaptive layout and accessibility in mind for iPad/universal apps\n")
 	if plan != nil {
 		design.WriteString("\n## Current Palette\n")
 		fmt.Fprintf(&design, "- Primary: `%s`\n", plan.Design.Palette.Primary)
@@ -404,8 +420,8 @@ func writeClaudeMemoryFiles(projectDir, appName, platform, deviceFamily string, 
 		if IsWatchOS(plan.GetPlatform()) {
 			planDoc.WriteString("\n## Watch Project Shape\n")
 			fmt.Fprintf(&planDoc, "- `%s`\n", plan.GetWatchProjectShape())
-		} else if IsTvOS(plan.GetPlatform()) {
-			// tvOS has no device family or watch shape — just platform
+		} else if IsTvOS(plan.GetPlatform()) || IsVisionOS(plan.GetPlatform()) || IsMacOS(plan.GetPlatform()) {
+			// tvOS/visionOS/macOS have no device family or watch shape — just platform
 		} else {
 			planDoc.WriteString("\n## Device Family\n")
 			fmt.Fprintf(&planDoc, "- `%s`\n", plan.GetDeviceFamily())
@@ -480,7 +496,8 @@ func writeClaudeMemoryFiles(projectDir, appName, platform, deviceFamily string, 
 var conditionalCategories = []string{"features", "ui", "extensions"}
 
 // writeCoreRules copies skills/core/*.md to projectDir/.claude/rules/ (always loaded eagerly).
-func writeCoreRules(projectDir string) error {
+// Platform-specific content in swift-conventions.md is adapted to the target platform.
+func writeCoreRules(projectDir, platform string) error {
 	rulesDir := filepath.Join(projectDir, ".claude", "rules")
 
 	entries, err := fs.ReadDir(skillsFS, "skills/core")
@@ -498,11 +515,39 @@ func writeCoreRules(projectDir string) error {
 			return fmt.Errorf("failed to read embedded rule %s: %w", entry.Name(), err)
 		}
 
+		// Adapt swift-conventions.md for the target platform
+		if entry.Name() == "swift-conventions.md" {
+			text := string(content)
+			displayName := PlatformDisplayName(platform)
+			text = strings.Replace(text, "**iOS 26+** deployment target", "**"+displayName+" 26+** deployment target", 1)
+			archDesc := platformArchDescription(platform)
+			if archDesc != "" {
+				text = strings.Replace(text, "**SwiftUI-first** architecture. UIKit is allowed only when no viable SwiftUI equivalent exists for a required feature.", archDesc, 1)
+			}
+			content = []byte(text)
+		}
+
 		if err := os.WriteFile(filepath.Join(rulesDir, entry.Name()), content, 0o644); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// platformArchDescription returns the architecture description for a platform.
+func platformArchDescription(platform string) string {
+	switch {
+	case IsMacOS(platform):
+		return "**SwiftUI-first** architecture. SwiftUI native, AppKit bridge when needed, no UIKit."
+	case IsWatchOS(platform):
+		return "**SwiftUI-first** architecture. SwiftUI native for watchOS, no UIKit."
+	case IsTvOS(platform):
+		return "**SwiftUI-first** architecture. SwiftUI native for tvOS, UIKit only when no viable SwiftUI equivalent exists."
+	case IsVisionOS(platform):
+		return "**SwiftUI-first** architecture. SwiftUI native with RealityKit for spatial features, no UIKit."
+	default:
+		return ""
+	}
 }
 
 // platformOverrideDir returns the embedded skills override directory for the given platform,
@@ -513,6 +558,10 @@ func platformOverrideDir(platform string) string {
 		return "skills/always-watchos"
 	case IsTvOS(platform):
 		return "skills/always-tvos"
+	case IsVisionOS(platform):
+		return "skills/always-visionos"
+	case IsMacOS(platform):
+		return "skills/always-macos"
 	default:
 		return ""
 	}
@@ -633,6 +682,10 @@ func writeConditionalSkills(projectDir string, ruleKeys []string, platform strin
 		categories = append([]string{"watchos"}, conditionalCategories...)
 	} else if IsTvOS(platform) {
 		categories = append([]string{"tvos"}, conditionalCategories...)
+	} else if IsVisionOS(platform) {
+		categories = append([]string{"visionos"}, conditionalCategories...)
+	} else if IsMacOS(platform) {
+		categories = append([]string{"macos"}, conditionalCategories...)
 	}
 
 	for _, key := range ruleKeys {
@@ -1152,6 +1205,34 @@ func writeAssetCatalog(projectDir, appName, platform string) error {
       "platform": "tvos",
       "size": "400x240",
       "scale": "2x"
+    }
+  ],
+  "info": {
+    "version": 1,
+    "author": "xcode"
+  }
+}`
+	} else if IsVisionOS(platform) {
+		appIconContents = `{
+  "images": [
+    {
+      "idiom": "universal",
+      "platform": "xros",
+      "size": "1024x1024"
+    }
+  ],
+  "info": {
+    "version": 1,
+    "author": "xcode"
+  }
+}`
+	} else if IsMacOS(platform) {
+		appIconContents = `{
+  "images": [
+    {
+      "idiom": "mac",
+      "scale": "1x",
+      "size": "1024x1024"
     }
   ],
   "info": {

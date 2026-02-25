@@ -60,7 +60,11 @@ func TestComposeAnalyzerAndPlannerPromptsIncludePhaseSkillsAndHints(t *testing.T
 		t.Fatal("expected watchos hint")
 	}
 
-	planner, err := composePlannerSystemPrompt(intent)
+	if !strings.Contains(analyzer, "<constraints>") || !strings.Contains(analyzer, "</constraints>") {
+		t.Fatal("expected XML constraints tags in analyzer prompt")
+	}
+
+	planner, err := composePlannerSystemPrompt(intent, PlatformWatchOS)
 	if err != nil {
 		t.Fatalf("composePlannerSystemPrompt() error: %v", err)
 	}
@@ -70,10 +74,13 @@ func TestComposeAnalyzerAndPlannerPromptsIncludePhaseSkillsAndHints(t *testing.T
 	if !strings.Contains(planner, "# Platform Rules") {
 		t.Fatal("expected planner platform rules reference")
 	}
+	if !strings.Contains(planner, "<constraints>") || !strings.Contains(planner, "</constraints>") {
+		t.Fatal("expected XML constraints tags in planner prompt")
+	}
 }
 
 func TestComposeCoderAppendPromptIncludesPhaseSkill(t *testing.T) {
-	prompt, err := composeCoderAppendPrompt("fixer")
+	prompt, err := composeCoderAppendPrompt("fixer", PlatformIOS)
 	if err != nil {
 		t.Fatalf("composeCoderAppendPrompt() error: %v", err)
 	}
@@ -85,6 +92,12 @@ func TestComposeCoderAppendPromptIncludesPhaseSkill(t *testing.T) {
 	}
 	if !strings.Contains(prompt, "# Error Triage") {
 		t.Fatal("expected fixer reference content")
+	}
+	if !strings.Contains(prompt, "<constraints>") || !strings.Contains(prompt, "</constraints>") {
+		t.Fatal("expected XML constraints tags in coder prompt")
+	}
+	if !strings.Contains(prompt, "<verification>") || !strings.Contains(prompt, "</verification>") {
+		t.Fatal("expected XML verification tags in coder prompt")
 	}
 }
 
@@ -122,6 +135,40 @@ func TestComposeAnalyzerSystemPromptMultiPlatformHints(t *testing.T) {
 	}
 }
 
+func TestCoderPromptMacOSMentionsMacOS(t *testing.T) {
+	prompt, err := composeCoderAppendPrompt("builder", PlatformMacOS)
+	if err != nil {
+		t.Fatalf("composeCoderAppendPrompt(builder, macOS) error: %v", err)
+	}
+	if !strings.Contains(prompt, "macOS") {
+		t.Fatal("macOS coder prompt should mention macOS")
+	}
+}
+
+func TestPlannerPromptMacOSRole(t *testing.T) {
+	intent := &IntentDecision{Operation: "build", PlatformHint: PlatformMacOS}
+	prompt, err := composePlannerSystemPrompt(intent, PlatformMacOS)
+	if err != nil {
+		t.Fatalf("composePlannerSystemPrompt(macOS) error: %v", err)
+	}
+	if !strings.Contains(prompt, "macOS app architect") {
+		t.Fatal("macOS planner prompt should contain 'macOS app architect'")
+	}
+}
+
+func TestCoderAppendPromptIncludesSelfCheck(t *testing.T) {
+	prompt, err := composeCoderAppendPrompt("builder", PlatformIOS)
+	if err != nil {
+		t.Fatalf("composeCoderAppendPrompt(builder) error: %v", err)
+	}
+	if !strings.Contains(prompt, "<verification>") {
+		t.Fatal("coder append prompt should include verification XML tag")
+	}
+	if !strings.Contains(prompt, "AppTheme.Fonts.*") {
+		t.Fatal("self-check should mention AppTheme.Fonts.*")
+	}
+}
+
 func TestBuildAndCompletionPromptsIncludePhaseSkillsAndRuleKeys(t *testing.T) {
 	p := &Pipeline{}
 	analysis := &AnalysisResult{
@@ -152,6 +199,12 @@ func TestBuildAndCompletionPromptsIncludePhaseSkillsAndRuleKeys(t *testing.T) {
 	if !strings.Contains(appendPrompt, "SwiftData") {
 		t.Fatal("expected existing rule_key skill injection to remain")
 	}
+	if !strings.Contains(appendPrompt, "<build-plan>") || !strings.Contains(appendPrompt, "</build-plan>") {
+		t.Fatal("expected XML build-plan tags")
+	}
+	if !strings.Contains(appendPrompt, "<feature-rules>") || !strings.Contains(appendPrompt, "</feature-rules>") {
+		t.Fatal("expected XML feature-rules tags")
+	}
 
 	report := &FileCompletionReport{
 		TotalPlanned: 1,
@@ -173,5 +226,50 @@ func TestBuildAndCompletionPromptsIncludePhaseSkillsAndRuleKeys(t *testing.T) {
 	}
 	if !strings.Contains(completionPrompt, "# Recovery Loop") {
 		t.Fatal("expected recovery-loop reference")
+	}
+}
+
+func TestComposeSelfCheckMacOS(t *testing.T) {
+	check := composeSelfCheck(PlatformMacOS)
+	for _, want := range []string{"CommandMenu", "FocusedValue", "keyboardShortcut"} {
+		if !strings.Contains(check, want) {
+			t.Fatalf("macOS self-check should contain %q", want)
+		}
+	}
+}
+
+func TestComposeSelfCheckIOS(t *testing.T) {
+	check := composeSelfCheck(PlatformIOS)
+	if strings.Contains(check, "CommandMenu") {
+		t.Fatal("iOS self-check should NOT contain macOS-specific CommandMenu rule")
+	}
+	if !strings.Contains(check, "AppTheme.Fonts.*") {
+		t.Fatal("iOS self-check should contain base AppTheme rule")
+	}
+}
+
+func TestAppendXMLSection(t *testing.T) {
+	var b strings.Builder
+	appendXMLSection(&b, "test-tag", "hello world")
+	got := b.String()
+	if !strings.Contains(got, "<test-tag>") || !strings.Contains(got, "</test-tag>") {
+		t.Fatalf("expected XML tags, got: %s", got)
+	}
+	if !strings.Contains(got, "hello world") {
+		t.Fatal("expected content inside XML tags")
+	}
+}
+
+func TestAppendXMLSectionEmpty(t *testing.T) {
+	var b strings.Builder
+	appendXMLSection(&b, "empty", "")
+	if b.Len() != 0 {
+		t.Fatal("expected empty output for empty content")
+	}
+}
+
+func TestSharedConstraintsNoRedundantCriticalBlock(t *testing.T) {
+	if strings.Contains(sharedConstraints, "CRITICAL RULES (HIGHEST PRIORITY)") {
+		t.Fatal("sharedConstraints should not contain the redundant CRITICAL RULES block")
 	}
 }

@@ -15,7 +15,7 @@ func TestWriteCoreRules(t *testing.T) {
 		t.Fatalf("failed to create rules dir: %v", err)
 	}
 
-	if err := writeCoreRules(projectDir); err != nil {
+	if err := writeCoreRules(projectDir, PlatformIOS); err != nil {
 		t.Fatalf("writeCoreRules() error: %v", err)
 	}
 
@@ -36,6 +36,33 @@ func TestWriteCoreRules(t *testing.T) {
 		if info.Size() == 0 {
 			t.Errorf("core rule %s is empty", name)
 		}
+	}
+}
+
+func TestWriteCoreRulesMacOS(t *testing.T) {
+	projectDir := t.TempDir()
+	rulesDir := filepath.Join(projectDir, ".claude", "rules")
+	if err := os.MkdirAll(rulesDir, 0o755); err != nil {
+		t.Fatalf("failed to create rules dir: %v", err)
+	}
+
+	if err := writeCoreRules(projectDir, PlatformMacOS); err != nil {
+		t.Fatalf("writeCoreRules(macOS) error: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(rulesDir, "swift-conventions.md"))
+	if err != nil {
+		t.Fatalf("failed to read swift-conventions.md: %v", err)
+	}
+	text := string(data)
+	if !strings.Contains(text, "macOS 26+") {
+		t.Error("macOS swift-conventions should contain 'macOS 26+' not 'iOS 26+'")
+	}
+	if strings.Contains(text, "**iOS 26+** deployment target") {
+		t.Error("macOS swift-conventions should not contain 'iOS 26+' deployment target")
+	}
+	if !strings.Contains(text, "AppKit bridge") {
+		t.Error("macOS swift-conventions should mention AppKit bridge")
 	}
 }
 
@@ -1045,6 +1072,83 @@ func TestWriteConditionalSkillsWatchOSFallback(t *testing.T) {
 	}
 	if !strings.Contains(string(data), "SwiftData") {
 		t.Error("storage fallback should contain SwiftData content from features/")
+	}
+}
+
+func TestWriteAlwaysSkillsMacOS(t *testing.T) {
+	projectDir := t.TempDir()
+	skillsDir := filepath.Join(projectDir, ".claude", "skills")
+	if err := os.MkdirAll(skillsDir, 0o755); err != nil {
+		t.Fatalf("failed to create skills dir: %v", err)
+	}
+
+	if err := writeAlwaysSkills(projectDir, "macos"); err != nil {
+		t.Fatalf("writeAlwaysSkills(macos) error: %v", err)
+	}
+
+	// Verify macOS overrides are loaded instead of iOS versions
+	for _, name := range []string{"layout", "navigation", "components"} {
+		path := filepath.Join(skillsDir, name, "SKILL.md")
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Errorf("expected %s/SKILL.md to exist: %v", name, err)
+			continue
+		}
+		text := string(data)
+		if !strings.Contains(text, "macOS") && !strings.Contains(text, "Mac") {
+			t.Errorf("%s/SKILL.md should contain macOS-specific content", name)
+		}
+	}
+
+	// macos-patterns is macOS-only (no iOS equivalent)
+	path := filepath.Join(skillsDir, "macos-patterns", "SKILL.md")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("expected macos-patterns/SKILL.md to exist: %v", err)
+	}
+	text := string(data)
+	if !strings.Contains(text, "MenuBarExtra") {
+		t.Error("macos-patterns should mention MenuBarExtra")
+	}
+	if !strings.Contains(text, "Settings") {
+		t.Error("macos-patterns should mention Settings scene")
+	}
+}
+
+func TestWriteAlwaysSkillsVisionOS(t *testing.T) {
+	projectDir := t.TempDir()
+	skillsDir := filepath.Join(projectDir, ".claude", "skills")
+	if err := os.MkdirAll(skillsDir, 0o755); err != nil {
+		t.Fatalf("failed to create skills dir: %v", err)
+	}
+
+	if err := writeAlwaysSkills(projectDir, "visionos"); err != nil {
+		t.Fatalf("writeAlwaysSkills(visionos) error: %v", err)
+	}
+
+	// Verify visionOS overrides are loaded instead of iOS versions
+	for _, name := range []string{"layout", "navigation", "components"} {
+		path := filepath.Join(skillsDir, name, "SKILL.md")
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Errorf("expected %s/SKILL.md to exist: %v", name, err)
+			continue
+		}
+		text := string(data)
+		if !strings.Contains(text, "visionOS") && !strings.Contains(text, "Vision") {
+			t.Errorf("%s/SKILL.md should contain visionOS-specific content", name)
+		}
+	}
+
+	// visionos-patterns is visionOS-only (no iOS equivalent)
+	path := filepath.Join(skillsDir, "visionos-patterns", "SKILL.md")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("expected visionos-patterns/SKILL.md to exist: %v", err)
+	}
+	text := string(data)
+	if !strings.Contains(text, "RealityKit") {
+		t.Error("visionos-patterns should mention RealityKit")
 	}
 }
 

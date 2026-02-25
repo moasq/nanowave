@@ -16,7 +16,7 @@ import (
 
 // SlashCommands is the list of available commands for autocomplete.
 var SlashCommands = []CommandInfo{
-	{Name: "/run", Desc: "Build and launch in simulator"},
+	{Name: "/run", Desc: "Build and launch the app"},
 	{Name: "/simulator", Desc: "Select simulator device"},
 	{Name: "/model", Desc: "Show or switch model"},
 	{Name: "/fix", Desc: "Auto-fix build errors"},

@@ -129,8 +129,18 @@ func TestParseIntentDecision(t *testing.T) {
 		t.Fatalf("platform = %q", decision.PlatformHint)
 	}
 
+	// macOS is now a recognized platform
+	macosJSON := `{"operation":"build","platform_hint":"macos"}`
+	macosDecision, err := parseIntentDecision(macosJSON)
+	if err != nil {
+		t.Fatalf("parseIntentDecision() should not error for macos: %v", err)
+	}
+	if macosDecision.PlatformHint != PlatformMacOS {
+		t.Fatalf("macos platform should be preserved, got %q", macosDecision.PlatformHint)
+	}
+
 	// Unrecognized platform falls back to iOS gracefully (no error)
-	unknown := `{"operation":"build","platform_hint":"macos"}`
+	unknown := `{"operation":"build","platform_hint":"android"}`
 	unknownDecision, err := parseIntentDecision(unknown)
 	if err != nil {
 		t.Fatalf("parseIntentDecision() should not error for unrecognized platform (graceful fallback): %v", err)
@@ -185,13 +195,33 @@ func TestParseIntentDecisionWithPlatformHints(t *testing.T) {
 }
 
 func TestParseIntentDecisionPlatformHintsDropsInvalid(t *testing.T) {
-	raw := `{"operation":"build","platform_hints":["ios","macos","tvos"],"confidence":0.8,"reason":"mixed"}`
+	raw := `{"operation":"build","platform_hints":["ios","android","tvos"],"confidence":0.8,"reason":"mixed"}`
 	decision, err := parseIntentDecision(raw)
 	if err != nil {
 		t.Fatalf("parseIntentDecision() error: %v", err)
 	}
 	if len(decision.PlatformHints) != 2 {
-		t.Fatalf("PlatformHints len = %d, want 2 (macos dropped)", len(decision.PlatformHints))
+		t.Fatalf("PlatformHints len = %d, want 2 (android dropped)", len(decision.PlatformHints))
+	}
+}
+
+func TestParseIntentDecisionPlatformHintsKeepsVisionOS(t *testing.T) {
+	raw := `{"operation":"build","platform_hints":["ios","visionos"],"confidence":0.9,"reason":"spatial"}`
+	decision, err := parseIntentDecision(raw)
+	if err != nil {
+		t.Fatalf("parseIntentDecision() error: %v", err)
+	}
+	if len(decision.PlatformHints) != 2 {
+		t.Fatalf("PlatformHints len = %d, want 2 (visionos should be kept)", len(decision.PlatformHints))
+	}
+	found := false
+	for _, p := range decision.PlatformHints {
+		if p == "visionos" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("PlatformHints should contain visionos")
 	}
 }
 
@@ -206,6 +236,42 @@ func TestFormatIntentHintsMultiPlatform(t *testing.T) {
 	hints := formatIntentHintsForPrompt(intent)
 	if !strings.Contains(hints, "platform_hints: [ios, watchos, tvos]") {
 		t.Fatalf("expected platform_hints line, got:\n%s", hints)
+	}
+}
+
+func TestParseIntentDecisionPlatformHintsKeepsMacOS(t *testing.T) {
+	raw := `{"operation":"build","platform_hints":["ios","macos"],"confidence":0.9,"reason":"cross-platform"}`
+	decision, err := parseIntentDecision(raw)
+	if err != nil {
+		t.Fatalf("parseIntentDecision() error: %v", err)
+	}
+	if len(decision.PlatformHints) != 2 {
+		t.Fatalf("PlatformHints len = %d, want 2 (macos should be kept)", len(decision.PlatformHints))
+	}
+	found := false
+	for _, p := range decision.PlatformHints {
+		if p == "macos" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("PlatformHints should contain macos")
+	}
+}
+
+func TestFinalizeBuildIntentDecisionMultiPlatformWithMacOS(t *testing.T) {
+	parsed := &IntentDecision{
+		Operation:     "build",
+		PlatformHints: []string{"ios", "watchos", "macos"},
+		Confidence:    0.9,
+		Reason:        "multi-platform with mac",
+	}
+	got := finalizeBuildIntentDecision(parsed, defaultBuildIntentDecision())
+	if got.PlatformHint != "ios" {
+		t.Fatalf("PlatformHint = %q, want ios (first entry from PlatformHints)", got.PlatformHint)
+	}
+	if len(got.PlatformHints) != 3 {
+		t.Fatalf("PlatformHints len = %d, want 3", len(got.PlatformHints))
 	}
 }
 

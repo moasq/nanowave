@@ -214,7 +214,7 @@ let sorted = names.sorted()
 Text("Hello ")
     .foregroundStyle(.primary)
 + Text("World")
-    .foregroundStyle(.blue)
+    .foregroundStyle(AppTheme.Colors.accent)
     .bold()
 
 // Using AttributedString

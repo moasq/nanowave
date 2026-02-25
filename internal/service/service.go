@@ -29,7 +29,23 @@ import (
 // Higher scores are preferred. This avoids hardcoding device marketing names
 // which change across Xcode versions.
 func rankSimulator(deviceTypeID, family, platform string) int {
+	if platform == "macos" {
+		return -1 // macOS has no simulators
+	}
+
 	lower := strings.ToLower(deviceTypeID)
+
+	if platform == "visionos" {
+		if !strings.Contains(lower, "apple-vision") {
+			return -1
+		}
+		switch {
+		case strings.Contains(lower, "4k"):
+			return 100
+		default:
+			return 60
+		}
+	}
 
 	if platform == "tvos" {
 		if !strings.Contains(lower, "apple-tv") {
@@ -256,6 +272,20 @@ func (s *Service) currentPlatform() string {
 	return project.Platform
 }
 
+// platformBundleIDSuffix returns the bundle ID suffix for a platform.
+func platformBundleIDSuffix(platform string) string {
+	switch platform {
+	case "tvos":
+		return ".tv"
+	case "visionos":
+		return ".vision"
+	case "macos":
+		return ".mac"
+	default:
+		return ""
+	}
+}
+
 // detectDefaultSimulator picks the best available simulator for the current device family.
 // It ranks all available devices dynamically using their device type identifiers
 // rather than hardcoded marketing names, which change across Xcode versions.
@@ -281,6 +311,11 @@ func (s *Service) detectDefaultSimulator() string {
 
 // ListSimulators returns available simulator devices for the current platform and device family.
 func (s *Service) ListSimulators() ([]SimulatorDevice, error) {
+	// macOS has no simulators — apps run natively on the Mac.
+	if s.currentPlatform() == "macos" {
+		return nil, nil
+	}
+
 	out, err := exec.Command("xcrun", "simctl", "list", "devices", "available", "-j").Output()
 	if err != nil {
 		return nil, fmt.Errorf("failed to list simulators: %w", err)
@@ -308,6 +343,8 @@ func (s *Service) ListSimulators() ([]SimulatorDevice, error) {
 		runtimeFilter = "watchOS"
 	case "tvos":
 		runtimeFilter = "tvOS"
+	case "visionos":
+		runtimeFilter = "xrOS"
 	}
 
 	var devices []SimulatorDevice
@@ -524,7 +561,7 @@ func (s *Service) Fix(ctx context.Context) error {
 	return nil
 }
 
-// Run builds and launches the project in the Simulator.
+// Run builds and launches the project in the Simulator (or natively on macOS).
 func (s *Service) Run(ctx context.Context) error {
 	project, err := s.projectStore.Load()
 	if err != nil || project == nil {
@@ -552,38 +589,77 @@ func (s *Service) Run(ctx context.Context) error {
 		return fmt.Errorf("no .xcodeproj found in %s", project.ProjectPath)
 	}
 
-	scheme := strings.TrimSuffix(xcodeprojName, ".xcodeproj")
+	appName := strings.TrimSuffix(xcodeprojName, ".xcodeproj")
 	platform := s.currentPlatform()
-	simulator := s.CurrentSimulator()
 
-	// Platform-aware simulator destination
-	simPlatform := "iOS Simulator"
-	switch platform {
-	case "watchos":
-		simPlatform = "watchOS Simulator"
-	case "tvos":
-		simPlatform = "tvOS Simulator"
+	// Multi-platform: let user pick which target to run
+	if len(project.Platforms) > 1 {
+		options := make([]terminal.PickerOption, len(project.Platforms))
+		for i, p := range project.Platforms {
+			options[i] = terminal.PickerOption{
+				Label: p,
+				Desc:  orchestration.PlatformDisplayName(p),
+			}
+		}
+		picked := terminal.Pick("Select platform to run", options, platform)
+		if picked == "" {
+			return nil // user cancelled
+		}
+		platform = picked
 	}
 
-	// Resolve simulator name to UDID for a precise destination match,
-	// avoiding OS version mismatch when xcodebuild defaults to OS:latest.
-	simUDID := s.resolveSimulatorUDID(simulator)
-	var destination string
-	if simUDID != "" {
-		destination = fmt.Sprintf("platform=%s,id=%s", simPlatform, simUDID)
+	// Single-platform: scheme is just the app name (e.g. "FaveFoods")
+	// Multi-platform: scheme includes platform suffix (e.g. "FaveFoodsVision")
+	var scheme string
+	if len(project.Platforms) > 1 {
+		scheme = appName + orchestration.PlatformSourceDirSuffix(platform)
 	} else {
-		destination = fmt.Sprintf("platform=%s,name=%s", simPlatform, simulator)
+		scheme = appName
 	}
-
-	terminal.Detail("Simulator", simulator)
+	isMacOS := platform == "macos"
 
 	derivedDataPath := projectDerivedDataPath(project.ProjectPath)
 	if err := os.MkdirAll(derivedDataPath, 0o755); err != nil {
 		return fmt.Errorf("failed to prepare derived data path %s: %w", derivedDataPath, err)
 	}
 
-	// Build for simulator
-	spinner := terminal.NewSpinner("Building for simulator...")
+	var destination string
+	if isMacOS {
+		// macOS builds natively — no simulator
+		destination = "generic/platform=macOS"
+		terminal.Detail("Target", "macOS (native)")
+	} else {
+		simulator := s.CurrentSimulator()
+
+		// Platform-aware simulator destination
+		simPlatform := "iOS Simulator"
+		switch platform {
+		case "watchos":
+			simPlatform = "watchOS Simulator"
+		case "tvos":
+			simPlatform = "tvOS Simulator"
+		case "visionos":
+			simPlatform = "visionOS Simulator"
+		}
+
+		// Resolve simulator name to UDID for a precise destination match,
+		// avoiding OS version mismatch when xcodebuild defaults to OS:latest.
+		simUDID := s.resolveSimulatorUDID(simulator)
+		if simUDID != "" {
+			destination = fmt.Sprintf("platform=%s,id=%s", simPlatform, simUDID)
+		} else {
+			destination = fmt.Sprintf("platform=%s,name=%s", simPlatform, simulator)
+		}
+
+		terminal.Detail("Simulator", simulator)
+	}
+
+	// Build
+	buildMsg := "Building for simulator..."
+	if isMacOS {
+		buildMsg = "Building for macOS..."
+	}
+	spinner := terminal.NewSpinner(buildMsg)
 	spinner.Start()
 
 	buildCmd := exec.CommandContext(ctx, "xcodebuild",
@@ -644,67 +720,101 @@ func (s *Service) Run(ctx context.Context) error {
 		terminal.Success("Build succeeded")
 	}
 
-	// Boot simulator
-	spinner = terminal.NewSpinner(fmt.Sprintf("Launching %s...", simulator))
-	spinner.Start()
-
-	// Boot the simulator by UDID (falls back to name)
-	bootTarget := simulator
-	if simUDID != "" {
-		bootTarget = simUDID
-	}
-	bootCmd := exec.CommandContext(ctx, "xcrun", "simctl", "boot", bootTarget)
-	if bootOutput, bootErr := bootCmd.CombinedOutput(); bootErr != nil && !isAlreadyBootedSimError(bootErr, bootOutput) {
-		spinner.Stop()
-		return fmt.Errorf("failed to boot simulator %s: %w%s", simulator, bootErr, commandOutputSuffix(bootOutput))
-	}
-
-	// Open Simulator.app
-	openCmd := exec.CommandContext(ctx, "open", "-a", "Simulator")
-	if openOutput, openErr := openCmd.CombinedOutput(); openErr != nil {
-		terminal.Warning(fmt.Sprintf("Could not open Simulator.app: %v%s", openErr, commandOutputSuffix(openOutput)))
-	}
-
-	// Install and launch the app
 	bundleID := project.BundleID
 	if bundleID == "" {
-		bundleID = fmt.Sprintf("com.%s.%s", sanitizeBundleID(currentUsername()), strings.ToLower(scheme))
+		bundleID = fmt.Sprintf("com.%s.%s", sanitizeBundleID(currentUsername()), strings.ToLower(appName))
+	}
+	if len(project.Platforms) > 1 {
+		bundleID += platformBundleIDSuffix(platform)
 	}
 
 	// Find the built .app in the per-project derived data path.
-	appPath, err := findBuiltAppInDerivedData(derivedDataPath, scheme, platform)
-	if err != nil {
-		spinner.Stop()
-		return err
+	appPath, appErr := findBuiltAppInDerivedData(derivedDataPath, scheme, platform)
+	if appErr != nil {
+		return appErr
 	}
 
-	installCmd := exec.CommandContext(ctx, "xcrun", "simctl", "install", "booted", appPath)
-	if installOutput, installErr := installCmd.CombinedOutput(); installErr != nil {
-		spinner.Stop()
-		return fmt.Errorf("failed to install app on simulator: %w%s", installErr, commandOutputSuffix(installOutput))
-	}
+	if isMacOS {
+		// macOS: launch the app natively via `open`
+		spinner = terminal.NewSpinner("Launching macOS app...")
+		spinner.Start()
 
-	launchCmd := exec.CommandContext(ctx, "xcrun", "simctl", "launch", "booted", bundleID)
-	if launchOutput, launchErr := launchCmd.CombinedOutput(); launchErr != nil {
-		spinner.Stop()
-		return fmt.Errorf("failed to launch app %s on simulator: %w%s", bundleID, launchErr, commandOutputSuffix(launchOutput))
-	}
-
-	spinner.Stop()
-	terminal.Success(fmt.Sprintf("Launched on %s", simulator))
-
-	watchDuration := runLogWatchDuration()
-	if watchDuration > 0 {
-		terminal.Info(fmt.Sprintf("Streaming simulator logs for %s...", watchDuration.Truncate(time.Second)))
-		terminal.Detail("Tip", "Set NANOWAVE_RUN_LOG_WATCH_SECONDS=0 to disable log watching")
-		if streamErr := streamSimulatorLogs(ctx, scheme, bundleID, watchDuration); streamErr != nil {
-			terminal.Warning(fmt.Sprintf("Log streaming unavailable: %v", streamErr))
+		openCmd := exec.CommandContext(ctx, "open", appPath)
+		if openOutput, openErr := openCmd.CombinedOutput(); openErr != nil {
+			spinner.Stop()
+			return fmt.Errorf("failed to launch macOS app: %w%s", openErr, commandOutputSuffix(openOutput))
 		}
-	} else if watchDuration < 0 {
-		terminal.Info("Streaming simulator logs until interrupted...")
-		terminal.Detail("Tip", "Set NANOWAVE_RUN_LOG_WATCH_SECONDS=0 to disable or a positive value for timed log watching")
-		if streamErr := streamSimulatorLogs(ctx, scheme, bundleID, watchDuration); streamErr != nil {
-			terminal.Warning(fmt.Sprintf("Log streaming unavailable: %v", streamErr))
+
+		spinner.Stop()
+		terminal.Success("Launched macOS app")
+
+		// Stream native macOS logs
+		watchDuration := runLogWatchDuration()
+		if watchDuration > 0 {
+			terminal.Info(fmt.Sprintf("Streaming macOS logs for %s...", watchDuration.Truncate(time.Second)))
+			terminal.Detail("Tip", "Set NANOWAVE_RUN_LOG_WATCH_SECONDS=0 to disable log watching")
+			if streamErr := streamMacOSLogs(ctx, scheme, bundleID, watchDuration); streamErr != nil {
+				terminal.Warning(fmt.Sprintf("Log streaming unavailable: %v", streamErr))
+			}
+		} else if watchDuration < 0 {
+			terminal.Info("Streaming macOS logs until interrupted...")
+			terminal.Detail("Tip", "Set NANOWAVE_RUN_LOG_WATCH_SECONDS=0 to disable or a positive value for timed log watching")
+			if streamErr := streamMacOSLogs(ctx, scheme, bundleID, watchDuration); streamErr != nil {
+				terminal.Warning(fmt.Sprintf("Log streaming unavailable: %v", streamErr))
+			}
+		}
+	} else {
+		// Simulator path: boot, install, launch
+		simulator := s.CurrentSimulator()
+		spinner = terminal.NewSpinner(fmt.Sprintf("Launching %s...", simulator))
+		spinner.Start()
+
+		// Boot the simulator by UDID (falls back to name)
+		simUDID := s.resolveSimulatorUDID(simulator)
+		bootTarget := simulator
+		if simUDID != "" {
+			bootTarget = simUDID
+		}
+		bootCmd := exec.CommandContext(ctx, "xcrun", "simctl", "boot", bootTarget)
+		if bootOutput, bootErr := bootCmd.CombinedOutput(); bootErr != nil && !isAlreadyBootedSimError(bootErr, bootOutput) {
+			spinner.Stop()
+			return fmt.Errorf("failed to boot simulator %s: %w%s", simulator, bootErr, commandOutputSuffix(bootOutput))
+		}
+
+		// Open Simulator.app
+		openCmd := exec.CommandContext(ctx, "open", "-a", "Simulator")
+		if openOutput, openErr := openCmd.CombinedOutput(); openErr != nil {
+			terminal.Warning(fmt.Sprintf("Could not open Simulator.app: %v%s", openErr, commandOutputSuffix(openOutput)))
+		}
+
+		installCmd := exec.CommandContext(ctx, "xcrun", "simctl", "install", "booted", appPath)
+		if installOutput, installErr := installCmd.CombinedOutput(); installErr != nil {
+			spinner.Stop()
+			return fmt.Errorf("failed to install app on simulator: %w%s", installErr, commandOutputSuffix(installOutput))
+		}
+
+		launchCmd := exec.CommandContext(ctx, "xcrun", "simctl", "launch", "booted", bundleID)
+		if launchOutput, launchErr := launchCmd.CombinedOutput(); launchErr != nil {
+			spinner.Stop()
+			return fmt.Errorf("failed to launch app %s on simulator: %w%s", bundleID, launchErr, commandOutputSuffix(launchOutput))
+		}
+
+		spinner.Stop()
+		terminal.Success(fmt.Sprintf("Launched on %s", simulator))
+
+		watchDuration := runLogWatchDuration()
+		if watchDuration > 0 {
+			terminal.Info(fmt.Sprintf("Streaming simulator logs for %s...", watchDuration.Truncate(time.Second)))
+			terminal.Detail("Tip", "Set NANOWAVE_RUN_LOG_WATCH_SECONDS=0 to disable log watching")
+			if streamErr := streamSimulatorLogs(ctx, scheme, bundleID, watchDuration); streamErr != nil {
+				terminal.Warning(fmt.Sprintf("Log streaming unavailable: %v", streamErr))
+			}
+		} else if watchDuration < 0 {
+			terminal.Info("Streaming simulator logs until interrupted...")
+			terminal.Detail("Tip", "Set NANOWAVE_RUN_LOG_WATCH_SECONDS=0 to disable or a positive value for timed log watching")
+			if streamErr := streamSimulatorLogs(ctx, scheme, bundleID, watchDuration); streamErr != nil {
+				terminal.Warning(fmt.Sprintf("Log streaming unavailable: %v", streamErr))
+			}
 		}
 	}
 
@@ -984,6 +1094,10 @@ func findBuiltAppInDerivedData(derivedDataPath, scheme, platform string) (string
 		productsSubdir = "Debug-watchsimulator"
 	case "tvos":
 		productsSubdir = "Debug-appletvsimulator"
+	case "visionos":
+		productsSubdir = "Debug-xrsimulator"
+	case "macos":
+		productsSubdir = "Debug"
 	}
 
 	productsDir := filepath.Join(derivedDataPath, "Build", "Products", productsSubdir)
@@ -1109,6 +1223,67 @@ func streamSimulatorLogs(ctx context.Context, processName, bundleID string, dura
 	}
 	if waitErr != nil {
 		return fmt.Errorf("simulator log stream failed: %w", waitErr)
+	}
+
+	return nil
+}
+
+// streamMacOSLogs streams native macOS logs using `log stream` directly (no simctl).
+func streamMacOSLogs(ctx context.Context, processName, bundleID string, duration time.Duration) error {
+	if duration <= 0 {
+		if duration == 0 {
+			return nil
+		}
+	}
+
+	watchCtx := ctx
+	cancel := func() {}
+	if duration > 0 {
+		watchCtx, cancel = context.WithTimeout(ctx, duration)
+	}
+	defer cancel()
+
+	predicate := fmt.Sprintf(`process == "%s"`, processName)
+	if strings.TrimSpace(bundleID) != "" {
+		predicate = fmt.Sprintf(`process == "%s" OR subsystem CONTAINS[c] "%s"`, processName, bundleID)
+	}
+
+	cmd := exec.CommandContext(watchCtx, "log", "stream",
+		"--style", "compact",
+		"--level", "debug",
+		"--predicate", predicate,
+	)
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("failed to read log stream stdout: %w", err)
+	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return fmt.Errorf("failed to read log stream stderr: %w", err)
+	}
+
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to start macOS log stream: %w", err)
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go streamLogReader(stdout, false, &wg)
+	go streamLogReader(stderr, true, &wg)
+
+	waitErr := cmd.Wait()
+	wg.Wait()
+
+	if watchCtx.Err() == context.DeadlineExceeded {
+		terminal.Info("Stopped log streaming.")
+		return nil
+	}
+	if watchCtx.Err() == context.Canceled {
+		return nil
+	}
+	if waitErr != nil {
+		return fmt.Errorf("macOS log stream failed: %w", waitErr)
 	}
 
 	return nil

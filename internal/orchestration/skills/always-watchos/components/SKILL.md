@@ -122,10 +122,10 @@ DATE/TIME DISPLAY:
 ```swift
 // Use system date formatting
 Text(Date.now, style: .time)
-    .font(.title2)
+    .font(AppTheme.Fonts.title2)
 
 Text(Date.now, style: .relative)
-    .font(.caption)
+    .font(AppTheme.Fonts.caption)
 ```
 
 NOT AVAILABLE ON watchOS:

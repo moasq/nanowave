@@ -27,7 +27,7 @@ var body: some View {
         HStack {
             Image(systemName: "person")
             Text(user.name)
-                .font(.headline)
+                .font(AppTheme.Fonts.headline)
             Spacer()
             Button("Edit") { showEdit = true }
         }

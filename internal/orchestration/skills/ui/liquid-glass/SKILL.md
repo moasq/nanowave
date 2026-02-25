@@ -24,7 +24,7 @@ MODIFIER ORDER (CRITICAL):
 ```swift
 // CORRECT — glass AFTER layout modifiers
 Text("Label")
-    .font(.headline)
+    .font(AppTheme.Fonts.headline)
     .padding()
     .glassEffect(.regular, in: .rect(cornerRadius: 12))
 

@@ -33,6 +33,36 @@ func TestNormalizeWatchShapeIntentHints(t *testing.T) {
 		}
 	})
 
+	t.Run("visionos clears device family and watch shape", func(t *testing.T) {
+		decision := &IntentDecision{
+			PlatformHint:          PlatformVisionOS,
+			DeviceFamilyHint:      "iphone",
+			WatchProjectShapeHint: WatchShapePaired,
+		}
+		normalizeWatchShapeIntentHints(decision)
+		if decision.DeviceFamilyHint != "" {
+			t.Fatalf("DeviceFamilyHint = %q, want empty", decision.DeviceFamilyHint)
+		}
+		if decision.WatchProjectShapeHint != "" {
+			t.Fatalf("WatchProjectShapeHint = %q, want empty", decision.WatchProjectShapeHint)
+		}
+	})
+
+	t.Run("macos clears device family and watch shape", func(t *testing.T) {
+		decision := &IntentDecision{
+			PlatformHint:          PlatformMacOS,
+			DeviceFamilyHint:      "iphone",
+			WatchProjectShapeHint: WatchShapePaired,
+		}
+		normalizeWatchShapeIntentHints(decision)
+		if decision.DeviceFamilyHint != "" {
+			t.Fatalf("DeviceFamilyHint = %q, want empty", decision.DeviceFamilyHint)
+		}
+		if decision.WatchProjectShapeHint != "" {
+			t.Fatalf("WatchProjectShapeHint = %q, want empty", decision.WatchProjectShapeHint)
+		}
+	})
+
 	t.Run("ios clears watch shape", func(t *testing.T) {
 		decision := &IntentDecision{
 			PlatformHint:          PlatformIOS,

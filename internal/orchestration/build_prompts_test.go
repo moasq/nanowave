@@ -42,12 +42,12 @@ func TestBuildPromptsContainsSections(t *testing.T) {
 		t.Fatalf("buildPrompts() error: %v", err)
 	}
 
-	// Verify append prompt sections
+	// Verify append prompt sections (XML-wrapped build plan)
 	requiredSections := []string{
-		"## Build Plan",
-		"### Design",
-		"### Models",
-		"### Files (build in this order)",
+		"<build-plan>",
+		"</build-plan>",
+		"## Design",
+		"## Files (build in this order)",
 	}
 	for _, section := range requiredSections {
 		if !strings.Contains(appendPrompt, section) {

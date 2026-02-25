@@ -7,9 +7,11 @@ import (
 
 // Platform constants.
 const (
-	PlatformIOS     = "ios"
-	PlatformWatchOS = "watchos"
-	PlatformTvOS    = "tvos"
+	PlatformIOS      = "ios"
+	PlatformWatchOS  = "watchos"
+	PlatformTvOS     = "tvos"
+	PlatformVisionOS = "visionos"
+	PlatformMacOS    = "macos"
 )
 
 // Watch project shape constants.
@@ -62,6 +64,32 @@ var tvOSUnsupportedExtensionKinds = map[string]bool{
 	"widget":               true,
 }
 
+// visionOSUnsupportedRuleKeys lists rule_keys that are not supported on visionOS.
+var visionOSUnsupportedRuleKeys = map[string]bool{
+	"camera":     true,
+	"healthkit":  true,
+	"haptics":    true,
+	"maps":       true,
+	"speech":     true,
+	"app-review": true,
+	"dark-mode":  true, // visionOS has no dark mode — glass material auto-adapts
+}
+
+// visionOSConditionalRuleKeys lists rule_keys that work differently on visionOS.
+var visionOSConditionalRuleKeys = map[string]string{
+	"biometrics": "visionOS uses Optic ID instead of Face ID/Touch ID",
+	"gestures":   "visionOS uses spatial gestures, eye tracking, and hand pinch instead of touch",
+}
+
+// visionOSUnsupportedExtensionKinds lists extension kinds not available on visionOS.
+var visionOSUnsupportedExtensionKinds = map[string]bool{
+	"live_activity":        true,
+	"share":                true,
+	"notification_service": true,
+	"safari":               true,
+	"app_clip":             true,
+}
+
 // watchOSUnsupportedExtensionKinds lists extension kinds not available on watchOS.
 var watchOSUnsupportedExtensionKinds = map[string]bool{
 	"live_activity":        true,
@@ -71,13 +99,34 @@ var watchOSUnsupportedExtensionKinds = map[string]bool{
 	"app_clip":             true,
 }
 
+// macOSUnsupportedRuleKeys lists rule_keys that are not supported on macOS.
+var macOSUnsupportedRuleKeys = map[string]bool{
+	"healthkit": true,
+	"haptics":   true,
+	"speech":    true,
+}
+
+// macOSConditionalRuleKeys lists rule_keys that work differently on macOS.
+var macOSConditionalRuleKeys = map[string]string{
+	"biometrics": "macOS uses Touch ID (on compatible keyboards) instead of Face ID",
+	"gestures":   "macOS uses trackpad, mouse, and keyboard input instead of touch",
+	"camera":     "macOS has FaceTime camera only — no rear camera, no LiDAR, no portrait mode",
+}
+
+// macOSUnsupportedExtensionKinds lists extension kinds not available on macOS.
+var macOSUnsupportedExtensionKinds = map[string]bool{
+	"live_activity": true,
+	"app_clip":      true,
+	"safari":        true,
+}
+
 // ValidatePlatform checks that the platform string is a known value.
 func ValidatePlatform(platform string) error {
 	switch platform {
-	case PlatformIOS, PlatformWatchOS, PlatformTvOS, "":
+	case PlatformIOS, PlatformWatchOS, PlatformTvOS, PlatformVisionOS, PlatformMacOS, "":
 		return nil
 	default:
-		return fmt.Errorf("unsupported platform %q: must be %q, %q, or %q", platform, PlatformIOS, PlatformWatchOS, PlatformTvOS)
+		return fmt.Errorf("unsupported platform %q: must be %q, %q, %q, %q, or %q", platform, PlatformIOS, PlatformWatchOS, PlatformTvOS, PlatformVisionOS, PlatformMacOS)
 	}
 }
 
@@ -112,6 +161,10 @@ func PlatformSourceDirSuffix(platform string) string {
 		return "Watch"
 	case PlatformTvOS:
 		return "TV"
+	case PlatformVisionOS:
+		return "Vision"
+	case PlatformMacOS:
+		return "Mac"
 	default:
 		return ""
 	}
@@ -124,6 +177,10 @@ func PlatformDisplayName(platform string) string {
 		return "watchOS"
 	case PlatformTvOS:
 		return "tvOS"
+	case PlatformVisionOS:
+		return "visionOS"
+	case PlatformMacOS:
+		return "macOS"
 	default:
 		return "iOS"
 	}
@@ -136,6 +193,10 @@ func PlatformDeploymentTargetKey(platform string) string {
 		return "watchOS"
 	case PlatformTvOS:
 		return "tvOS"
+	case PlatformVisionOS:
+		return "visionOS"
+	case PlatformMacOS:
+		return "macOS"
 	default:
 		return "iOS"
 	}
@@ -148,6 +209,10 @@ func PlatformXcodegenValue(platform string) string {
 		return "watchOS"
 	case PlatformTvOS:
 		return "tvOS"
+	case PlatformVisionOS:
+		return "visionOS"
+	case PlatformMacOS:
+		return "macOS"
 	default:
 		return "iOS"
 	}
@@ -170,6 +235,10 @@ func PlatformBuildDestination(platform string) string {
 		return "generic/platform=watchOS Simulator"
 	case PlatformTvOS:
 		return "generic/platform=tvOS Simulator"
+	case PlatformVisionOS:
+		return "generic/platform=visionOS Simulator"
+	case PlatformMacOS:
+		return "generic/platform=macOS"
 	default:
 		return "generic/platform=iOS Simulator"
 	}
@@ -195,6 +264,16 @@ func IsTvOS(platform string) bool {
 	return platform == PlatformTvOS
 }
 
+// IsVisionOS returns true if the platform is visionOS.
+func IsVisionOS(platform string) bool {
+	return platform == PlatformVisionOS
+}
+
+// IsMacOS returns true if the platform is macOS.
+func IsMacOS(platform string) bool {
+	return platform == PlatformMacOS
+}
+
 // FilterRuleKeysForPlatform filters rule_keys for a given platform.
 // Returns the filtered keys and any validation warnings for unsupported keys.
 func FilterRuleKeysForPlatform(platform string, keys []string) ([]string, []string) {
@@ -211,6 +290,14 @@ func FilterRuleKeysForPlatform(platform string, keys []string) ([]string, []stri
 		unsupported = tvOSUnsupportedRuleKeys
 		conditional = tvOSConditionalRuleKeys
 		platformName = "tvOS"
+	case IsVisionOS(platform):
+		unsupported = visionOSUnsupportedRuleKeys
+		conditional = visionOSConditionalRuleKeys
+		platformName = "visionOS"
+	case IsMacOS(platform):
+		unsupported = macOSUnsupportedRuleKeys
+		conditional = macOSConditionalRuleKeys
+		platformName = "macOS"
 	default:
 		return keys, nil
 	}
@@ -244,6 +331,14 @@ func ValidateExtensionsForPlatform(platform string, extensions []ExtensionPlan) 
 		unsupportedKinds = tvOSUnsupportedExtensionKinds
 		platformName = "tvOS"
 		supportedNote = "only tv-top-shelf is supported"
+	case IsVisionOS(platform):
+		unsupportedKinds = visionOSUnsupportedExtensionKinds
+		platformName = "visionOS"
+		supportedNote = "only widget is supported"
+	case IsMacOS(platform):
+		unsupportedKinds = macOSUnsupportedExtensionKinds
+		platformName = "macOS"
+		supportedNote = "widget, share, and notification_service are supported"
 	default:
 		return nil
 	}
