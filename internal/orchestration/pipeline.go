@@ -108,6 +108,7 @@ var agenticTools = []string{
 	"mcp__xcodegen__add_localization",
 	"mcp__xcodegen__set_build_setting",
 	"mcp__xcodegen__get_project_config",
+	"mcp__xcodegen__add_package",
 	"mcp__xcodegen__regenerate_project",
 }
 

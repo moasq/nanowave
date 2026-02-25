@@ -5,7 +5,7 @@
 - Field rules
 - Available rule_keys
 
-Return ONLY valid PlannerResult JSON with design, files, models, permissions, extensions, localizations, platform, platforms, watch_project_shape, device_family, rule_keys, and build_order.
+Return ONLY valid PlannerResult JSON with design, files, models, permissions, extensions, localizations, platform, platforms, watch_project_shape, device_family, rule_keys, packages, and build_order.
 
 ## File Entry Fields
 
@@ -48,3 +48,14 @@ Features: notifications, localization, dark-mode, app-review, website-links, hap
 UI refinement: view-complexity, typography, color-contrast, spacing-layout, feedback-states, view-composition, accessibility, gestures, adaptive-layout, liquid-glass, animations
 
 Extensions: widgets, live-activities, share-extension, notification-service, safari-extension, app-clips
+
+## Package Entries
+
+When native Apple frameworks are genuinely insufficient for a feature, include packages in the `packages` array:
+- `name`: SPM package name (e.g. "Lottie", "SDWebImageSwiftUI")
+- `reason`: why native frameworks cannot achieve the same result
+
+Rules:
+- Native Apple frameworks are ALWAYS preferred. Default is an empty `packages` array.
+- Only suggest a package when there is a clear, specific gap in native capabilities.
+- Every package MUST have a non-empty `reason` explaining why native is insufficient.

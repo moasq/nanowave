@@ -36,6 +36,12 @@
 - Using system blue (#007AFF) as primary unless intentional.
 - Not including liquid-glass in rule_keys for iOS 26+ apps.
 
+## Package Mistakes
+
+- Suggesting packages when native Apple frameworks can achieve the same result (e.g. suggesting a networking library when URLSession suffices).
+- Missing `reason` field — every package must explain why native is insufficient.
+- Suggesting packages for features that Apple added in recent OS versions (e.g. Charts framework instead of a third-party charting library).
+
 ## Multi-Platform Mistakes
 
 - Forgetting to set the top-level `platforms` array when multiple platforms are requested.

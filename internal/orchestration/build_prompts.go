@@ -90,6 +90,23 @@ func (p *Pipeline) buildPrompts(_ string, appName string, _ string, analysis *An
 		appendPrompt.WriteString(fmt.Sprintf("\n### Localizations: %s\n", strings.Join(plan.Localizations, ", ")))
 	}
 
+	if len(plan.Packages) > 0 {
+		appendPrompt.WriteString("\n### SPM Packages\n")
+		for _, pkg := range plan.Packages {
+			appendPrompt.WriteString(fmt.Sprintf("- %s: %s\n", pkg.Name, pkg.Reason))
+		}
+		appendPrompt.WriteString(`
+For each package listed above:
+1. Search GitHub to verify: exists, >500 stars, pushed within 12 months, MIT/Apache license
+2. Verify Package.swift exists (SPM support)
+3. Fetch documentation: try WebSearch for "{package} SwiftUI usage", read the README
+4. Write a brief usage guide to .claude/skills/packages/{name}.md
+5. Use the add_package MCP tool to add it to the Xcode project
+6. Import the package in your Swift files
+If a package fails validation (low stars, unmaintained, no SPM), skip it and use native instead.
+`)
+	}
+
 	appendPrompt.WriteString("\n</build-plan>\n")
 
 	// Inject rule content for each rule_key from embedded skill files

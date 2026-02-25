@@ -35,6 +35,63 @@ func TestGenerateProjectYAMLPairedWatchIncludesCompanionBundleIdentifier(t *test
 	}
 }
 
+func TestGenerateProjectYAML_WithPackages(t *testing.T) {
+	cfg := &ProjectConfig{
+		AppName:  "TestApp",
+		BundleID: bundleIDPrefix() + ".testapp",
+		Packages: []PackageDep{
+			{
+				Name:       "Lottie",
+				URL:        "https://github.com/airbnb/lottie-ios",
+				MinVersion: "4.0.0",
+			},
+			{
+				Name:       "SDWebImageSwiftUI",
+				URL:        "https://github.com/nicklama/SDWebImageSwiftUI",
+				MinVersion: "2.0.0",
+				Products:   []string{"SDWebImageSwiftUI"},
+			},
+		},
+	}
+
+	yml := generateProjectYAML(cfg)
+
+	// Check packages section exists
+	checks := []string{
+		"packages:",
+		"Lottie:",
+		"url: https://github.com/airbnb/lottie-ios",
+		"minVersion: 4.0.0",
+		"SDWebImageSwiftUI:",
+		"url: https://github.com/nicklama/SDWebImageSwiftUI",
+		"minVersion: 2.0.0",
+		// Check package dependency in target
+		"- package: Lottie",
+		"- package: SDWebImageSwiftUI",
+		// Ensure dependencies section exists
+		"dependencies:",
+	}
+	for _, want := range checks {
+		if !strings.Contains(yml, want) {
+			t.Errorf("YAML missing %q:\n%s", want, yml)
+		}
+	}
+}
+
+func TestGenerateProjectYAML_WithoutPackages(t *testing.T) {
+	cfg := &ProjectConfig{
+		AppName:  "TestApp",
+		BundleID: bundleIDPrefix() + ".testapp",
+	}
+
+	yml := generateProjectYAML(cfg)
+
+	// No packages section should be present
+	if strings.Contains(yml, "packages:") {
+		t.Errorf("YAML should not contain packages section when no packages defined:\n%s", yml)
+	}
+}
+
 func TestGenerateProjectYAMLWatchOnlyOmitsCompanionBundleIdentifier(t *testing.T) {
 	cfg := &ProjectConfig{
 		AppName:           "PulseTrack",

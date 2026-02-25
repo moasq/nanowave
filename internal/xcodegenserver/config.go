@@ -23,6 +23,7 @@ type ProjectConfig struct {
 	Localizations     []string          `json:"localizations,omitempty"`
 	Entitlements      []Entitlement     `json:"entitlements,omitempty"`
 	BuildSettings     map[string]string `json:"build_settings,omitempty"`
+	Packages          []PackageDep      `json:"packages,omitempty"`
 }
 
 // Permission describes a required iOS permission.
@@ -47,6 +48,14 @@ type ExtensionPlan struct {
 	InfoPlist    map[string]any    `json:"info_plist,omitempty"`
 	Entitlements map[string]any    `json:"entitlements,omitempty"`
 	Settings     map[string]string `json:"settings,omitempty"`
+}
+
+// PackageDep describes an SPM package dependency for the Xcode project.
+type PackageDep struct {
+	Name       string   `json:"name"`
+	URL        string   `json:"url"`
+	MinVersion string   `json:"min_version"`
+	Products   []string `json:"products,omitempty"`
 }
 
 // loadConfig reads project_config.json from the working directory.
@@ -132,6 +141,8 @@ func generateIOSProjectYAMLCfg(cfg *ProjectConfig) string {
 		}
 	}
 	b.WriteString("\n")
+
+	writePackagesSectionCfg(&b, cfg.Packages)
 
 	// Targets
 	b.WriteString("targets:\n")
@@ -226,14 +237,15 @@ func generateIOSProjectYAMLCfg(cfg *ProjectConfig) string {
 		writeYAMLMap(&b, mainInfoPlist, 8)
 	}
 
-	// Dependencies: embed extension targets
-	if hasExtensions {
+	// Dependencies: embed extension targets + SPM packages
+	if hasExtensions || len(cfg.Packages) > 0 {
 		b.WriteString("    dependencies:\n")
 		for _, ext := range cfg.Extensions {
 			name := extensionTargetName(ext, appName)
 			fmt.Fprintf(&b, "      - target: %s\n", name)
 			b.WriteString("        embed: true\n")
 		}
+		writePackageDependenciesCfg(&b, cfg.Packages)
 	}
 
 	// Extension targets
@@ -321,6 +333,8 @@ func generateWatchOnlyYAMLCfg(cfg *ProjectConfig) string {
 	}
 	b.WriteString("\n")
 
+	writePackagesSectionCfg(&b, cfg.Packages)
+
 	b.WriteString("targets:\n")
 
 	// Watch container target
@@ -360,6 +374,7 @@ func generateWatchOnlyYAMLCfg(cfg *ProjectConfig) string {
 			b.WriteString("        embed: true\n")
 		}
 	}
+	writePackageDependenciesCfg(&b, cfg.Packages)
 
 	// Watch app target (wrapper app bundle)
 	b.WriteString("\n")
@@ -492,6 +507,8 @@ func generatePairedYAMLCfg(cfg *ProjectConfig) string {
 	}
 	b.WriteString("\n")
 
+	writePackagesSectionCfg(&b, cfg.Packages)
+
 	b.WriteString("targets:\n")
 
 	// iOS parent target
@@ -553,6 +570,7 @@ func generatePairedYAMLCfg(cfg *ProjectConfig) string {
 			b.WriteString("        embed: true\n")
 		}
 	}
+	writePackageDependenciesCfg(&b, cfg.Packages)
 
 	// Watch target
 	b.WriteString("\n")
@@ -845,6 +863,33 @@ func bundleIDPrefix() string {
 		return "com.app"
 	}
 	return "com." + name
+}
+
+// writePackagesSectionCfg writes the top-level `packages:` block for SPM dependencies.
+func writePackagesSectionCfg(b *strings.Builder, packages []PackageDep) {
+	if len(packages) == 0 {
+		return
+	}
+	b.WriteString("packages:\n")
+	for _, pkg := range packages {
+		fmt.Fprintf(b, "  %s:\n", pkg.Name)
+		fmt.Fprintf(b, "    url: %s\n", pkg.URL)
+		fmt.Fprintf(b, "    minVersion: %s\n", pkg.MinVersion)
+	}
+	b.WriteString("\n")
+}
+
+// writePackageDependenciesCfg writes `- package: ProductName` entries in a target's dependencies section.
+func writePackageDependenciesCfg(b *strings.Builder, packages []PackageDep) {
+	for _, pkg := range packages {
+		products := pkg.Products
+		if len(products) == 0 {
+			products = []string{pkg.Name}
+		}
+		for _, product := range products {
+			fmt.Fprintf(b, "      - package: %s\n", product)
+		}
+	}
 }
 
 func yamlQuote(s string) string {

@@ -234,6 +234,24 @@ func normalizePlannerResult(plan *PlannerResult) {
 	if !plan.IsMultiPlatform() && IsWatchOS(plan.Platform) {
 		plan.DeviceFamily = ""
 	}
+
+	// Normalize packages: ensure non-nil, drop empty names, deduplicate.
+	if plan.Packages == nil {
+		plan.Packages = []PackagePlan{}
+	} else {
+		seen := make(map[string]bool)
+		filtered := plan.Packages[:0]
+		for _, pkg := range plan.Packages {
+			name := strings.TrimSpace(pkg.Name)
+			if name == "" || seen[name] {
+				continue
+			}
+			seen[name] = true
+			pkg.Name = name
+			filtered = append(filtered, pkg)
+		}
+		plan.Packages = filtered
+	}
 }
 
 // normalizePlannerPlatform gracefully handles unrecognized platform values

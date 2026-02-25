@@ -70,6 +70,7 @@ type PlannerResult struct {
 	Extensions        []ExtensionPlan `json:"extensions"`
 	Localizations     []string        `json:"localizations"`
 	RuleKeys          []string        `json:"rule_keys"`
+	Packages          []PackagePlan   `json:"packages"`
 	BuildOrder        []string        `json:"build_order"`
 }
 
@@ -337,4 +338,10 @@ type Permission struct {
 	Key         string `json:"key"`
 	Description string `json:"description"`
 	Framework   string `json:"framework"`
+}
+
+// PackagePlan describes an SPM package suggested by the planner.
+type PackagePlan struct {
+	Name   string `json:"name"`
+	Reason string `json:"reason"`
 }

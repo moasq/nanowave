@@ -43,8 +43,13 @@ func Run(ctx context.Context) error {
 	}, handleSetBuildSetting)
 
 	mcp.AddTool(server, &mcp.Tool{
+		Name:        "add_package",
+		Description: "Add an SPM (Swift Package Manager) dependency to the Xcode project. Adds the package to the top-level packages section and as a dependency of the main app target, then regenerates .xcodeproj. Example: add_package(name: \"Lottie\", url: \"https://github.com/airbnb/lottie-ios\", min_version: \"4.0.0\")",
+	}, handleAddPackage)
+
+	mcp.AddTool(server, &mcp.Tool{
 		Name:        "get_project_config",
-		Description: "Get the current Xcode project configuration. Returns all targets, permissions, extensions, entitlements, localizations, and build settings. Read-only — does not run xcodegen.",
+		Description: "Get the current Xcode project configuration. Returns all targets, permissions, extensions, entitlements, localizations, packages, and build settings. Read-only — does not run xcodegen.",
 	}, handleGetProjectConfig)
 
 	mcp.AddTool(server, &mcp.Tool{

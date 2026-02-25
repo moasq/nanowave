@@ -222,21 +222,21 @@ func writeClaudeMemoryFiles(projectDir, appName, platform, deviceFamily string, 
 			overview.WriteString(PlatformDisplayName(p))
 		}
 		overview.WriteString("\n")
-		overview.WriteString("- Stack: SwiftUI (no third-party packages)\n")
+		overview.WriteString("- Stack: SwiftUI (SPM packages added as needed during build)\n")
 	} else {
 		overview.WriteString("- Platform: ")
 		overview.WriteString(platformSummary(platform, deviceFamily))
 		overview.WriteString("\n")
 		if IsWatchOS(platform) {
-			overview.WriteString("- Stack: SwiftUI (no third-party packages, no UIKit)\n")
+			overview.WriteString("- Stack: SwiftUI (SPM packages added as needed, no UIKit)\n")
 		} else if IsTvOS(platform) {
-			overview.WriteString("- Stack: SwiftUI (no third-party packages, no UIKit)\n")
+			overview.WriteString("- Stack: SwiftUI (SPM packages added as needed, no UIKit)\n")
 		} else if IsVisionOS(platform) {
-			overview.WriteString("- Stack: SwiftUI + RealityKit (no third-party packages, no UIKit)\n")
+			overview.WriteString("- Stack: SwiftUI + RealityKit (SPM packages added as needed, no UIKit)\n")
 		} else if IsMacOS(platform) {
 			overview.WriteString("- Stack: SwiftUI native macOS, AppKit bridge when needed, no UIKit. Menu bar, keyboard shortcuts, Settings scene, multiple windows.\n")
 		} else {
-			overview.WriteString("- Stack: SwiftUI + SwiftData (no third-party packages)\n")
+			overview.WriteString("- Stack: SwiftUI + SwiftData (SPM packages added as needed)\n")
 		}
 	}
 	overview.WriteString("- Project config source of truth: `project_config.json`\n")
@@ -323,7 +323,7 @@ func writeClaudeMemoryFiles(projectDir, appName, platform, deviceFamily string, 
 	xg.WriteString("# XcodeGen Policy\n\n")
 	xg.WriteString("## Required Workflow\n")
 	xg.WriteString("- Use xcodegen MCP tools for project configuration changes\n")
-	xg.WriteString("- Preferred tools: `add_permission`, `add_extension`, `add_entitlement`, `add_localization`, `set_build_setting`, `get_project_config`, `regenerate_project`\n")
+	xg.WriteString("- Preferred tools: `add_permission`, `add_extension`, `add_entitlement`, `add_localization`, `add_package`, `set_build_setting`, `get_project_config`, `regenerate_project`\n")
 	xg.WriteString("- Do not manually edit `.xcodeproj`\n")
 	xg.WriteString("- Avoid manual `project.yml` edits unless explicitly doing emergency recovery, then run `regenerate_project`\n")
 	xg.WriteString("\n## Files\n")
@@ -478,6 +478,14 @@ func writeClaudeMemoryFiles(projectDir, appName, platform, deviceFamily string, 
 		} else {
 			for _, lang := range plan.Localizations {
 				fmt.Fprintf(&planDoc, "- `%s`\n", lang)
+			}
+		}
+		planDoc.WriteString("\n## Packages\n")
+		if len(plan.Packages) == 0 {
+			planDoc.WriteString("- None\n")
+		} else {
+			for _, pkg := range plan.Packages {
+				fmt.Fprintf(&planDoc, "- `%s`: %s\n", pkg.Name, pkg.Reason)
 			}
 		}
 	}

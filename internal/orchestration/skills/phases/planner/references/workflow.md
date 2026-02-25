@@ -44,6 +44,11 @@
 - Every extension target MUST have a @main entry point file — missing this causes a linker error.
 - Siri voice commands use modern App Intents (in-process) — no extension target needed.
 
+## Package Validation
+
+- Each package entry must have a non-empty `name` and a clear `reason` why native frameworks cannot achieve the same result.
+- If no packages are needed (the common case), use an empty array: `"packages": []`.
+
 ## Validation Checklist (verify before returning)
 
 1. All files have ALL mandatory fields (path, type_name, purpose, components, data_access, depends_on) — none empty.

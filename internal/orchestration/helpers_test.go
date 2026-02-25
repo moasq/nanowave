@@ -242,6 +242,123 @@ func TestExtractSpinnerStatus(t *testing.T) {
 	}
 }
 
+func TestParsePlan_WithPackages(t *testing.T) {
+	plan := `{
+		"design": {"navigation":"tabs","palette":{"primary":"#FF0000","secondary":"#00FF00","accent":"#0000FF","background":"#FFFFFF","surface":"#F0F0F0"},"font_design":"default","corner_radius":12,"density":"standard","surfaces":"solid","app_mood":"calm"},
+		"platform": "ios",
+		"device_family": "iphone",
+		"files": [{"path":"App/MyApp.swift","type_name":"MyApp","purpose":"entry","components":"@main App","data_access":"none","depends_on":[]}],
+		"models": [],
+		"permissions": [],
+		"extensions": [],
+		"localizations": [],
+		"rule_keys": [],
+		"packages": [
+			{"name": "Lottie", "reason": "Complex vector animations not possible with native SwiftUI"},
+			{"name": "SDWebImageSwiftUI", "reason": "Efficient async image caching beyond AsyncImage"}
+		],
+		"build_order": ["App/MyApp.swift"]
+	}`
+
+	result, err := parsePlan(plan)
+	if err != nil {
+		t.Fatalf("parsePlan() error: %v", err)
+	}
+	if len(result.Packages) != 2 {
+		t.Fatalf("expected 2 packages, got %d", len(result.Packages))
+	}
+	if result.Packages[0].Name != "Lottie" {
+		t.Errorf("expected first package name Lottie, got %q", result.Packages[0].Name)
+	}
+	if result.Packages[1].Reason != "Efficient async image caching beyond AsyncImage" {
+		t.Errorf("unexpected second package reason: %q", result.Packages[1].Reason)
+	}
+}
+
+func TestParsePlan_EmptyNamePackageDropped(t *testing.T) {
+	plan := `{
+		"design": {"navigation":"tabs","palette":{"primary":"#FF0000","secondary":"#00FF00","accent":"#0000FF","background":"#FFFFFF","surface":"#F0F0F0"},"font_design":"default","corner_radius":12,"density":"standard","surfaces":"solid","app_mood":"calm"},
+		"platform": "ios",
+		"device_family": "iphone",
+		"files": [{"path":"App/MyApp.swift","type_name":"MyApp","purpose":"entry","components":"@main App","data_access":"none","depends_on":[]}],
+		"models": [],
+		"permissions": [],
+		"extensions": [],
+		"localizations": [],
+		"rule_keys": [],
+		"packages": [
+			{"name": "Lottie", "reason": "animations"},
+			{"name": "", "reason": "no name"},
+			{"name": "  ", "reason": "whitespace only"}
+		],
+		"build_order": ["App/MyApp.swift"]
+	}`
+
+	result, err := parsePlan(plan)
+	if err != nil {
+		t.Fatalf("parsePlan() error: %v", err)
+	}
+	if len(result.Packages) != 1 {
+		t.Fatalf("expected 1 package after dropping empty names, got %d", len(result.Packages))
+	}
+	if result.Packages[0].Name != "Lottie" {
+		t.Errorf("expected remaining package to be Lottie, got %q", result.Packages[0].Name)
+	}
+}
+
+func TestParsePlan_DuplicatePackagesDeduped(t *testing.T) {
+	plan := `{
+		"design": {"navigation":"tabs","palette":{"primary":"#FF0000","secondary":"#00FF00","accent":"#0000FF","background":"#FFFFFF","surface":"#F0F0F0"},"font_design":"default","corner_radius":12,"density":"standard","surfaces":"solid","app_mood":"calm"},
+		"platform": "ios",
+		"device_family": "iphone",
+		"files": [{"path":"App/MyApp.swift","type_name":"MyApp","purpose":"entry","components":"@main App","data_access":"none","depends_on":[]}],
+		"models": [],
+		"permissions": [],
+		"extensions": [],
+		"localizations": [],
+		"rule_keys": [],
+		"packages": [
+			{"name": "Lottie", "reason": "first"},
+			{"name": "Lottie", "reason": "duplicate"}
+		],
+		"build_order": ["App/MyApp.swift"]
+	}`
+
+	result, err := parsePlan(plan)
+	if err != nil {
+		t.Fatalf("parsePlan() error: %v", err)
+	}
+	if len(result.Packages) != 1 {
+		t.Fatalf("expected 1 package after dedup, got %d", len(result.Packages))
+	}
+}
+
+func TestParsePlan_NilPackagesInitialized(t *testing.T) {
+	plan := `{
+		"design": {"navigation":"tabs","palette":{"primary":"#FF0000","secondary":"#00FF00","accent":"#0000FF","background":"#FFFFFF","surface":"#F0F0F0"},"font_design":"default","corner_radius":12,"density":"standard","surfaces":"solid","app_mood":"calm"},
+		"platform": "ios",
+		"device_family": "iphone",
+		"files": [{"path":"App/MyApp.swift","type_name":"MyApp","purpose":"entry","components":"@main App","data_access":"none","depends_on":[]}],
+		"models": [],
+		"permissions": [],
+		"extensions": [],
+		"localizations": [],
+		"rule_keys": [],
+		"build_order": ["App/MyApp.swift"]
+	}`
+
+	result, err := parsePlan(plan)
+	if err != nil {
+		t.Fatalf("parsePlan() error: %v", err)
+	}
+	if result.Packages == nil {
+		t.Fatal("expected Packages to be initialized to empty slice, got nil")
+	}
+	if len(result.Packages) != 0 {
+		t.Fatalf("expected 0 packages, got %d", len(result.Packages))
+	}
+}
+
 func TestExtractToolInputString(t *testing.T) {
 	tests := []struct {
 		name  string

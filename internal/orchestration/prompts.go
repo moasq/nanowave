@@ -55,7 +55,7 @@ const planningConstraints = `PLATFORM & SCOPE:
 - tvOS only if user EXPLICITLY mentions Apple TV, tvOS, or television.
 - visionOS only if user EXPLICITLY mentions Vision Pro, visionOS, spatial, or Apple Vision.
 - macOS only if user EXPLICITLY mentions Mac, macOS, desktop app, or Mac app.
-- Apple frameworks only. No third-party packages. No external services. No API keys/secrets.
+- Apple frameworks preferred. SPM packages allowed ONLY when native frameworks are genuinely insufficient. No external services. No API keys/secrets.
 - All functionality must work 100% offline using local data and on-device frameworks.
 - Build the minimum product that matches user intent. User wording overrides defaults.
 - Follow the attached phase skill content for detailed rules and output requirements.`
@@ -63,7 +63,7 @@ const planningConstraints = `PLATFORM & SCOPE:
 // sharedConstraints provides cross-phase safety and architecture guardrails.
 const sharedConstraints = `ARCHITECTURE:
 - App structure: @main App -> RootView -> MainView -> content.
-- Apple frameworks only. No external services, external AI SDKs, or secrets.
+- Apple frameworks + approved SPM packages. No external services, external AI SDKs, or secrets.
 - App-wide settings (@AppStorage) must be wired at the root app level.
 - User-requested styling overrides defaults.
 
