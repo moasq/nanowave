@@ -1,4 +1,4 @@
-.PHONY: build install clean test deps run release-snapshot skills-source-validate
+.PHONY: build install clean test deps run release-snapshot skills-source-validate validate-app validate-lines e2e
 
 BINARY_NAME=nanowave
 BUILD_DIR=./bin
@@ -29,3 +29,20 @@ run:
 
 release-snapshot:
 	goreleaser release --snapshot --clean
+
+validate-app:
+	@if [ -z "$(PROJECT_DIR)" ] || [ -z "$(APP_NAME)" ]; then \
+		echo "Usage: make validate-app PROJECT_DIR=<dir> APP_NAME=<name>"; \
+		exit 1; \
+	fi
+	./scripts/validate-app.sh $(PROJECT_DIR) $(APP_NAME)
+
+validate-lines:
+	@if [ -z "$(PROJECT_DIR)" ]; then \
+		echo "Usage: make validate-lines PROJECT_DIR=<dir>"; \
+		exit 1; \
+	fi
+	./scripts/validate-line-limits.sh $(PROJECT_DIR)
+
+e2e:
+	./claude-docker/test-e2e.sh

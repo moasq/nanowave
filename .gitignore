@@ -16,3 +16,6 @@ dist/
 
 # Test output
 coverage.out
+
+# Claude Code Docker
+claude-docker/

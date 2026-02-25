@@ -38,7 +38,18 @@
       "Bash(wc:*)",
       "Bash(cd /Users/mohammedal-quraini/nanowave/projects/Skies && xcodegen generate 2>&1)",
       "Bash(sort:*)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(git:*)",
+      "Bash(gh api:*)",
+      "Bash(claude mcp:*)",
+      "Bash(echo Docker not running or not installed:*)",
+      "Bash(chmod +x:*)",
+      "Bash(cd /Users/mohammedal-quraini/nanowave/claude-code-docker && docker compose build claude-code 2>&1)",
+      "WebFetch(domain:bloggingabout.net)",
+      "Bash(make build:*)",
+      "Bash(go vet:*)",
+      "Bash(make test:*)",
+      "Bash(make skills-source-validate:*)"
     ]
   },
   "disabledMcpjsonServers": [
