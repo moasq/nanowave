@@ -104,7 +104,7 @@ By default, Nanowave creates **iOS (iPhone)** apps. To target other platforms, m
 Mention the platforms you want and Nanowave generates a single Xcode project with separate targets:
 
 ```
-> A weather app for iPhone, iPad, Apple Watch, and Apple TV that shows
+> A weather app for iPhone, iPad, Apple Watch, Mac, Vision, and Apple TV that shows
   current conditions and a 5-day forecast
 
   ✓ Analyzed: Skies
@@ -118,6 +118,8 @@ Mention the platforms you want and Nanowave generates a single Xcode project wit
 | iPhone (default) | No extra description needed |
 | iPad | Mention "iPad" — creates a universal iOS app |
 | Apple Watch | Mention "Apple Watch" or "watchOS" |
+| Mac | Mention "Macos" or "mac" |
+| Vision | Mention "Vision OS" |
 | Apple TV | Mention "Apple TV" or "tvOS" |
 
 You can combine any platforms in a single prompt. Each gets its own source directory, target, and scheme.
