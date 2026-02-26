@@ -12,6 +12,6 @@ Read the relevant guide for your current task:
 - [state.md](reference/state.md) — @State, @Observable, property wrappers
 - [performance.md](reference/performance.md) — optimization, lazy loading, debug
 - [text.md](reference/text.md) — number/date/currency formatting
-- [media.md](reference/media.md) — photos, maps, camera, location
+- [media.md](reference/media.md) — image containment/clipping, video thumbnails, photos, maps, camera
 - [modern-apis.md](reference/modern-apis.md) — latest SwiftUI API preferences
 - [liquid-glass.md](reference/liquid-glass.md) — glass effects, morphing, tinting

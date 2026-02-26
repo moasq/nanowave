@@ -51,11 +51,46 @@ Extensions: widgets, live-activities, share-extension, notification-service, saf
 
 ## Package Entries
 
-When native Apple frameworks are genuinely insufficient for a feature, include packages in the `packages` array:
-- `name`: SPM package name (e.g. "Lottie", "SDWebImageSwiftUI")
-- `reason`: why native frameworks cannot achieve the same result
+**Default is ZERO packages.** Most apps need none. Only add a package when: (1) no native API exists for the capability, or (2) the native approach would require 100+ lines of complex code that the package eliminates. See the workflow reference for the full decision threshold and native-first table.
 
-Rules:
-- Native Apple frameworks are ALWAYS preferred. Default is an empty `packages` array.
-- Only suggest a package when there is a clear, specific gap in native capabilities.
-- Every package MUST have a non-empty `reason` explaining why native is insufficient.
+Each entry has `name` (the package name) and `reason` (what it enables that native code cannot reasonably achieve).
+
+Available curated packages (the build phase resolves exact URLs, versions, and products):
+
+| Category | Available packages |
+|---|---|
+| Image loading & caching | Kingfisher, Nuke, SDWebImageSwiftUI |
+| Animated GIFs | Gifu |
+| SVG rendering | SVGView |
+| Image editing | Brightroom, CropViewController |
+| Audio waveform | DSWaveformImage |
+| Audio engine | AudioKit |
+| Animations | Lottie |
+| Visual effects | ConfettiSwiftUI, Pow, Vortex |
+| Shimmer (animated) | Shimmer |
+| Loading indicators | ActivityIndicatorView |
+| Toasts & popups | PopupView, AlertToast |
+| Onboarding | WhatsNewKit, ConcentricOnboarding |
+| Calendar UI | HorizonCalendar |
+| Chat UI | ExyteChat |
+| Flow / wrap layout | SwiftUI-Flow |
+| Waterfall / masonry grid | WaterfallGrid |
+| Markdown rendering | MarkdownUI |
+| Rich text editing | RichTextKit |
+| Syntax highlighting | Highlightr |
+| QR codes (stylized) | EFQRCode |
+| Keychain storage | KeychainSwift, Valet |
+
+If a feature needs a package not in this table, include your best guess — the build phase will search the internet and resolve it.
+
+Example — app with a photo grid that loads hundreds of remote images with prefetch and disk caching:
+```json
+"packages": [
+  {"name": "Kingfisher", "reason": "Disk-cached image loading with prefetch and downsampling for photo grid — AsyncImage has no disk cache or prefetch"}
+]
+```
+
+Example — no packages needed (most apps):
+```json
+"packages": []
+```

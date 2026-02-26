@@ -241,7 +241,7 @@ func (p *Pipeline) Build(ctx context.Context, prompt string, images []string) (*
 		return nil, fmt.Errorf("failed to enrich CLAUDE.md: %w", err)
 	}
 
-	if err := writeCoreRules(projectDir, plan.GetPlatform()); err != nil {
+	if err := writeCoreRules(projectDir, plan.GetPlatform(), plan.Packages); err != nil {
 		return nil, fmt.Errorf("failed to write core rules: %w", err)
 	}
 

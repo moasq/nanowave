@@ -505,7 +505,8 @@ var conditionalCategories = []string{"features", "ui", "extensions"}
 
 // writeCoreRules copies skills/core/*.md to projectDir/.claude/rules/ (always loaded eagerly).
 // Platform-specific content in swift-conventions.md is adapted to the target platform.
-func writeCoreRules(projectDir, platform string) error {
+// Planner-approved packages are injected into forbidden-patterns.md.
+func writeCoreRules(projectDir, platform string, packages []PackagePlan) error {
 	rulesDir := filepath.Join(projectDir, ".claude", "rules")
 
 	entries, err := fs.ReadDir(skillsFS, "skills/core")
@@ -532,6 +533,32 @@ func writeCoreRules(projectDir, platform string) error {
 			if archDesc != "" {
 				text = strings.Replace(text, "**SwiftUI-first** architecture. UIKit is allowed only when no viable SwiftUI equivalent exists for a required feature.", archDesc, 1)
 			}
+			content = []byte(text)
+		}
+
+		// Inject planner-approved packages into forbidden-patterns.md
+		if entry.Name() == "forbidden-patterns.md" {
+			text := string(content)
+			replacement := ""
+			if len(packages) > 0 {
+				var sb strings.Builder
+				sb.WriteString("\n### Approved Packages for This Project\n\n")
+				sb.WriteString("The planner approved the following packages. Integrate each one:\n\n")
+				for _, pkg := range packages {
+					// Enrich with registry details when available
+					if curated := LookupPackageByName(pkg.Name); curated != nil {
+						sb.WriteString(fmt.Sprintf("- **%s** — %s\n", curated.Name, pkg.Reason))
+						sb.WriteString(fmt.Sprintf("  - URL: %s\n", curated.RepoURL))
+						sb.WriteString(fmt.Sprintf("  - XcodeGen key: `%s`\n", curated.RepoName))
+						sb.WriteString(fmt.Sprintf("  - Version: `from: \"%s\"`\n", curated.MinVersion))
+						sb.WriteString(fmt.Sprintf("  - Import: `%s`\n", strings.Join(curated.Products, "`, `")))
+					} else {
+						sb.WriteString(fmt.Sprintf("- **%s** — %s\n", pkg.Name, pkg.Reason))
+					}
+				}
+				replacement = sb.String()
+			}
+			text = strings.Replace(text, "<!-- APPROVED_PACKAGES_PLACEHOLDER -->", replacement, 1)
 			content = []byte(text)
 		}
 

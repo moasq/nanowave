@@ -212,6 +212,8 @@ var itemCount: Int { items.count }
 
 ## AsyncImage Best Practices
 
+When placing AsyncImage inside any sized container (cards, rows, grids, banners), use the `Color.clear` + `.aspectRatio()` + `.overlay` + `.clipShape()` pattern to prevent overflow. See the Image Containment section in the media reference for the full pattern.
+
 ```swift
 AsyncImage(url: imageURL) { phase in
     switch phase {
@@ -220,7 +222,7 @@ AsyncImage(url: imageURL) { phase in
     case .success(let image):
         image
             .resizable()
-            .aspectRatio(contentMode: .fit)
+            .scaledToFill()
     case .failure:
         Image(systemName: "photo")
             .foregroundStyle(.secondary)
@@ -229,6 +231,7 @@ AsyncImage(url: imageURL) { phase in
     }
 }
 .frame(width: 200, height: 200)
+.clipped()
 ```
 
 ---

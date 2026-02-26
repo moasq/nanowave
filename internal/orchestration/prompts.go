@@ -55,7 +55,7 @@ const planningConstraints = `PLATFORM & SCOPE:
 - tvOS only if user EXPLICITLY mentions Apple TV, tvOS, or television.
 - visionOS only if user EXPLICITLY mentions Vision Pro, visionOS, spatial, or Apple Vision.
 - macOS only if user EXPLICITLY mentions Mac, macOS, desktop app, or Mac app.
-- Apple frameworks preferred. SPM packages allowed ONLY when native frameworks are genuinely insufficient. No external services. No API keys/secrets.
+- Apple frameworks preferred. SPM packages allowed when they provide a significantly better experience than native frameworks alone (e.g. complex animations, rich media processing, advanced UI effects). No external services. No API keys/secrets.
 - All functionality must work 100% offline using local data and on-device frameworks.
 - Build the minimum product that matches user intent. User wording overrides defaults.
 - Follow the attached phase skill content for detailed rules and output requirements.`

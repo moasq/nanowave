@@ -46,8 +46,65 @@
 
 ## Package Validation
 
-- Each package entry must have a non-empty `name` and a clear `reason` why native frameworks cannot achieve the same result.
-- If no packages are needed (the common case), use an empty array: `"packages": []`.
+**Default is ZERO packages.** Most apps need none. Every package added is a dependency the user must maintain — only add one when you can justify it passes the threshold below.
+
+Each package entry must have a non-empty `name` and a `reason` explaining what it enables beyond native frameworks.
+
+### Decision threshold — a package is justified ONLY when:
+
+1. **No native API exists** for the capability (e.g. Lottie for After Effects playback, MarkdownUI for Markdown rendering, Highlightr for syntax highlighting, SwiftUI-Flow for wrapping layout, WaterfallGrid for masonry grid). These are clear wins.
+2. **Native API exists but the package saves 100+ lines of non-trivial code** (e.g. Kingfisher replaces building a full disk-cache + prefetch + downsampling pipeline on top of URLSession; AudioKit replaces building an audio synthesis engine on top of AVAudioEngine). The code saved must be genuinely complex, not just boilerplate.
+3. **The user explicitly names a package.** User intent overrides native-first.
+
+### A package is NOT justified when:
+
+- Native SwiftUI/UIKit handles it in under ~50 lines. Write the native code instead.
+- The package only saves trivial boilerplate. A small helper or extension is better than a dependency.
+- You are adding it "just in case" or for a minor enhancement. If the core feature works without it, skip it.
+
+### Native-first examples — do NOT use packages for these:
+
+| Feature | Native solution | NOT this package |
+|---|---|---|
+| Charts | Swift Charts (iOS 16+) | DGCharts |
+| Photo picking | PhotosUI / PhotosPicker | — |
+| Maps | MapKit | — |
+| Simple animations | withAnimation, .animation, PhaseAnimator | — |
+| Media playback | AVFoundation, AVKit | — |
+| Bottom sheets | .presentationDetents() (iOS 16.4+) | BottomSheet |
+| Barcode/QR scanning | DataScannerViewController (VisionKit, iOS 16+) | CodeScanner |
+| Plain QR generation | CIQRCodeGenerator (CoreImage) | EFQRCode |
+| Static skeleton loading | .redacted(reason: .placeholder) | Shimmer (only if animated shimmer is needed) |
+| Basic progress indicators | ProgressView with ProgressViewStyle | ActivityIndicatorView (only if 30+ preset animations needed) |
+| In-app web content | SFSafariViewController / WKWebView | — |
+| Haptic feedback | UIFeedbackGenerator | — |
+| Keychain (simple read/write) | Security framework (small helper) | KeychainSwift (only if multiple keys, biometric access, or shared groups needed) |
+
+### Curated registry
+
+The build phase has a curated registry of pre-validated packages with exact URLs, versions, and integration details. Use the package name from the registry when possible:
+- **Images**: Kingfisher, Nuke, SDWebImageSwiftUI
+- **GIF/SVG**: Gifu, SVGView
+- **Image editing**: Brightroom, CropViewController
+- **Audio**: AudioKit, DSWaveformImage
+- **Animations**: Lottie
+- **Effects**: ConfettiSwiftUI, Pow, Vortex
+- **Shimmer/loading**: Shimmer, ActivityIndicatorView
+- **Toasts/popups**: PopupView, AlertToast
+- **Onboarding**: WhatsNewKit, ConcentricOnboarding
+- **Calendar**: HorizonCalendar
+- **Chat**: ExyteChat
+- **Flow/wrap layout**: SwiftUI-Flow
+- **Waterfall/masonry grid**: WaterfallGrid
+- **Markdown**: MarkdownUI
+- **Rich text**: RichTextKit
+- **Syntax highlighting**: Highlightr
+- **QR codes (stylized)**: EFQRCode
+- **Keychain**: KeychainSwift, Valet
+
+If a feature needs a package not in the registry, include your best guess — the build phase will search the internet and resolve it.
+
+If no packages are needed, use an empty array: `"packages": []`.
 
 ## Validation Checklist (verify before returning)
 
