@@ -1,6 +1,20 @@
+<div align="center">
+
 # Nanowave
 
-Autonomous app builder powered by [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Describe what you want, Nanowave builds it — for iPhone, iPad, Apple Watch, and Apple TV.
+**Describe your app. Nanowave writes the Swift.**
+
+AI-powered Apple app generation from your terminal — one command from idea to running Xcode project.
+
+[![Go](https://img.shields.io/badge/Go-1.26-00ADD8?style=flat&logo=go&logoColor=white)](https://go.dev)
+[![Swift](https://img.shields.io/badge/Swift-6-FA7343?style=flat&logo=swift&logoColor=white)](https://swift.org)
+[![Powered by Claude](https://img.shields.io/badge/Powered%20by-Claude%20Code-7C3AED?style=flat&logo=anthropic&logoColor=white)](https://docs.anthropic.com/en/docs/claude-code)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat)](LICENSE)
+[![macOS](https://img.shields.io/badge/macOS-only-000000?style=flat&logo=apple&logoColor=white)](https://developer.apple.com)
+
+</div>
+
+---
 
 ```
 $ nanowave
@@ -14,7 +28,58 @@ $ nanowave
   ✓ FitTrack is ready!
 ```
 
-One command, no boilerplate. Nanowave takes a sentence, plans the architecture, generates SwiftUI code, and compiles a working Xcode project. It uses your existing Claude subscription — no extra API costs.
+No boilerplate, no Xcode templates. Nanowave takes a sentence, plans the architecture, generates SwiftUI code, and compiles a working Xcode project — with auto-fix if the build fails. It runs on your existing [Claude Pro/Max subscription](https://claude.ai) through Claude Code.
+
+## Platforms
+
+Build for every Apple platform from a single prompt. Mention the target and Nanowave handles the rest.
+
+<table>
+<tr>
+<td align="center"><img src="https://img.shields.io/badge/-iPhone-000?style=for-the-badge&logo=apple&logoColor=white" alt="iPhone"><br><sub>Default</sub></td>
+<td align="center"><img src="https://img.shields.io/badge/-iPad-000?style=for-the-badge&logo=apple&logoColor=white" alt="iPad"><br><sub>"iPad"</sub></td>
+<td align="center"><img src="https://img.shields.io/badge/-Apple%20Watch-000?style=for-the-badge&logo=apple&logoColor=white" alt="Apple Watch"><br><sub>"Apple Watch"</sub></td>
+<td align="center"><img src="https://img.shields.io/badge/-Mac-000?style=for-the-badge&logo=apple&logoColor=white" alt="Mac"><br><sub>"Mac"</sub></td>
+<td align="center"><img src="https://img.shields.io/badge/-Apple%20TV-000?style=for-the-badge&logo=apple&logoColor=white" alt="Apple TV"><br><sub>"Apple TV"</sub></td>
+<td align="center"><img src="https://img.shields.io/badge/-Vision%20Pro-000?style=for-the-badge&logo=apple&logoColor=white" alt="Vision Pro"><br><sub>"Vision Pro"</sub></td>
+</tr>
+</table>
+
+Combine any platforms in a single prompt. Each gets its own source directory, target, and Xcode scheme.
+
+## What it generates
+
+Every project ships with:
+
+- **SwiftUI** views with `#Preview` blocks, navigation, and state management
+- **SwiftData** models (when persistence is needed)
+- **Swift Charts** for data visualization
+- **AppTheme** design system — centralized colors, fonts, spacing tokens
+- **SF Symbols** — appropriate icons for every screen
+- **XcodeGen** project spec — reproducible `.xcodeproj` generation
+- **Asset catalog** with AppIcon and AccentColor
+- **SPM packages** from a curated, validated registry (when native frameworks aren't enough)
+
+Apps use Apple-first frameworks wherever possible:
+
+<table>
+<tr>
+<td align="center"><a href="https://developer.apple.com/xcode/swiftui/"><img src="https://developer.apple.com/assets/elements/icons/swiftui/swiftui-96x96_2x.png" width="40"><br><b>SwiftUI</b></a><br><sub>UI</sub></td>
+<td align="center"><a href="https://developer.apple.com/xcode/swiftdata/"><img src="https://developer.apple.com/assets/elements/icons/swiftdata/swiftdata-96x96_2x.png" width="40"><br><b>SwiftData</b></a><br><sub>Persistence</sub></td>
+<td align="center"><a href="https://developer.apple.com/documentation/charts"><img src="https://developer.apple.com/assets/elements/icons/swift-charts/swift-charts-96x96_2x.png" width="40"><br><b>Swift Charts</b></a><br><sub>Data viz</sub></td>
+<td align="center"><a href="https://developer.apple.com/documentation/mapkit"><img src="https://developer.apple.com/assets/elements/icons/mapkit/mapkit-96x96_2x.png" width="40"><br><b>MapKit</b></a><br><sub>Maps</sub></td>
+<td align="center"><a href="https://developer.apple.com/documentation/healthkit"><img src="https://developer.apple.com/assets/elements/icons/healthkit/healthkit-96x96_2x.png" width="40"><br><b>HealthKit</b></a><br><sub>Health</sub></td>
+<td align="center"><a href="https://developer.apple.com/documentation/widgetkit"><img src="https://developer.apple.com/assets/elements/icons/widgetkit/widgetkit-96x96_2x.png" width="40"><br><b>WidgetKit</b></a><br><sub>Widgets</sub></td>
+</tr>
+<tr>
+<td align="center"><a href="https://developer.apple.com/documentation/avfoundation"><img src="https://developer.apple.com/assets/elements/icons/avfoundation/avfoundation-96x96_2x.png" width="40"><br><b>AVFoundation</b></a><br><sub>Camera & media</sub></td>
+<td align="center"><a href="https://developer.apple.com/documentation/photokit"><img src="https://developer.apple.com/assets/elements/icons/photokit/photokit-96x96_2x.png" width="40"><br><b>PhotosUI</b></a><br><sub>Photo picker</sub></td>
+<td align="center"><a href="https://developer.apple.com/documentation/activitykit"><img src="https://developer.apple.com/assets/elements/icons/activitykit/activitykit-96x96_2x.png" width="40"><br><b>ActivityKit</b></a><br><sub>Live Activities</sub></td>
+<td align="center"><a href="https://developer.apple.com/machine-learning/core-ml/"><img src="https://developer.apple.com/assets/elements/icons/core-ml/core-ml-96x96_2x.png" width="40"><br><b>CoreML</b></a><br><sub>Machine learning</sub></td>
+<td align="center"><a href="https://developer.apple.com/augmented-reality/arkit/"><img src="https://developer.apple.com/assets/elements/icons/arkit/arkit-96x96_2x.png" width="40"><br><b>ARKit</b></a><br><sub>Augmented reality</sub></td>
+<td align="center"><a href="https://developer.apple.com/augmented-reality/realitykit/"><img src="https://developer.apple.com/assets/elements/icons/realitykit/realitykit-96x96_2x.png" width="40"><br><b>RealityKit</b></a><br><sub>3D & spatial</sub></td>
+</tr>
+</table>
 
 ## Getting started
 
@@ -50,7 +115,7 @@ $ nanowave
 > describe your app here...
 ```
 
-You can also run `nanowave setup` at any time to re-check or repair your environment.
+Run `nanowave setup` at any time to re-check or repair your environment.
 
 <details>
 <summary>Install from source</summary>
@@ -66,19 +131,13 @@ make build
 
 ## Usage
 
-### Interactive mode
+### Build a new app
 
 ```bash
 nanowave
 ```
 
-On first run with no projects, you'll be prompted to describe your app. On subsequent runs, a project picker lets you resume an existing project or start a new one.
-
-All projects are stored in `~/nanowave/projects/`.
-
-### Build a new app
-
-By default, Nanowave creates **iOS (iPhone)** apps. To target other platforms, mention them in your description.
+Describe your app and watch it come to life:
 
 ```
 > A habit tracker with a weekly grid, streak counter, and haptic feedback
@@ -99,30 +158,21 @@ By default, Nanowave creates **iOS (iPhone)** apps. To target other platforms, m
   ✓ Launched on iPhone 17 Pro
 ```
 
-#### Multi-platform builds
+On subsequent runs, a project picker lets you resume an existing project or start a new one. All projects live in `~/nanowave/projects/`.
 
-Mention the platforms you want and Nanowave generates a single Xcode project with separate targets:
+### Multi-platform builds
+
+Mention multiple platforms and Nanowave generates a single Xcode project with separate targets:
 
 ```
-> A weather app for iPhone, iPad, Apple Watch, Mac, Vision, and Apple TV that shows
-  current conditions and a 5-day forecast
+> A weather app for iPhone, Apple Watch, Mac, Vision Pro, and Apple TV
+  that shows current conditions and a 5-day forecast
 
   ✓ Analyzed: Skies
-  ✓ Plan ready (29 files, 4 models) — iOS, watchOS, tvOS
+  ✓ Plan ready (29 files, 4 models) — iOS, watchOS, macOS, visionOS, tvOS
   ✓ Build complete — 29 files
   ✓ Skies is ready!
 ```
-
-| Platform | How to request it |
-|---|---|
-| iPhone (default) | No extra description needed |
-| iPad | Mention "iPad" — creates a universal iOS app |
-| Apple Watch | Mention "Apple Watch" or "watchOS" |
-| Mac | Mention "Macos" or "mac" |
-| Vision | Mention "Vision OS" |
-| Apple TV | Mention "Apple TV" or "tvOS" |
-
-You can combine any platforms in a single prompt. Each gets its own source directory, target, and scheme.
 
 ### Edit an existing app
 
@@ -140,7 +190,7 @@ Select a project from the picker, then describe changes:
 
 ### Ask about your project
 
-Use `/ask` to ask questions without triggering a full edit (uses Haiku, read-only tools, much cheaper):
+Use `/ask` to query your project without triggering an edit (lightweight, read-only, cheap):
 
 ```
 > /ask how many views do I have?
@@ -149,7 +199,7 @@ Use `/ask` to ask questions without triggering a full edit (uses Haiku, read-onl
   $0.0012
 ```
 
-### Slash commands
+### Commands
 
 | Command | Description |
 |---|---|
@@ -158,18 +208,16 @@ Use `/ask` to ask questions without triggering a full edit (uses Haiku, read-onl
 | `/ask <question>` | Ask about your project (cheap, read-only) |
 | `/open` | Open project in Xcode |
 | `/projects` | Switch to another project |
-| `/model [name]` | Switch model (`sonnet`, `opus`, `haiku`) |
+| `/model [name]` | Switch AI model |
 | `/simulator [name]` | Pick simulator device |
 | `/info` | Show project info |
 | `/usage` | Token usage and cost |
 | `/clear` | Clear conversation session |
 | `/setup` | Install prerequisites |
 | `/help` | Show all commands |
-| `/quit` | Exit session |
-
-### CLI subcommands
 
 ```bash
+# CLI subcommands
 nanowave              # interactive mode (default)
 nanowave chat         # same as above
 nanowave fix          # auto-fix build errors for most recent project
@@ -178,33 +226,35 @@ nanowave info         # show project status
 nanowave open         # open most recent project in Xcode
 nanowave usage        # show usage and cost history
 nanowave setup        # install and verify prerequisites
-```
 
-### Flags
-
-```bash
-nanowave --model opus    # use a specific Claude model for the session
+# Flags
+nanowave --model <name>  # use a specific AI model
 nanowave --version       # print version
 nanowave --help          # print help
 ```
 
 ## How it works
 
-Nanowave runs a multi-phase pipeline:
+Nanowave runs a multi-phase AI pipeline — from natural language to compiled Xcode project:
 
 ```
-describe → analyze → plan → build → fix → run
+describe  →  analyze  →  plan  →  build  →  fix  →  run
+   ↑            │          │        │        │       │
+ prompt     app name    files    Swift    xcode-   iOS
+            features    models   code     build    Simulator
+            core flow   palette  assets   errors
+                        nav      .xcproj  auto-fix
 ```
 
-1. **Analyze** — Extracts the app name, features, core flow, and deferred items from your description (Claude Sonnet).
-2. **Plan** — Produces a file-level build plan: data models, file layout, color palette, navigation structure (Claude Sonnet).
-3. **Build** — Generates Swift source files, `project.yml`, asset catalog, and runs XcodeGen to produce the `.xcodeproj` (Claude Sonnet, agentic mode with up to 6 completion passes).
-4. **Fix** — Compiles with `xcodebuild`, reads errors, and auto-repairs until the build succeeds.
-5. **Run** — Boots the iOS Simulator, installs the app, and launches it.
+| Phase | What happens |
+|-------|-------------|
+| **Analyze** | Extracts app name, features, core flow, and deferred items from your description |
+| **Plan** | Produces a file-level build plan: data models, file layout, color palette, navigation, packages |
+| **Build** | Generates Swift source files, `project.yml`, asset catalog, and runs XcodeGen (up to 6 completion passes) |
+| **Fix** | Compiles with `xcodebuild`, reads errors, and auto-repairs until the build is green |
+| **Run** | Boots the iOS Simulator, installs, and launches the app |
 
-Edits follow the same pattern: Claude reads the existing project, applies changes, rebuilds, and auto-fixes. After each edit, a summary of what was changed is displayed.
-
-The `/ask` command provides a lightweight Q&A path using Claude Haiku with read-only tools (Read, Glob, Grep) — useful for exploring your project without incurring full edit costs.
+Edits follow the same pipeline: the AI reads the existing project, applies changes, rebuilds, and auto-fixes. The `/ask` command uses a lightweight model with read-only tools for cheap project exploration.
 
 ## Project structure
 
@@ -213,51 +263,35 @@ Generated projects follow a consistent layout:
 ```
 ~/nanowave/projects/
 └── HabitGrid/
-    ├── .nanowave/           # project state (project.json, history, usage)
+    ├── .nanowave/           # project state, history, usage
     ├── .claude/             # CLAUDE.md, skills, MCP config
     ├── HabitGrid/
-    │   ├── App/             # Entry point, root views
-    │   ├── Features/        # Screens grouped by feature
-    │   ├── Models/          # Data models
-    │   └── Theme/           # Colors, fonts, design tokens
+    │   ├── App/             # @main entry point, root views
+    │   ├── Features/        # screens grouped by feature
+    │   ├── Models/          # SwiftData / in-memory models
+    │   └── Theme/           # AppTheme (colors, fonts, spacing)
     ├── project.yml          # XcodeGen spec
     ├── .gitignore
     └── HabitGrid.xcodeproj
 ```
 
-Multi-platform projects add separate source directories per platform:
+Multi-platform projects add per-platform source directories + a `Shared/` folder:
 
 ```
 └── Skies/
     ├── Skies/               # iOS source
     ├── SkiesWatch/          # watchOS source
+    ├── SkiesMac/            # macOS source
+    ├── SkiesVision/         # visionOS source
     ├── SkiesTV/             # tvOS source
-    ├── Shared/              # Cross-platform code
-    ├── project.yml          # Multi-target XcodeGen spec
+    ├── Shared/              # cross-platform code
+    ├── project.yml          # multi-target XcodeGen spec
     └── Skies.xcodeproj
 ```
 
-All projects target **Swift 6**, **SwiftUI**, with zero external dependencies. Deployment targets: **iOS 26+**, **watchOS 26+**, **tvOS 26+**.
-
-## Examples
-
-| Example | Platforms | Description |
-|---|---|---|
-| [Skies](examples/skies/) | iOS, watchOS, tvOS | Multi-platform weather app with condition-driven gradients, animated icons, and ambient TV dashboard |
-
-## Models
-
-Nanowave uses Claude Code as its AI backend. You can switch models at any time with `/model`:
-
-| Model | Best for |
-|---|---|
-| `sonnet` | Default. Fast, great for most builds and edits. |
-| `opus` | Most capable. Complex architectures, nuanced UI. |
-| `haiku` | Fastest. Quick edits, lightweight tasks. |
-
 ## Cost
 
-Nanowave uses your existing [Claude Pro/Max subscription](https://claude.ai) through Claude Code. There are no additional API charges. Use `/usage` or `nanowave usage` to track token consumption and costs per session.
+Nanowave runs on your existing [Claude Pro or Max subscription](https://claude.ai) through [Claude Code](https://docs.anthropic.com/en/docs/claude-code). No additional API charges. Use `/usage` to track token consumption per session.
 
 ## Development
 
@@ -272,20 +306,24 @@ make deps           # tidy go modules
 make clean          # remove build artifacts
 ```
 
-### Project layout
+<details>
+<summary>Project layout</summary>
 
 ```
-cmd/nanowave/           # CLI entry point
+cmd/nanowave/           # CLI entry point (cobra)
 internal/
 ├── claude/             # Claude Code client (streaming, sessions)
 ├── commands/           # Cobra commands (root, chat, fix, run, setup, etc.)
 ├── config/             # Environment detection, project catalog
-├── orchestration/      # Multi-phase build pipeline, prompts, scaffolding
+├── orchestration/      # Multi-phase build pipeline
+│   └── skills/         # Embedded AI skill files (70+ skills)
 ├── service/            # Service layer (build, edit, fix, run, info)
 ├── storage/            # JSON-file stores (project, history, usage)
 ├── terminal/           # UI (spinner, picker, input, colors)
 └── xcodegenserver/     # XcodeGen MCP server
 ```
+
+</details>
 
 ## License
 
