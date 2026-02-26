@@ -222,21 +222,21 @@ func writeClaudeMemoryFiles(projectDir, appName, platform, deviceFamily string, 
 			overview.WriteString(PlatformDisplayName(p))
 		}
 		overview.WriteString("\n")
-		overview.WriteString("- Stack: SwiftUI (no third-party packages)\n")
+		overview.WriteString("- Stack: SwiftUI (SPM packages added as needed during build)\n")
 	} else {
 		overview.WriteString("- Platform: ")
 		overview.WriteString(platformSummary(platform, deviceFamily))
 		overview.WriteString("\n")
 		if IsWatchOS(platform) {
-			overview.WriteString("- Stack: SwiftUI (no third-party packages, no UIKit)\n")
+			overview.WriteString("- Stack: SwiftUI (SPM packages added as needed, no UIKit)\n")
 		} else if IsTvOS(platform) {
-			overview.WriteString("- Stack: SwiftUI (no third-party packages, no UIKit)\n")
+			overview.WriteString("- Stack: SwiftUI (SPM packages added as needed, no UIKit)\n")
 		} else if IsVisionOS(platform) {
-			overview.WriteString("- Stack: SwiftUI + RealityKit (no third-party packages, no UIKit)\n")
+			overview.WriteString("- Stack: SwiftUI + RealityKit (SPM packages added as needed, no UIKit)\n")
 		} else if IsMacOS(platform) {
 			overview.WriteString("- Stack: SwiftUI native macOS, AppKit bridge when needed, no UIKit. Menu bar, keyboard shortcuts, Settings scene, multiple windows.\n")
 		} else {
-			overview.WriteString("- Stack: SwiftUI + SwiftData (no third-party packages)\n")
+			overview.WriteString("- Stack: SwiftUI + SwiftData (SPM packages added as needed)\n")
 		}
 	}
 	overview.WriteString("- Project config source of truth: `project_config.json`\n")
@@ -323,7 +323,7 @@ func writeClaudeMemoryFiles(projectDir, appName, platform, deviceFamily string, 
 	xg.WriteString("# XcodeGen Policy\n\n")
 	xg.WriteString("## Required Workflow\n")
 	xg.WriteString("- Use xcodegen MCP tools for project configuration changes\n")
-	xg.WriteString("- Preferred tools: `add_permission`, `add_extension`, `add_entitlement`, `add_localization`, `set_build_setting`, `get_project_config`, `regenerate_project`\n")
+	xg.WriteString("- Preferred tools: `add_permission`, `add_extension`, `add_entitlement`, `add_localization`, `add_package`, `set_build_setting`, `get_project_config`, `regenerate_project`\n")
 	xg.WriteString("- Do not manually edit `.xcodeproj`\n")
 	xg.WriteString("- Avoid manual `project.yml` edits unless explicitly doing emergency recovery, then run `regenerate_project`\n")
 	xg.WriteString("\n## Files\n")
@@ -480,6 +480,14 @@ func writeClaudeMemoryFiles(projectDir, appName, platform, deviceFamily string, 
 				fmt.Fprintf(&planDoc, "- `%s`\n", lang)
 			}
 		}
+		planDoc.WriteString("\n## Packages\n")
+		if len(plan.Packages) == 0 {
+			planDoc.WriteString("- None\n")
+		} else {
+			for _, pkg := range plan.Packages {
+				fmt.Fprintf(&planDoc, "- `%s`: %s\n", pkg.Name, pkg.Reason)
+			}
+		}
 	}
 	files["generated-plan.md"] = planDoc.String()
 
@@ -497,7 +505,8 @@ var conditionalCategories = []string{"features", "ui", "extensions"}
 
 // writeCoreRules copies skills/core/*.md to projectDir/.claude/rules/ (always loaded eagerly).
 // Platform-specific content in swift-conventions.md is adapted to the target platform.
-func writeCoreRules(projectDir, platform string) error {
+// Planner-approved packages are injected into forbidden-patterns.md.
+func writeCoreRules(projectDir, platform string, packages []PackagePlan) error {
 	rulesDir := filepath.Join(projectDir, ".claude", "rules")
 
 	entries, err := fs.ReadDir(skillsFS, "skills/core")
@@ -524,6 +533,32 @@ func writeCoreRules(projectDir, platform string) error {
 			if archDesc != "" {
 				text = strings.Replace(text, "**SwiftUI-first** architecture. UIKit is allowed only when no viable SwiftUI equivalent exists for a required feature.", archDesc, 1)
 			}
+			content = []byte(text)
+		}
+
+		// Inject planner-approved packages into forbidden-patterns.md
+		if entry.Name() == "forbidden-patterns.md" {
+			text := string(content)
+			replacement := ""
+			if len(packages) > 0 {
+				var sb strings.Builder
+				sb.WriteString("\n### Approved Packages for This Project\n\n")
+				sb.WriteString("The planner approved the following packages. Integrate each one:\n\n")
+				for _, pkg := range packages {
+					// Enrich with registry details when available
+					if curated := LookupPackageByName(pkg.Name); curated != nil {
+						sb.WriteString(fmt.Sprintf("- **%s** — %s\n", curated.Name, pkg.Reason))
+						sb.WriteString(fmt.Sprintf("  - URL: %s\n", curated.RepoURL))
+						sb.WriteString(fmt.Sprintf("  - XcodeGen key: `%s`\n", curated.RepoName))
+						sb.WriteString(fmt.Sprintf("  - Version: `from: \"%s\"`\n", curated.MinVersion))
+						sb.WriteString(fmt.Sprintf("  - Import: `%s`\n", strings.Join(curated.Products, "`, `")))
+					} else {
+						sb.WriteString(fmt.Sprintf("- **%s** — %s\n", pkg.Name, pkg.Reason))
+					}
+				}
+				replacement = sb.String()
+			}
+			text = strings.Replace(text, "<!-- APPROVED_PACKAGES_PLACEHOLDER -->", replacement, 1)
 			content = []byte(text)
 		}
 

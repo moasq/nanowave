@@ -15,7 +15,7 @@ func TestWriteCoreRules(t *testing.T) {
 		t.Fatalf("failed to create rules dir: %v", err)
 	}
 
-	if err := writeCoreRules(projectDir, PlatformIOS); err != nil {
+	if err := writeCoreRules(projectDir, PlatformIOS, nil); err != nil {
 		t.Fatalf("writeCoreRules() error: %v", err)
 	}
 
@@ -46,7 +46,7 @@ func TestWriteCoreRulesMacOS(t *testing.T) {
 		t.Fatalf("failed to create rules dir: %v", err)
 	}
 
-	if err := writeCoreRules(projectDir, PlatformMacOS); err != nil {
+	if err := writeCoreRules(projectDir, PlatformMacOS, nil); err != nil {
 		t.Fatalf("writeCoreRules(macOS) error: %v", err)
 	}
 
@@ -63,6 +63,66 @@ func TestWriteCoreRulesMacOS(t *testing.T) {
 	}
 	if !strings.Contains(text, "AppKit bridge") {
 		t.Error("macOS swift-conventions should mention AppKit bridge")
+	}
+}
+
+func TestWriteCoreRulesWithPackages(t *testing.T) {
+	projectDir := t.TempDir()
+	rulesDir := filepath.Join(projectDir, ".claude", "rules")
+	if err := os.MkdirAll(rulesDir, 0o755); err != nil {
+		t.Fatalf("failed to create rules dir: %v", err)
+	}
+
+	packages := []PackagePlan{
+		{Name: "Lottie", Reason: "Complex vector animations not achievable with native SwiftUI"},
+	}
+
+	if err := writeCoreRules(projectDir, PlatformIOS, packages); err != nil {
+		t.Fatalf("writeCoreRules(with packages) error: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(rulesDir, "forbidden-patterns.md"))
+	if err != nil {
+		t.Fatalf("failed to read forbidden-patterns.md: %v", err)
+	}
+	text := string(data)
+
+	if strings.Contains(text, "APPROVED_PACKAGES_PLACEHOLDER") {
+		t.Error("forbidden-patterns should not contain raw placeholder when packages are provided")
+	}
+	if !strings.Contains(text, "Approved Packages for This Project") {
+		t.Error("forbidden-patterns should contain approved packages section")
+	}
+	if !strings.Contains(text, "Lottie") {
+		t.Error("forbidden-patterns should list Lottie as approved package")
+	}
+	if strings.Contains(text, "No SPM") {
+		t.Error("forbidden-patterns should not ban SPM when packages are approved")
+	}
+}
+
+func TestWriteCoreRulesNoPackages(t *testing.T) {
+	projectDir := t.TempDir()
+	rulesDir := filepath.Join(projectDir, ".claude", "rules")
+	if err := os.MkdirAll(rulesDir, 0o755); err != nil {
+		t.Fatalf("failed to create rules dir: %v", err)
+	}
+
+	if err := writeCoreRules(projectDir, PlatformIOS, nil); err != nil {
+		t.Fatalf("writeCoreRules(no packages) error: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(rulesDir, "forbidden-patterns.md"))
+	if err != nil {
+		t.Fatalf("failed to read forbidden-patterns.md: %v", err)
+	}
+	text := string(data)
+
+	if strings.Contains(text, "APPROVED_PACKAGES_PLACEHOLDER") {
+		t.Error("forbidden-patterns should not contain raw placeholder")
+	}
+	if strings.Contains(text, "Approved Packages for This Project") {
+		t.Error("forbidden-patterns should not contain approved packages section when none provided")
 	}
 }
 

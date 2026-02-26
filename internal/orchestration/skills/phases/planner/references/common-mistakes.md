@@ -36,6 +36,21 @@
 - Using system blue (#007AFF) as primary unless intentional.
 - Not including liquid-glass in rule_keys for iOS 26+ apps.
 
+## Package Mistakes
+
+- Suggesting packages when native Apple frameworks handle the feature well:
+  - Charts and graphs → use Swift Charts.
+  - Photo picking → use PhotosUI.
+  - Audio/video playback → use AVFoundation.
+  - Maps → use MapKit.
+- Missing `reason` field — every package entry must explain what it enables beyond native.
+- Ignoring the user's request — when the user explicitly names a package, include it. User intent overrides native-first.
+- Omitting a package when the feature genuinely benefits from one:
+  - After Effects / Lottie JSON animations → suggest from the curated registry.
+  - Disk-cached image loading with prefetch → suggest from the curated registry.
+  - Markdown rendering, QR code generation, rich text editing → suggest from the curated registry.
+- Using a wrong or guessed package name when the curated registry has the correct one. Check the registry list in the output-format reference first.
+
 ## Multi-Platform Mistakes
 
 - Forgetting to set the top-level `platforms` array when multiple platforms are requested.

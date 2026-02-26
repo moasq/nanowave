@@ -6,6 +6,19 @@ import (
 	"strings"
 )
 
+// appearanceModeDescription returns a human-readable description of the app's
+// appearance mode for the build prompt, so the LLM knows the appearance context
+// and uses UIKit adaptive colors (Color(.label), etc.) for text.
+func appearanceModeDescription(plan *PlannerResult) string {
+	if plan != nil && plan.HasRuleKey("dark-mode") {
+		return "adaptive (supports light/dark/system via user preference — use Color(.label) adaptive text colors)"
+	}
+	if plan != nil && isDarkPalette(plan.Design.Palette) {
+		return "locked to Dark (dark palette — use Color(.label) for text, system chrome is dark)"
+	}
+	return "locked to Light (use Color(.label) for text, system chrome is light)"
+}
+
 func appendBuildPlanFileEntry(b *strings.Builder, f FilePlan) {
 	platformTag := ""
 	if f.Platform != "" {
@@ -34,6 +47,7 @@ func (p *Pipeline) buildPrompts(_ string, appName string, _ string, analysis *An
 	appendPrompt.WriteString(fmt.Sprintf("Palette: primary=%s, secondary=%s, accent=%s, background=%s, surface=%s\n",
 		plan.Design.Palette.Primary, plan.Design.Palette.Secondary, plan.Design.Palette.Accent,
 		plan.Design.Palette.Background, plan.Design.Palette.Surface))
+	appendPrompt.WriteString(fmt.Sprintf("Appearance: %s\n", appearanceModeDescription(plan)))
 	appendPrompt.WriteString(fmt.Sprintf("Font: %s, Corner radius: %d, Density: %s, Surfaces: %s, Mood: %s\n",
 		plan.Design.FontDesign, plan.Design.CornerRadius, plan.Design.Density, plan.Design.Surfaces, plan.Design.AppMood))
 
@@ -89,6 +103,10 @@ func (p *Pipeline) buildPrompts(_ string, appName string, _ string, analysis *An
 	if len(plan.Localizations) > 0 {
 		appendPrompt.WriteString(fmt.Sprintf("\n### Localizations: %s\n", strings.Join(plan.Localizations, ", ")))
 	}
+
+	// SPM package instructions
+	appendPrompt.WriteString("\n### SPM Packages\n")
+	appendBuildSPMSection(&appendPrompt, plan.Packages, appName)
 
 	appendPrompt.WriteString("\n</build-plan>\n")
 
@@ -277,4 +295,95 @@ Required process:
 	}
 
 	return appendPrompt.String(), userMsg, nil
+}
+
+// appendBuildSPMSection writes the SPM package instructions into the build prompt.
+// It resolves planned packages against the curated registry for exact details,
+// and falls back to internet-search instructions for unrecognized packages.
+func appendBuildSPMSection(b *strings.Builder, packages []PackagePlan, appName string) {
+	var resolved []*CuratedPackage
+	var unresolved []PackagePlan
+
+	for _, pkg := range packages {
+		if curated := LookupPackageByName(pkg.Name); curated != nil {
+			resolved = append(resolved, curated)
+		} else {
+			unresolved = append(unresolved, pkg)
+		}
+	}
+
+	// Emit resolved packages with full integration details
+	if len(resolved) > 0 {
+		b.WriteString("These packages are approved for this project. Use the exact details below to integrate each one.\n\n")
+		for _, pkg := range resolved {
+			b.WriteString(fmt.Sprintf("**%s** — %s\n", pkg.Name, pkg.Description))
+			b.WriteString(fmt.Sprintf("- Repository: %s\n", pkg.RepoURL))
+			b.WriteString(fmt.Sprintf("- XcodeGen package key: `%s`\n", pkg.RepoName))
+			b.WriteString(fmt.Sprintf("- Minimum version: `\"%s\"`\n", pkg.MinVersion))
+			if len(pkg.Products) == 1 {
+				b.WriteString(fmt.Sprintf("- Import: `import %s`\n", pkg.Products[0]))
+			} else {
+				b.WriteString("- Products (import each one you use):\n")
+				for _, p := range pkg.Products {
+					b.WriteString(fmt.Sprintf("  - `import %s`\n", p))
+				}
+			}
+			// Write the project.yml snippet
+			b.WriteString("- project.yml:\n")
+			b.WriteString("```yaml\n")
+			b.WriteString("packages:\n")
+			b.WriteString(fmt.Sprintf("  %s:\n", pkg.RepoName))
+			b.WriteString(fmt.Sprintf("    url: %s\n", pkg.RepoURL))
+			b.WriteString(fmt.Sprintf("    from: \"%s\"\n", pkg.MinVersion))
+			b.WriteString("targets:\n")
+			b.WriteString(fmt.Sprintf("  %s:\n", appName))
+			b.WriteString("    dependencies:\n")
+			if len(pkg.Products) == 1 && pkg.Products[0] == pkg.RepoName {
+				b.WriteString(fmt.Sprintf("      - package: %s\n", pkg.RepoName))
+			} else if len(pkg.Products) == 1 {
+				b.WriteString(fmt.Sprintf("      - package: %s\n", pkg.RepoName))
+				b.WriteString(fmt.Sprintf("        product: %s\n", pkg.Products[0]))
+			} else {
+				b.WriteString(fmt.Sprintf("      - package: %s\n", pkg.RepoName))
+				b.WriteString("        products:\n")
+				for _, p := range pkg.Products {
+					b.WriteString(fmt.Sprintf("          - %s\n", p))
+				}
+			}
+			b.WriteString("```\n")
+			b.WriteString(fmt.Sprintf("- README: %s#readme\n\n", pkg.RepoURL))
+		}
+	}
+
+	// Emit unresolved packages with search instructions
+	if len(unresolved) > 0 {
+		b.WriteString("The following packages are not in the curated registry. Search the internet to find and validate them:\n\n")
+		for _, pkg := range unresolved {
+			b.WriteString(fmt.Sprintf("- **%s**: %s\n", pkg.Name, pkg.Reason))
+		}
+		b.WriteString("\n")
+		b.WriteString(`For each unresolved package:
+1. Use WebSearch to find the GitHub repository.
+2. Confirm it has >500 stars, was updated within 12 months, and has an MIT or Apache 2.0 license.
+3. Open the repository's Package.swift to find the exact product name(s).
+4. Read the README for SwiftUI integration instructions.
+5. Use the add_package MCP tool to add it, or edit project.yml directly.
+6. If validation fails, implement the feature with native frameworks instead.
+
+`)
+	}
+
+	// Always include the XcodeGen format reference
+	b.WriteString(`#### XcodeGen project.yml format
+
+The packages: section goes at the top level. Each key is the repository name (last path component of the URL).
+
+Format rules:
+- The packages: key is the repository name (last URL path component), not the product name.
+- Use from: for minimum version (semver). Do not use minVersion:, version:, or exactVersion:.
+- Every dependency must include package:. Add product: when the product name differs from the package key, or use products: for multiple products.
+- Version strings must be quoted (from: "4.5.0").
+
+If a feature would benefit from a package not listed above, search the internet to discover and validate one before adding it.
+`)
 }
