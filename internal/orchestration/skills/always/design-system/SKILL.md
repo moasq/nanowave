@@ -22,7 +22,7 @@ These patterns are **BANNED** everywhere in feature views. Violations MUST be ca
 .foregroundStyle(.white)                    // use AppTheme.Colors.textPrimary
 .foregroundStyle(.white.opacity(0.8))       // use AppTheme.Colors.textSecondary
 .foregroundStyle(.white.opacity(0.6))       // use AppTheme.Colors.textTertiary
-.foregroundStyle(.black)                    // use AppTheme.Colors.textPrimary (or appropriate token)
+.foregroundStyle(.black)                    // use AppTheme.Colors.textPrimary
 .foregroundStyle(Color.red)                 // define AppTheme.Colors.error or semantic token
 .foregroundStyle(Color.blue)                // define AppTheme.Colors.accent or semantic token
 .background(.blue)                          // use AppTheme.Colors.* token
@@ -45,14 +45,14 @@ VStack(spacing: 10)                         // use AppTheme.Spacing.*
 
 ```swift
 // CORRECT — always use AppTheme tokens
-.foregroundStyle(AppTheme.Colors.textPrimary)
+.foregroundStyle(AppTheme.Colors.textPrimary)   // system adaptive — auto-adapts to appearance
 .foregroundStyle(AppTheme.Colors.textSecondary)
 .font(AppTheme.Fonts.title2)
 .font(AppTheme.Fonts.caption)
 .padding(AppTheme.Spacing.md)
 .padding(.horizontal, AppTheme.Spacing.sm)
 VStack(spacing: AppTheme.Spacing.sm)
-.background(AppTheme.Colors.surface)
+.background(AppTheme.Colors.background)         // custom palette hex — brand identity
 ```
 
 ## AppTheme Pattern
@@ -65,16 +65,18 @@ import SwiftUI
 
 enum AppTheme {
     enum Colors {
+        // Brand/theme colors — custom hex from palette
         static let primary = Color(hex: "...")
         static let secondary = Color(hex: "...")
         static let accent = Color(hex: "...")
         static let background = Color(hex: "...")
         static let surface = Color(hex: "...")
 
-        // Text colors — REQUIRED for every app
-        static let textPrimary = Color.white           // or Color.primary for light bg apps
-        static let textSecondary = Color.white.opacity(0.8)
-        static let textTertiary = Color.white.opacity(0.6)
+        // Text colors — REQUIRED — use UIKit adaptive colors
+        // These auto-adapt to the locked appearance (Dark or Light).
+        static let textPrimary = Color(.label)
+        static let textSecondary = Color(.secondaryLabel)
+        static let textTertiary = Color(.tertiaryLabel)
     }
 
     enum Fonts {
@@ -127,16 +129,29 @@ Rules:
 - **NEVER** use `.font(.system(size: N))` — it opts out of Dynamic Type
 - No custom fonts, no downloaded fonts
 
-## Text Colors — AppTheme.Colors.textPrimary Required
+## Text Colors — System Adaptive via UIKit
 
-Every AppTheme MUST define text color tokens. Views MUST use these instead of `.white`, `.black`, or `.primary`:
+Every AppTheme MUST define text color tokens using UIKit's adaptive system colors. These automatically adapt to the locked appearance mode (Dark or Light) set via Info.plist, so text is always legible against the palette background.
+
+```swift
+// REQUIRED — UIKit adaptive text colors
+static let textPrimary = Color(.label)              // white in Dark, black in Light
+static let textSecondary = Color(.secondaryLabel)    // adapts opacity per appearance
+static let textTertiary = Color(.tertiaryLabel)      // adapts opacity per appearance
+```
+
+**Do NOT use static colors for text** — no `Color.white`, `Color.black`, `Color.primary`, or `.opacity()` on raw colors. The appearance lock ensures UIKit adaptive colors pick the correct variant automatically.
 
 | Instead of | Use |
 |---|---|
 | `.foregroundStyle(.white)` | `AppTheme.Colors.textPrimary` |
+| `.foregroundStyle(.black)` | `AppTheme.Colors.textPrimary` |
 | `.foregroundStyle(.white.opacity(0.8))` | `AppTheme.Colors.textSecondary` |
 | `.foregroundStyle(.white.opacity(0.6))` | `AppTheme.Colors.textTertiary` |
 | `.foregroundStyle(.secondary)` | `AppTheme.Colors.textSecondary` |
+| `.foregroundStyle(Color.primary)` | `AppTheme.Colors.textPrimary` |
+
+**macOS note**: On macOS, use `Color(.labelColor)`, `Color(.secondaryLabelColor)`, `Color(.tertiaryLabelColor)` instead — AppKit uses different names than UIKit. For multi-platform shared code, use `#if canImport(UIKit)` / `#if canImport(AppKit)` to select the correct initializer.
 
 ## Icons (SF Symbols)
 - **SF Symbols only** for all icons — required for every list row, button, empty state, and tab
@@ -207,23 +222,28 @@ extension Color {
 }
 ```
 
-## Appearance Mode — Single-Appearance Lock via Info.plist
+## Appearance Mode — Palette-Aware Lock via Info.plist
 
-When the app does NOT support both light and dark appearances (no `dark-mode` rule key), the pipeline automatically locks appearance via Info.plist:
+When the app does NOT support both light and dark appearances (no `dark-mode` rule key), the pipeline automatically locks appearance via Info.plist based on palette brightness:
 
-- **iOS / tvOS**: `UIUserInterfaceStyle` is set to `Light` in the generated Info.plist (via `INFOPLIST_KEY_UIUserInterfaceStyle` build setting).
+- **Dark palette** (background brightness < 128): `UIUserInterfaceStyle` is set to `Dark`. System chrome (status bar, navigation bars, alerts, sheets, pickers) renders in dark mode to match the app's dark background.
+- **Light palette** (background brightness >= 128 or no palette): `UIUserInterfaceStyle` is set to `Light`.
+- **`dark-mode` rule key**: No lock — the app supports adaptive light/dark/system via a user preference picker.
 - **visionOS**: No appearance lock needed — visionOS has no dark mode. The glass material auto-adapts to the physical environment.
 - **macOS**: No appearance lock. macOS apps always follow the system appearance (dark/light). Users expect Mac apps to respect their system preference.
 
 This is handled at the XcodeGen project generation level — **do NOT use `.preferredColorScheme()` for this purpose**. The Info.plist approach ensures the entire app (including system chrome, alerts, and sheets) respects the locked appearance, not just SwiftUI views.
 
+**Text colors auto-adapt**: Because the appearance is locked at the system level, UIKit adaptive colors (`Color(.label)`, `Color(.secondaryLabel)`, `Color(.tertiaryLabel)`) automatically pick the correct variant. Dark-locked apps get white text; light-locked apps get black text. No manual color switching needed.
+
 **When the app supports dark mode** (`dark-mode` in rule_keys with `Color(light:dark:)` adaptive tokens), the pipeline omits these keys and the app follows the system appearance.
 
 ## Colors
+- **Brand/theme tokens** (primary, secondary, accent, background, surface) use `Color(hex:)` with palette values — these are the app's visual identity
+- **Text tokens** (textPrimary, textSecondary, textTertiary) use UIKit adaptive colors (`Color(.label)`, etc.) — these auto-adapt to the appearance lock
 - **One accent color** that fits the app's purpose
-- Use semantic colors via `AppTheme.Colors.*` tokens — never raw SwiftUI colors
 - Do NOT add dark mode support, colorScheme checks, or custom dark/light color handling unless the user explicitly requests it
-- Use `Color(hex:)` with palette values — NEVER hardcoded SwiftUI colors like `.blue` or `.orange`
+- NEVER use hardcoded SwiftUI colors like `.blue`, `.orange`, `.white`, `.black` directly in views
 - Keep brand/surface tokens explicit in AppTheme so appearance changes do not shift core palette identity
 
 ### Platform-Specific Color Rules
