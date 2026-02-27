@@ -46,6 +46,24 @@ These are low-cost (1-2 files) and NEVER deferred when explicitly requested:
 - Language switching / localization
 - Haptic feedback
 
+## Backend Detection Rules
+
+When the user explicitly requests cloud, server, multi-device, or social features, include `backend_needs`:
+- `auth: true` — when the app needs user accounts, sign-in, or multi-user identity
+- `db: true` — when data must persist across devices or be shared between users
+- `storage: true` — when users upload or download files (photos, documents, media)
+- Default is all false (local-first). Only set fields to true when the user's request REQUIRES server-side functionality.
+- Do NOT assume backend needs — "a notes app" is local-first unless the user says "sync across devices" or "share with friends".
+
+## Auth Method Detection Rules
+
+When `auth` is true, include `auth_methods` array:
+- Always include `"email"` (default auth method)
+- Always include `"anonymous"` (allows guest browsing)
+- Include `"apple"` when user says "Apple Sign In", "Sign in with Apple", or "social login"
+- Include `"google"` ONLY when user explicitly says "Google Sign In" (requires manual Google Cloud Console setup — never auto-include)
+- Default if unsure: `["email", "anonymous"]`
+
 ## Stop Conditions
 
 - Output valid AnalysisResult JSON.

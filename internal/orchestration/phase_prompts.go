@@ -187,7 +187,11 @@ func composeSelfCheck(platform string) string {
 - [ ] No raw .padding(N) or VStack(spacing: N) — all spacing via AppTheme.Spacing.* (reason: consistency)
 - [ ] @Observable used, NOT ObservableObject. @State with @Observable, NOT @StateObject.
 - [ ] No type re-declarations — each type defined in exactly one file
-- [ ] Every View file includes #Preview`
+- [ ] Every View file includes #Preview
+- [ ] Every async view uses Loadable<T> switch with loading, empty, data, and error states
+- [ ] Every mutation button disabled while in-progress with inline spinner
+- [ ] Empty states use ContentUnavailableView with action button
+- [ ] Error states show user-friendly message with retry button`
 
 	switch {
 	case IsMacOS(platform):

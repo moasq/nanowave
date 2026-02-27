@@ -64,7 +64,13 @@ extension ProfileView {
 ## Directory Structure
 ```
 Models/              → Data model structs (with static sampleData)
+Shared/              → Shared utility types (e.g. Loadable.swift)
+Config/              → App configuration (e.g. AppConfig.swift with API keys, endpoints)
+Repositories/<Entity>/ → Repository protocols + concrete implementations, grouped by entity
+                       (e.g. Repositories/Users/UserRepository.swift,
+                             Repositories/Users/SupabaseUserRepository.swift)
 Theme/               → AppTheme.swift only
+Services/<Domain>/   → Domain services (Auth, Networking, etc.) — NOT in Features/
 Features/<Name>/     → Co-locate View + ViewModel (e.g. Features/TodoList/TodoListView.swift)
 Features/Common/     → Shared reusable views used by multiple features
 App/                 → @main app entry point only
@@ -72,6 +78,7 @@ App/                 → @main app entry point only
 
 - NEVER use flat `Views/`, `ViewModels/`, or `Components/` top-level directories
 - Every View and its ViewModel MUST live under `Features/<FeatureName>/`
+- Services handle business logic and external integrations — `Features/` is exclusively for Views + ViewModels
 - Shared components go under `Features/Common/`
 
 ## One Type Per File

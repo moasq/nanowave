@@ -1019,49 +1019,121 @@ func writeSkillCatalog(projectDir string) error {
 	return writeTextFile(filepath.Join(skillsDir, "INDEX.md"), b.String(), 0o644)
 }
 
-// writeMCPConfig writes .mcp.json at the project root to give Claude Code access to Apple docs and xcodegen tools.
-func writeMCPConfig(projectDir string) error {
-	mcpConfig := `{
-  "mcpServers": {
-    "apple-docs": {
-      "command": "npx",
-      "args": ["-y", "@kimsungwhee/apple-docs-mcp"]
-    },
-    "xcodegen": {
-      "command": "nanowave",
-      "args": ["mcp", "xcodegen"]
-    }
-  }
+// mcpIntegrationConfig holds credentials needed to configure an integration's MCP server.
+type mcpIntegrationConfig struct {
+	ProviderID string
+	PAT        string
+	ProjectRef string
 }
-`
-	return os.WriteFile(filepath.Join(projectDir, ".mcp.json"), []byte(mcpConfig), 0o644)
+
+// writeMCPConfig writes .mcp.json at the project root to give Claude Code access to Apple docs, xcodegen tools,
+// and optionally backend integration MCP servers (e.g. Supabase).
+func writeMCPConfig(projectDir string, integrationConfigs ...mcpIntegrationConfig) error {
+	type mcpServerEntry struct {
+		Command string            `json:"command"`
+		Args    []string          `json:"args"`
+		Env     map[string]string `json:"env,omitempty"`
+	}
+
+	servers := map[string]mcpServerEntry{
+		"apple-docs": {
+			Command: "npx",
+			Args:    []string{"-y", "@kimsungwhee/apple-docs-mcp"},
+		},
+		"xcodegen": {
+			Command: "nanowave",
+			Args:    []string{"mcp", "xcodegen"},
+		},
+	}
+
+	for _, ic := range integrationConfigs {
+		switch ic.ProviderID {
+		case "supabase":
+			entry := mcpServerEntry{
+				Command: "nanowave",
+				Args:    []string{"mcp", "supabase"},
+			}
+			if ic.PAT != "" && ic.ProjectRef != "" {
+				entry.Env = map[string]string{
+					"SUPABASE_ACCESS_TOKEN": ic.PAT,
+					"SUPABASE_PROJECT_REF":  ic.ProjectRef,
+				}
+			}
+			servers["supabase"] = entry
+		}
+	}
+
+	wrapper := struct {
+		MCPServers map[string]mcpServerEntry `json:"mcpServers"`
+	}{MCPServers: servers}
+
+	data, err := json.MarshalIndent(wrapper, "", "  ")
+	if err != nil {
+		return err
+	}
+	data = append(data, '\n')
+	return os.WriteFile(filepath.Join(projectDir, ".mcp.json"), data, 0o644)
+}
+
+// supabaseMCPTools lists the Supabase MCP tools to include in settings permissions.
+var supabaseMCPTools = []string{
+	"mcp__supabase__execute_sql",
+	"mcp__supabase__list_tables",
+	"mcp__supabase__apply_migration",
+	"mcp__supabase__list_storage_buckets",
+	"mcp__supabase__get_project_url",
+	"mcp__supabase__get_anon_key",
+	"mcp__supabase__get_logs",
+	"mcp__supabase__configure_auth_providers",
+	"mcp__supabase__get_auth_config",
 }
 
 // writeSettingsShared writes team-shared Claude Code settings.
-func writeSettingsShared(projectDir string) error {
-	settings := `{
+// integrationIDs controls which integration MCP tools are added to the allow list.
+func writeSettingsShared(projectDir string, integrationIDs ...string) error {
+	allow := []string{
+		"mcp__apple-docs__search_apple_docs",
+		"mcp__apple-docs__get_apple_doc_content",
+		"mcp__apple-docs__search_framework_symbols",
+		"mcp__apple-docs__get_sample_code",
+		"mcp__apple-docs__get_related_apis",
+		"mcp__apple-docs__find_similar_apis",
+		"mcp__apple-docs__get_platform_compatibility",
+		"mcp__xcodegen__add_permission",
+		"mcp__xcodegen__add_extension",
+		"mcp__xcodegen__add_entitlement",
+		"mcp__xcodegen__add_localization",
+		"mcp__xcodegen__set_build_setting",
+		"mcp__xcodegen__get_project_config",
+		"mcp__xcodegen__regenerate_project",
+		"SlashCommand",
+		"Task",
+		"ViewImage",
+		"WebFetch",
+		"WebSearch",
+	}
+
+	for _, id := range integrationIDs {
+		switch id {
+		case "supabase":
+			allow = append(allow, supabaseMCPTools...)
+		}
+	}
+
+	// Build the allow JSON array
+	var allowJSON strings.Builder
+	for i, tool := range allow {
+		if i > 0 {
+			allowJSON.WriteString(",\n")
+		}
+		allowJSON.WriteString(fmt.Sprintf("      %q", tool))
+	}
+
+	settings := fmt.Sprintf(`{
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "permissions": {
     "allow": [
-      "mcp__apple-docs__search_apple_docs",
-      "mcp__apple-docs__get_apple_doc_content",
-      "mcp__apple-docs__search_framework_symbols",
-      "mcp__apple-docs__get_sample_code",
-      "mcp__apple-docs__get_related_apis",
-      "mcp__apple-docs__find_similar_apis",
-      "mcp__apple-docs__get_platform_compatibility",
-      "mcp__xcodegen__add_permission",
-      "mcp__xcodegen__add_extension",
-      "mcp__xcodegen__add_entitlement",
-      "mcp__xcodegen__add_localization",
-      "mcp__xcodegen__set_build_setting",
-      "mcp__xcodegen__get_project_config",
-      "mcp__xcodegen__regenerate_project",
-      "SlashCommand",
-      "Task",
-      "ViewImage",
-      "WebFetch",
-      "WebSearch"
+%s
     ],
     "deny": [
       "Read(./.env)",
@@ -1129,7 +1201,7 @@ func writeSettingsShared(projectDir string) error {
     ]
   }
 }
-`
+`, allowJSON.String())
 	return os.WriteFile(filepath.Join(projectDir, ".claude", "settings.json"), []byte(settings), 0o644)
 }
 
@@ -1147,15 +1219,22 @@ func writeSettingsLocal(projectDir string) error {
 
 // ensureMCPConfig writes .mcp.json and settings.local.json if they don't exist.
 // Used by Edit and Fix flows on existing projects that may lack these files.
-func ensureMCPConfig(projectDir string) {
+// integrationConfigs optionally adds backend MCP servers (e.g. Supabase).
+func ensureMCPConfig(projectDir string, integrationConfigs ...mcpIntegrationConfig) {
 	mcpPath := filepath.Join(projectDir, ".mcp.json")
 	if _, err := os.Stat(mcpPath); os.IsNotExist(err) {
-		_ = writeMCPConfig(projectDir)
+		_ = writeMCPConfig(projectDir, integrationConfigs...)
 	}
+
+	var integrationIDs []string
+	for _, ic := range integrationConfigs {
+		integrationIDs = append(integrationIDs, ic.ProviderID)
+	}
+
 	sharedSettingsPath := filepath.Join(projectDir, ".claude", "settings.json")
 	if _, err := os.Stat(sharedSettingsPath); os.IsNotExist(err) {
 		_ = os.MkdirAll(filepath.Join(projectDir, ".claude"), 0o755)
-		_ = writeSettingsShared(projectDir)
+		_ = writeSettingsShared(projectDir, integrationIDs...)
 	}
 	settingsPath := filepath.Join(projectDir, ".claude", "settings.local.json")
 	if _, err := os.Stat(settingsPath); os.IsNotExist(err) {
@@ -1379,9 +1458,85 @@ func writeProjectConfig(projectDir string, plan *PlannerResult, appName string) 
 	return os.WriteFile(filepath.Join(projectDir, "project_config.json"), data, 0o644)
 }
 
+// addAutoEntitlement adds an entitlement to project_config.json without changing the plan.
+// Target is the target name; empty string means the main app target.
+func addAutoEntitlement(projectDir, key string, value any, target string) error {
+	path := filepath.Join(projectDir, "project_config.json")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	type entitlement struct {
+		Key    string `json:"key"`
+		Value  any    `json:"value"`
+		Target string `json:"target,omitempty"`
+	}
+
+	var entitlements []entitlement
+	if existing, ok := raw["entitlements"]; ok {
+		_ = json.Unmarshal(existing, &entitlements)
+	}
+
+	// Check for duplicate
+	for _, e := range entitlements {
+		if e.Key == key && e.Target == target {
+			return nil // already present
+		}
+	}
+
+	entitlements = append(entitlements, entitlement{Key: key, Value: value, Target: target})
+	entData, err := json.Marshal(entitlements)
+	if err != nil {
+		return err
+	}
+	raw["entitlements"] = entData
+
+	out, err := json.MarshalIndent(raw, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, out, 0o644)
+}
+
+
+// readConfigEntitlements reads project_config.json and returns entitlements for the given target
+// as a map suitable for writing into project.yml properties. target "" means the main app.
+func readConfigEntitlements(projectDir, target string) map[string]any {
+	data, err := os.ReadFile(filepath.Join(projectDir, "project_config.json"))
+	if err != nil {
+		return nil
+	}
+	var raw struct {
+		Entitlements []struct {
+			Key    string `json:"key"`
+			Value  any    `json:"value"`
+			Target string `json:"target"`
+		} `json:"entitlements"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return nil
+	}
+	result := make(map[string]any)
+	for _, e := range raw.Entitlements {
+		if e.Target == target {
+			result[e.Key] = e.Value
+		}
+	}
+	if len(result) == 0 {
+		return nil
+	}
+	return result
+}
+
 // writeProjectYML writes the XcodeGen project.yml, including extension targets if present.
-func writeProjectYML(projectDir string, plan *PlannerResult, appName string) error {
-	yml := generateProjectYAML(appName, plan)
+// entitlements is a map of main-app-target entitlements to embed in project.yml properties.
+func writeProjectYML(projectDir string, plan *PlannerResult, appName string, entitlements map[string]any) error {
+	yml := generateProjectYAML(appName, plan, entitlements)
 	return os.WriteFile(filepath.Join(projectDir, "project.yml"), []byte(yml), 0o644)
 }
 

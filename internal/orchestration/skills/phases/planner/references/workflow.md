@@ -30,6 +30,7 @@
 
 - Models/ → structs with sampleData.
 - Theme/ → AppTheme only.
+- Config/ → App configuration (AppConfig.swift with API keys, endpoints).
 - Features/<Name>/ → View + ViewModel co-located.
 - Features/Common/ → shared views/services.
 - App/ → @main entry + RootView + MainView (three files minimum).
@@ -111,7 +112,7 @@ If no packages are needed, use an empty array: `"packages": []`.
 1. All files have ALL mandatory fields (path, type_name, purpose, components, data_access, depends_on) — none empty.
 2. All depends_on paths exist in files array; build_order respects dependencies.
 3. Views with business logic have a ViewModel; all files under Features/<Name>/ or Features/Common/.
-4. Models conform to Identifiable, Hashable, Codable with static sampleData.
+4. Models conform to Identifiable, Hashable, Codable with static sampleData. **When Supabase is active: the `models` JSON array MUST contain every entity that maps to a Supabase table (name, storage: "Supabase", properties). Empty models array = build failure.**
 5. System framework usage → matching permission entry; shared service for repeated framework usage.
 6. Palette has 5 valid hex colors (#RRGGBB). Primary is NOT #007AFF unless intentional.
 7. AppTheme components list Color(hex:) extension, Colors (with textPrimary/textSecondary/textTertiary), Fonts (with plan's fontDesign applied), Spacing, and Style enums.

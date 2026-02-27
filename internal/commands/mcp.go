@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"github.com/moasq/nanowave/internal/supabaseserver"
 	"github.com/moasq/nanowave/internal/xcodegenserver"
 	"github.com/spf13/cobra"
 )
@@ -20,6 +21,16 @@ var mcpXcodegenCmd = &cobra.Command{
 	},
 }
 
+var mcpSupabaseCmd = &cobra.Command{
+	Use:   "supabase",
+	Short: "Run the Supabase MCP server",
+	Long:  "Starts the Supabase MCP server over stdio. Used by Claude Code to manage Supabase backend via the Management API.",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return supabaseserver.Run(cmd.Context())
+	},
+}
+
 func init() {
 	mcpCmd.AddCommand(mcpXcodegenCmd)
+	mcpCmd.AddCommand(mcpSupabaseCmd)
 }

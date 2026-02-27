@@ -47,6 +47,7 @@ func init() {
 	rootCmd.AddCommand(openCmd)
 	rootCmd.AddCommand(mcpCmd)
 	rootCmd.AddCommand(usageCmd)
+	rootCmd.AddCommand(integrationsCmd)
 }
 
 // modelFlag holds the --model flag value.

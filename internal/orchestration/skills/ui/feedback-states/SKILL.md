@@ -4,6 +4,57 @@ description: "Feedback state patterns: loading indicators, error handling UI, su
 ---
 # Feedback States
 
+## MANDATORY: Every Async View Must Handle All 4 States
+
+Every view displaying async data MUST use a `switch` on `Loadable<T>` covering ALL 4 states. This is not optional.
+
+```swift
+switch viewModel.items {
+case .notInitiated, .loading:
+    ProgressView("Loading...")
+case .success(let items) where items.isEmpty:
+    ContentUnavailableView("No Items Yet", systemImage: "tray",
+        description: Text("Tap + to create your first item"))
+case .success(let items):
+    List(items) { item in ItemRow(item: item) }
+case .failure(let error):
+    ContentUnavailableView {
+        Label("Load Failed", systemImage: "exclamationmark.triangle")
+    } description: {
+        Text(error.localizedDescription)
+    } actions: {
+        Button("Retry") { Task { await viewModel.loadItems() } }
+    }
+}
+```
+
+**Rules**:
+- NEVER use `if let` to unwrap only the success case — all 4 states must be handled
+- Empty state MUST use `ContentUnavailableView` with an action button
+- Error state MUST include a retry button
+- Loading state MUST show `ProgressView`
+
+## Upload / Mutation State Handling
+
+Every mutation button (save, delete, upload, send) MUST:
+1. Disable the trigger while in-progress
+2. Show an inline spinner replacing the button label
+3. Provide success/failure feedback after completion
+
+```swift
+Button {
+    Task { await viewModel.save() }
+} label: {
+    if viewModel.saveState.isLoading {
+        ProgressView()
+            .controlSize(.small)
+    } else {
+        Text("Save")
+    }
+}
+.disabled(viewModel.saveState.isLoading)
+```
+
 LOADING PATTERNS:
 
 1. Inline button spinner (action on single element):
@@ -11,22 +62,27 @@ LOADING PATTERNS:
 Button {
     Task { await save() }
 } label: {
-    if isSaving {
+    if saveState.isLoading {
         ProgressView()
             .controlSize(.small)
     } else {
         Text("Save")
     }
 }
-.disabled(isSaving)
+.disabled(saveState.isLoading)
 ```
 
-2. Full-screen loading (initial data load):
+2. Full-screen loading (initial data load using Loadable):
 ```swift
-if isLoading {
+switch viewModel.items {
+case .notInitiated, .loading:
     ProgressView("Loading...")
-} else {
-    ContentView()
+case .success(let items):
+    ContentListView(items: items)
+case .failure(let error):
+    ErrorView(error: error) {
+        Task { await viewModel.loadItems() }
+    }
 }
 ```
 
@@ -47,7 +103,7 @@ List { ... }
 5. Overlay loading (blocking operation):
 ```swift
 .overlay {
-    if isProcessing {
+    if operationState.isLoading {
         ZStack {
             Color.black.opacity(0.3)
             ProgressView()
@@ -64,6 +120,7 @@ LOADING RULES:
 - ALWAYS disable the triggering button while loading (prevents double-taps).
 - Never block the entire UI for a partial operation — use inline spinner.
 - Match loading style to scope: button-level → inline, screen-level → full-screen.
+- Use `Loadable<T>` for all async state — never `var isLoading: Bool` + `var errorMessage: String?`.
 
 ERROR HANDLING UI:
 
@@ -136,29 +193,50 @@ DISABLED STATE:
 - Example: "Fill in all required fields to continue" below a disabled button.
 - Don't hide actions — show them disabled with explanation.
 
-NETWORK/SYSTEM ERROR PATTERN (ViewModel):
+NETWORK/SYSTEM ERROR PATTERN (ViewModel with Loadable):
 ```swift
 @MainActor @Observable
 class ItemViewModel {
-    var items: [Item] = []
-    var isLoading = false
-    var error: String?
+    var items: Loadable<[Item]> = .notInitiated
 
     func loadItems() async {
-        isLoading = true
-        error = nil
+        items = .loading
         do {
-            items = try await fetchItems()
+            items = .success(try await fetchItems())
         } catch {
-            self.error = "Couldn't load items. Pull to refresh to try again."
+            items = .failure(error)
         }
-        isLoading = false
+    }
+
+    var userFacingError: String? {
+        if case .failure = items {
+            return "Couldn't load items. Pull to refresh to try again."
+        }
+        return nil
     }
 }
 ```
 
-EMPTY VS ERROR VS LOADING:
-- Loading: ProgressView or .redacted skeleton.
-- Empty (no data yet): ContentUnavailableView with action to create first item.
-- Error (load failed): error message + retry button.
-- These are three distinct states — never conflate them.
+EMPTY VS ERROR VS LOADING (switch on Loadable):
+```swift
+switch viewModel.items {
+case .notInitiated, .loading:
+    ProgressView("Loading...")
+case .success(let items) where items.isEmpty:
+    ContentUnavailableView("No Items Yet", systemImage: "tray",
+        description: Text("Tap + to create your first item"))
+case .success(let items):
+    List(items) { item in ItemRow(item: item) }
+case .failure(let error):
+    ContentUnavailableView {
+        Label("Load Failed", systemImage: "exclamationmark.triangle")
+    } description: {
+        Text(error.localizedDescription)
+    } actions: {
+        Button("Retry") { Task { await viewModel.loadItems() } }
+    }
+}
+```
+
+- These are four distinct states — never conflate them.
+- `Loadable<T>` makes each state explicit and compiler-enforced via `switch`.

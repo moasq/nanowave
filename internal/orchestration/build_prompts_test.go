@@ -39,7 +39,7 @@ func TestBuildPromptsContainsSections(t *testing.T) {
 		BuildOrder: []string{"TestApp/ContentView.swift"},
 	}
 
-	appendPrompt, userMsg, err := p.buildPrompts("", "TestApp", "", analysis, plan)
+	appendPrompt, userMsg, err := p.buildPrompts("", "TestApp", "", analysis, plan, false)
 	if err != nil {
 		t.Fatalf("buildPrompts() error: %v", err)
 	}
@@ -110,7 +110,7 @@ func TestBuildPromptsWithPermissions(t *testing.T) {
 		BuildOrder: []string{"CamApp/CameraView.swift"},
 	}
 
-	appendPrompt, _, err := p.buildPrompts("", "CamApp", "", analysis, plan)
+	appendPrompt, _, err := p.buildPrompts("", "CamApp", "", analysis, plan, false)
 	if err != nil {
 		t.Fatalf("buildPrompts() error: %v", err)
 	}
@@ -143,7 +143,7 @@ func TestBuildPromptsWithExtensions(t *testing.T) {
 		BuildOrder: []string{"WidgetApp/ContentView.swift"},
 	}
 
-	appendPrompt, _, err := p.buildPrompts("", "WidgetApp", "", analysis, plan)
+	appendPrompt, _, err := p.buildPrompts("", "WidgetApp", "", analysis, plan, false)
 	if err != nil {
 		t.Fatalf("buildPrompts() error: %v", err)
 	}
@@ -177,7 +177,7 @@ func TestBuildPromptsMultiPlatform(t *testing.T) {
 		BuildOrder: []string{"MultiApp/ContentView.swift", "MultiAppWatch/WatchView.swift"},
 	}
 
-	_, userMsg, err := p.buildPrompts("", "MultiApp", "", analysis, plan)
+	_, userMsg, err := p.buildPrompts("", "MultiApp", "", analysis, plan, false)
 	if err != nil {
 		t.Fatalf("buildPrompts() error: %v", err)
 	}
@@ -208,7 +208,7 @@ func TestBuildPromptsAppearanceDark(t *testing.T) {
 		BuildOrder: []string{"DarkApp/PlayerView.swift"},
 	}
 
-	appendPrompt, _, err := p.buildPrompts("", "DarkApp", "", analysis, plan)
+	appendPrompt, _, err := p.buildPrompts("", "DarkApp", "", analysis, plan, false)
 	if err != nil {
 		t.Fatalf("buildPrompts() error: %v", err)
 	}
@@ -238,7 +238,7 @@ func TestBuildPromptsAppearanceLight(t *testing.T) {
 		BuildOrder: []string{"LightApp/NotesView.swift"},
 	}
 
-	appendPrompt, _, err := p.buildPrompts("", "LightApp", "", analysis, plan)
+	appendPrompt, _, err := p.buildPrompts("", "LightApp", "", analysis, plan, false)
 	if err != nil {
 		t.Fatalf("buildPrompts() error: %v", err)
 	}
@@ -269,7 +269,7 @@ func TestBuildPromptsAppearanceAdaptive(t *testing.T) {
 		BuildOrder: []string{"AdaptApp/ContentView.swift"},
 	}
 
-	appendPrompt, _, err := p.buildPrompts("", "AdaptApp", "", analysis, plan)
+	appendPrompt, _, err := p.buildPrompts("", "AdaptApp", "", analysis, plan, false)
 	if err != nil {
 		t.Fatalf("buildPrompts() error: %v", err)
 	}
@@ -351,7 +351,7 @@ func TestSPMScenarioPhotoGalleryApp(t *testing.T) {
 		BuildOrder: []string{"Pictura/Features/Gallery/GalleryView.swift", "Pictura/Features/Detail/PhotoDetailView.swift"},
 	}
 
-	appendPrompt, _, err := p.buildPrompts("", "Pictura", "", analysis, plan)
+	appendPrompt, _, err := p.buildPrompts("", "Pictura", "", analysis, plan, false)
 	if err != nil {
 		t.Fatalf("buildPrompts() error: %v", err)
 	}
@@ -397,7 +397,7 @@ func TestSPMScenarioCodeNotesApp(t *testing.T) {
 		BuildOrder: []string{"DevNotes/Features/NoteList/NoteListView.swift", "DevNotes/Features/Editor/NoteEditorView.swift"},
 	}
 
-	appendPrompt, _, err := p.buildPrompts("", "DevNotes", "", analysis, plan)
+	appendPrompt, _, err := p.buildPrompts("", "DevNotes", "", analysis, plan, false)
 	if err != nil {
 		t.Fatalf("buildPrompts() error: %v", err)
 	}
@@ -445,7 +445,7 @@ func TestSPMScenarioMusicVisualizerApp(t *testing.T) {
 		BuildOrder: []string{"SoundWave/Features/Player/PlayerView.swift", "SoundWave/Features/Visualizer/VisualizerView.swift"},
 	}
 
-	appendPrompt, _, err := p.buildPrompts("", "SoundWave", "", analysis, plan)
+	appendPrompt, _, err := p.buildPrompts("", "SoundWave", "", analysis, plan, false)
 	if err != nil {
 		t.Fatalf("buildPrompts() error: %v", err)
 	}
@@ -498,7 +498,7 @@ func TestSPMScenarioSocialChatApp(t *testing.T) {
 		BuildOrder: []string{"Chattr/Features/Contacts/ContactListView.swift", "Chattr/Features/Chat/ChatView.swift"},
 	}
 
-	appendPrompt, _, err := p.buildPrompts("", "Chattr", "", analysis, plan)
+	appendPrompt, _, err := p.buildPrompts("", "Chattr", "", analysis, plan, false)
 	if err != nil {
 		t.Fatalf("buildPrompts() error: %v", err)
 	}
@@ -550,7 +550,7 @@ func TestSPMScenarioRecipeTagsApp(t *testing.T) {
 		BuildOrder: []string{"Yummly/Features/RecipeList/RecipeListView.swift", "Yummly/Features/RecipeDetail/RecipeDetailView.swift"},
 	}
 
-	appendPrompt, _, err := p.buildPrompts("", "Yummly", "", analysis, plan)
+	appendPrompt, _, err := p.buildPrompts("", "Yummly", "", analysis, plan, false)
 	if err != nil {
 		t.Fatalf("buildPrompts() error: %v", err)
 	}

@@ -150,7 +150,33 @@ func runSetup() error {
 		}
 	}
 
-	// ── 6. MCP Servers (only if Claude Code is available) ──────
+	// ── 6. Supabase CLI (optional — for backend integration) ──
+	fmt.Print("  Checking Supabase CLI... ")
+	if config.CheckSupabaseCLI() {
+		terminal.Success("installed")
+	} else {
+		terminal.Warning("not found (optional — needed for backend integration)")
+		if askConfirm(reader, "    Install Supabase CLI?") {
+			fmt.Print("    Installing Supabase CLI... ")
+			if _, err := exec.LookPath("brew"); err == nil {
+				tapCmd := exec.Command("brew", "install", "supabase/tap/supabase")
+				if err := tapCmd.Run(); err != nil {
+					terminal.Error(fmt.Sprintf("failed: %v", err))
+					terminal.Detail("Install manually", "brew install supabase/tap/supabase")
+				} else {
+					terminal.Success("installed")
+				}
+			} else {
+				terminal.Error("Homebrew not found")
+				terminal.Detail("Install Homebrew", "https://brew.sh")
+				terminal.Detail("Then run", "brew install supabase/tap/supabase")
+			}
+		} else {
+			terminal.Detail("Install later", "brew install supabase/tap/supabase")
+		}
+	}
+
+	// ── 7. MCP Servers (only if Claude Code is available) ──────
 	if config.CheckClaude() {
 		fmt.Println()
 		terminal.Info("Configuring MCP servers...")

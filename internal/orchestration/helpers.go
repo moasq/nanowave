@@ -118,6 +118,13 @@ func parsePlan(result string) (*PlannerResult, error) {
 		return nil, fmt.Errorf("plan has no files")
 	}
 
+	// Supabase integration requires models for SQL table generation
+	for _, integ := range plan.Integrations {
+		if integ == "supabase" && len(plan.Models) == 0 {
+			return nil, fmt.Errorf("plan includes supabase integration but has no models — models array must define every entity that maps to a Supabase table (with name, storage, properties)")
+		}
+	}
+
 	// Validate Platforms entries
 	if len(plan.Platforms) > 0 {
 		plan.Platforms = ValidatePlatforms(plan.Platforms)
