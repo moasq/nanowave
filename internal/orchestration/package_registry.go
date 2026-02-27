@@ -57,6 +57,9 @@ var packageCategories = []PackageCategory{
 
 	// Data & Security
 	{Key: "keychain", Label: "Keychain Storage", Description: "Simple secure storage in the iOS Keychain without Keychain API complexity"},
+
+	// Backend
+	{Key: "backend", Label: "Backend", Description: "Server-side backend SDKs"},
 }
 
 // curatedPackages is the registry of pre-validated, top-tier SPM packages.
@@ -393,6 +396,18 @@ var curatedPackages = []CuratedPackage{
 		RepoName:    "Valet",
 		Products:    []string{"Valet"},
 		MinVersion:  "4.3.0",
+	},
+
+	// ── Backend ────────────────────────────────────────────────────────
+	{
+		Key:         "supabase-swift",
+		Name:        "Supabase",
+		Category:    "backend",
+		Description: "Swift client for Supabase: auth, PostgreSQL, real-time, storage",
+		RepoURL:     "https://github.com/supabase/supabase-swift",
+		RepoName:    "supabase-swift",
+		Products:    []string{"Supabase"},
+		MinVersion:  "2.0.0",
 	},
 }
 

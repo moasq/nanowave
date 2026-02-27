@@ -91,6 +91,10 @@ enum AppTheme {
         static let footnote = Font.system(.footnote, design: .rounded)
         static let caption = Font.system(.caption, design: .rounded)
         static let caption2 = Font.system(.caption2, design: .rounded)
+
+        // Icon-specific sizes — use when SF Symbols need a size that doesn't match a text style
+        static let heroIcon = Font.system(size: 80, weight: .regular, design: .rounded)
+        static let bulletIcon = Font.system(size: 6, weight: .regular, design: .rounded)
     }
 
     enum Spacing {
@@ -126,7 +130,8 @@ Rules:
 - **System fonts only** — use SwiftUI font styles: `.largeTitle`, `.title`, `.headline`, `.body`, `.caption`
 - Apply the plan's `fontDesign` (rounded, serif, monospaced, default) via `Font.system(.style, design: .rounded)`
 - **NEVER** use raw `.font(.title2)` or `.font(.headline)` in views — always `AppTheme.Fonts.title2`
-- **NEVER** use `.font(.system(size: N))` — it opts out of Dynamic Type
+- **NEVER** use `.font(.system(size: N))` inline — it opts out of Dynamic Type and violates the token rule
+- When SF Symbol icons need a specific size that doesn't match a text style, create a named token in `AppTheme.Fonts` (e.g. `heroIcon`, `bulletIcon`) — never use `.font(.system(size: N))` inline
 - No custom fonts, no downloaded fonts
 
 ## Text Colors — System Adaptive via UIKit

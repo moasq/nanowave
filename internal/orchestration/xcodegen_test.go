@@ -11,7 +11,7 @@ func TestGenerateProjectYAMLiOS(t *testing.T) {
 		DeviceFamily: "iphone",
 	}
 
-	yml := generateProjectYAML("TestApp", plan)
+	yml := generateProjectYAML("TestApp", plan, nil)
 
 	checks := []struct {
 		desc string
@@ -46,7 +46,7 @@ func TestGenerateProjectYAMLiPad(t *testing.T) {
 		DeviceFamily: "ipad",
 	}
 
-	yml := generateProjectYAML("TabletApp", plan)
+	yml := generateProjectYAML("TabletApp", plan, nil)
 
 	if !strings.Contains(yml, "TARGETED_DEVICE_FAMILY: \"2\"") {
 		t.Error("iPad YAML should have TARGETED_DEVICE_FAMILY 2")
@@ -62,7 +62,7 @@ func TestGenerateProjectYAMLUniversal(t *testing.T) {
 		DeviceFamily: "universal",
 	}
 
-	yml := generateProjectYAML("UniApp", plan)
+	yml := generateProjectYAML("UniApp", plan, nil)
 
 	if !strings.Contains(yml, "TARGETED_DEVICE_FAMILY: \"1,2\"") {
 		t.Error("Universal YAML should have TARGETED_DEVICE_FAMILY 1,2")
@@ -78,7 +78,7 @@ func TestGenerateProjectYAMLWatchOnly(t *testing.T) {
 		WatchProjectShape: "watch_only",
 	}
 
-	yml := generateProjectYAML("WatchApp", plan)
+	yml := generateProjectYAML("WatchApp", plan, nil)
 
 	checks := []struct {
 		desc string
@@ -124,7 +124,7 @@ func TestGenerateProjectYAMLPaired(t *testing.T) {
 		WatchProjectShape: "paired_ios_watch",
 	}
 
-	yml := generateProjectYAML("PairedApp", plan)
+	yml := generateProjectYAML("PairedApp", plan, nil)
 
 	checks := []struct {
 		desc string
@@ -168,7 +168,7 @@ func TestGenerateProjectYAMLWatchOnlyDoesNotRequireCompanionBundleIdentifier(t *
 		WatchProjectShape: "watch_only",
 	}
 
-	yml := generateProjectYAML("SoloWatch", plan)
+	yml := generateProjectYAML("SoloWatch", plan, nil)
 
 	if strings.Contains(yml, "WKCompanionAppBundleIdentifier") {
 		t.Error("watch_only YAML should not contain WKCompanionAppBundleIdentifier")
@@ -190,7 +190,7 @@ func TestGenerateProjectYAMLWatchOnlyWithWidget(t *testing.T) {
 		},
 	}
 
-	yml := generateProjectYAML("WatchWidgetApp", plan)
+	yml := generateProjectYAML("WatchWidgetApp", plan, nil)
 
 	// Extension target should be present
 	if !strings.Contains(yml, "WatchWidgetAppWidget:") {
@@ -218,7 +218,7 @@ func TestGenerateProjectYAMLPairedWithWidget(t *testing.T) {
 		},
 	}
 
-	yml := generateProjectYAML("PairedWidgetApp", plan)
+	yml := generateProjectYAML("PairedWidgetApp", plan, nil)
 
 	// Should have 4 targets: iOS app, watch app, watch runtime extension, widget extension
 	if !strings.Contains(yml, "PairedWidgetApp:") {
@@ -246,7 +246,7 @@ func TestGenerateProjectYAMLPairedWatchHasInstallableTargetGraph(t *testing.T) {
 		WatchProjectShape: "paired_ios_watch",
 	}
 
-	yml := generateProjectYAML("TapCounter", plan)
+	yml := generateProjectYAML("TapCounter", plan, nil)
 
 	markers := []string{
 		"TapCounterWatch:",
@@ -270,7 +270,7 @@ func TestGenerateProjectYAMLTvOS(t *testing.T) {
 		Platform: "tvos",
 	}
 
-	yml := generateProjectYAML("TVApp", plan)
+	yml := generateProjectYAML("TVApp", plan, nil)
 
 	checks := []struct {
 		desc string
@@ -313,7 +313,7 @@ func TestGenerateMultiPlatformProjectYAML(t *testing.T) {
 		WatchProjectShape: "paired_ios_watch",
 	}
 
-	yml := generateProjectYAML("FocusFlow", plan)
+	yml := generateProjectYAML("FocusFlow", plan, nil)
 
 	checks := []struct {
 		desc string
@@ -347,7 +347,7 @@ func TestGenerateMultiPlatformYAMLiOSWatchOnly(t *testing.T) {
 		WatchProjectShape: "paired_ios_watch",
 	}
 
-	yml := generateProjectYAML("MyApp", plan)
+	yml := generateProjectYAML("MyApp", plan, nil)
 
 	// Should have iOS + watchOS but NOT tvOS
 	if !strings.Contains(yml, "iOS: \"26.0\"") {
@@ -376,7 +376,7 @@ func TestGenerateProjectYAMLEmptyExtensionKindSafeBundleID(t *testing.T) {
 		},
 	}
 
-	yml := generateProjectYAML("FocusFlow", plan)
+	yml := generateProjectYAML("FocusFlow", plan, nil)
 
 	// Bundle ID should use lowercase target name, NOT have a trailing dot
 	if strings.Contains(yml, "PRODUCT_BUNDLE_IDENTIFIER: "+bundleIDPrefix()+".focusflow.\n") {
@@ -392,7 +392,7 @@ func TestGenerateProjectYAMLVisionOS(t *testing.T) {
 		Platform: "visionos",
 	}
 
-	yml := generateProjectYAML("VisionApp", plan)
+	yml := generateProjectYAML("VisionApp", plan, nil)
 
 	checks := []struct {
 		desc string
@@ -434,7 +434,7 @@ func TestGenerateMultiPlatformProjectYAMLWithVisionOS(t *testing.T) {
 		DeviceFamily: "iphone",
 	}
 
-	yml := generateProjectYAML("SpatialApp", plan)
+	yml := generateProjectYAML("SpatialApp", plan, nil)
 
 	checks := []struct {
 		desc string
@@ -463,7 +463,7 @@ func TestGenerateProjectYAMLMacOS(t *testing.T) {
 		Platform: "macos",
 	}
 
-	yml := generateProjectYAML("MacApp", plan)
+	yml := generateProjectYAML("MacApp", plan, nil)
 
 	checks := []struct {
 		desc string
@@ -512,7 +512,7 @@ func TestGenerateMultiPlatformProjectYAMLWithMacOS(t *testing.T) {
 		DeviceFamily: "iphone",
 	}
 
-	yml := generateProjectYAML("ProdApp", plan)
+	yml := generateProjectYAML("ProdApp", plan, nil)
 
 	checks := []struct {
 		desc string
@@ -553,7 +553,7 @@ func TestGenerateMultiPlatformYAMLiOSMacOSNoDependencies(t *testing.T) {
 		DeviceFamily: "iphone",
 	}
 
-	yml := generateProjectYAML("RecipeBook", plan)
+	yml := generateProjectYAML("RecipeBook", plan, nil)
 
 	// iOS target without watch or extensions should NOT have an empty dependencies key
 	iosIdx := strings.Index(yml, "  RecipeBook:")
@@ -570,7 +570,7 @@ func TestGenerateMultiPlatformYAMLiOSMacOSNoDependencies(t *testing.T) {
 func TestGenerateProjectYAMLDefaultsToIOS(t *testing.T) {
 	plan := &PlannerResult{}
 
-	yml := generateProjectYAML("DefaultApp", plan)
+	yml := generateProjectYAML("DefaultApp", plan, nil)
 
 	if !strings.Contains(yml, "iOS: \"26.0\"") {
 		t.Error("default should produce iOS YAML")
@@ -582,7 +582,7 @@ func TestGenerateProjectYAMLDefaultsToIOS(t *testing.T) {
 
 func TestAppearanceLockIOSLightByDefault(t *testing.T) {
 	plan := &PlannerResult{Platform: "ios", DeviceFamily: "iphone"}
-	yml := generateProjectYAML("App", plan)
+	yml := generateProjectYAML("App", plan, nil)
 	if !strings.Contains(yml, "INFOPLIST_KEY_UIUserInterfaceStyle: Light") {
 		t.Error("iOS YAML without dark-mode rule should contain UIUserInterfaceStyle: Light")
 	}
@@ -590,7 +590,7 @@ func TestAppearanceLockIOSLightByDefault(t *testing.T) {
 
 func TestAppearanceLockIOSOmittedWithDarkMode(t *testing.T) {
 	plan := &PlannerResult{Platform: "ios", DeviceFamily: "iphone", RuleKeys: []string{"dark-mode"}}
-	yml := generateProjectYAML("App", plan)
+	yml := generateProjectYAML("App", plan, nil)
 	if strings.Contains(yml, "UIUserInterfaceStyle") {
 		t.Error("iOS YAML with dark-mode rule should NOT contain UIUserInterfaceStyle")
 	}
@@ -598,7 +598,7 @@ func TestAppearanceLockIOSOmittedWithDarkMode(t *testing.T) {
 
 func TestAppearanceLockMacOSNoLock(t *testing.T) {
 	plan := &PlannerResult{Platform: "macos"}
-	yml := generateProjectYAML("App", plan)
+	yml := generateProjectYAML("App", plan, nil)
 	if strings.Contains(yml, "NSRequiresAquaSystemAppearance") {
 		t.Error("macOS YAML should NEVER contain NSRequiresAquaSystemAppearance — macOS follows system appearance")
 	}
@@ -606,7 +606,7 @@ func TestAppearanceLockMacOSNoLock(t *testing.T) {
 
 func TestAppearanceLockVisionOSNoLock(t *testing.T) {
 	plan := &PlannerResult{Platform: "visionos"}
-	yml := generateProjectYAML("App", plan)
+	yml := generateProjectYAML("App", plan, nil)
 	if strings.Contains(yml, "UIUserInterfaceStyle") {
 		t.Error("visionOS YAML should NOT contain UIUserInterfaceStyle — glass auto-adapts")
 	}
@@ -621,7 +621,7 @@ func TestAppearanceLockMultiPlatform(t *testing.T) {
 		Platforms:    []string{"ios", "macos", "tvos"},
 		DeviceFamily: "iphone",
 	}
-	yml := generateProjectYAML("App", plan)
+	yml := generateProjectYAML("App", plan, nil)
 	if !strings.Contains(yml, "INFOPLIST_KEY_UIUserInterfaceStyle: Light") {
 		t.Error("multi-platform YAML should lock iOS appearance")
 	}
@@ -635,7 +635,7 @@ func TestAppearanceLockMultiPlatformVisionOSExcluded(t *testing.T) {
 		Platform:  "ios",
 		Platforms: []string{"ios", "visionos"},
 	}
-	yml := generateProjectYAML("App", plan)
+	yml := generateProjectYAML("App", plan, nil)
 	// Count occurrences of UIUserInterfaceStyle — should only appear for iOS, not visionOS
 	count := strings.Count(yml, "INFOPLIST_KEY_UIUserInterfaceStyle: Light")
 	if count != 1 {
@@ -649,7 +649,7 @@ func TestAppearanceLockIOSDarkPalette(t *testing.T) {
 		DeviceFamily: "iphone",
 		Design:       DesignSystem{Palette: Palette{Background: "#1A1A2E"}},
 	}
-	yml := generateProjectYAML("App", plan)
+	yml := generateProjectYAML("App", plan, nil)
 	if !strings.Contains(yml, "INFOPLIST_KEY_UIUserInterfaceStyle: Dark") {
 		t.Error("iOS YAML with dark palette should lock to Dark, not Light")
 	}
@@ -664,7 +664,7 @@ func TestAppearanceLockIOSLightPalette(t *testing.T) {
 		DeviceFamily: "iphone",
 		Design:       DesignSystem{Palette: Palette{Background: "#F5F5F5"}},
 	}
-	yml := generateProjectYAML("App", plan)
+	yml := generateProjectYAML("App", plan, nil)
 	if !strings.Contains(yml, "INFOPLIST_KEY_UIUserInterfaceStyle: Light") {
 		t.Error("iOS YAML with light palette should lock to Light")
 	}
@@ -675,7 +675,7 @@ func TestAppearanceLockTvOSDarkPalette(t *testing.T) {
 		Platform: "tvos",
 		Design:   DesignSystem{Palette: Palette{Background: "#0D0D0D"}},
 	}
-	yml := generateProjectYAML("TVApp", plan)
+	yml := generateProjectYAML("TVApp", plan, nil)
 	if !strings.Contains(yml, "INFOPLIST_KEY_UIUserInterfaceStyle: Dark") {
 		t.Error("tvOS YAML with dark palette should lock to Dark")
 	}
@@ -688,7 +688,7 @@ func TestAppearanceLockMultiPlatformDarkPalette(t *testing.T) {
 		DeviceFamily: "iphone",
 		Design:       DesignSystem{Palette: Palette{Background: "#1A1A2E"}},
 	}
-	yml := generateProjectYAML("App", plan)
+	yml := generateProjectYAML("App", plan, nil)
 
 	// iOS should lock to Dark
 	if !strings.Contains(yml, "INFOPLIST_KEY_UIUserInterfaceStyle: Dark") {
@@ -773,7 +773,7 @@ func TestGenerateProjectYAMLWithPackages(t *testing.T) {
 		},
 	}
 
-	yml := generateProjectYAML("ImageApp", plan)
+	yml := generateProjectYAML("ImageApp", plan, nil)
 
 	checks := []struct {
 		desc string
@@ -815,7 +815,7 @@ func TestGenerateProjectYAMLMultiProduct(t *testing.T) {
 		},
 	}
 
-	yml := generateProjectYAML("NukeApp", plan)
+	yml := generateProjectYAML("NukeApp", plan, nil)
 
 	// Nuke has Products: ["Nuke", "NukeUI"] — both should appear as dependencies
 	if !strings.Contains(yml, "- package: Nuke") {
@@ -841,7 +841,7 @@ func TestGenerateProjectYAMLNoPackages(t *testing.T) {
 		DeviceFamily: "iphone",
 	}
 
-	yml := generateProjectYAML("SimpleApp", plan)
+	yml := generateProjectYAML("SimpleApp", plan, nil)
 
 	if strings.Contains(yml, "packages:") {
 		t.Error("YAML without packages should not contain packages: section")
@@ -860,7 +860,7 @@ func TestGenerateProjectYAMLMixedPackagesAndExtensions(t *testing.T) {
 		},
 	}
 
-	yml := generateProjectYAML("MixedApp", plan)
+	yml := generateProjectYAML("MixedApp", plan, nil)
 
 	// Should have both package and extension dependencies
 	if !strings.Contains(yml, "- package: Kingfisher") {
@@ -895,7 +895,7 @@ func TestGenerateProjectYAMLUnresolvedPackageSkipped(t *testing.T) {
 		},
 	}
 
-	yml := generateProjectYAML("SkipApp", plan)
+	yml := generateProjectYAML("SkipApp", plan, nil)
 
 	// Known package should be present
 	if !strings.Contains(yml, "Kingfisher:") {

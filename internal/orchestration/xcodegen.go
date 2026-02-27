@@ -170,9 +170,20 @@ func writePackageDependencies(b *strings.Builder, packages []*CuratedPackage) {
 	}
 }
 
-func generateProjectYAML(appName string, plan *PlannerResult) string {
+// writeEntitlementProperties writes the entitlements properties section for a target.
+// If entitlements is nil/empty, writes `properties: {}`. Otherwise writes each entry.
+func writeEntitlementProperties(b *strings.Builder, entitlements map[string]any) {
+	if len(entitlements) == 0 {
+		b.WriteString("      properties: {}\n")
+		return
+	}
+	b.WriteString("      properties:\n")
+	writeXcodeYAMLMap(b, entitlements, 8)
+}
+
+func generateProjectYAML(appName string, plan *PlannerResult, entitlements map[string]any) string {
 	if plan != nil && plan.IsMultiPlatform() {
-		return generateMultiPlatformProjectYAML(appName, plan)
+		return generateMultiPlatformProjectYAML(appName, plan, entitlements)
 	}
 
 	platform := PlatformIOS
@@ -186,28 +197,28 @@ func generateProjectYAML(appName string, plan *PlannerResult) string {
 			shape = plan.GetWatchProjectShape()
 		}
 		if shape == WatchShapePaired {
-			return generatePairedYAML(appName, plan)
+			return generatePairedYAML(appName, plan, entitlements)
 		}
-		return generateWatchOnlyYAML(appName, plan)
+		return generateWatchOnlyYAML(appName, plan, entitlements)
 	}
 
 	if IsTvOS(platform) {
-		return generateTvOSProjectYAML(appName, plan)
+		return generateTvOSProjectYAML(appName, plan, entitlements)
 	}
 
 	if IsVisionOS(platform) {
-		return generateVisionOSProjectYAML(appName, plan)
+		return generateVisionOSProjectYAML(appName, plan, entitlements)
 	}
 
 	if IsMacOS(platform) {
-		return generateMacOSProjectYAML(appName, plan)
+		return generateMacOSProjectYAML(appName, plan, entitlements)
 	}
 
-	return generateIOSProjectYAML(appName, plan)
+	return generateIOSProjectYAML(appName, plan, entitlements)
 }
 
 // generateMultiPlatformProjectYAML produces a project.yml with targets for all platforms.
-func generateMultiPlatformProjectYAML(appName string, plan *PlannerResult) string {
+func generateMultiPlatformProjectYAML(appName string, plan *PlannerResult, entitlements map[string]any) string {
 	var b strings.Builder
 
 	bundleID := fmt.Sprintf("%s.%s", bundleIDPrefix(), strings.ToLower(appName))
@@ -296,7 +307,7 @@ func generateMultiPlatformProjectYAML(appName string, plan *PlannerResult) strin
 
 	b.WriteString("    entitlements:\n")
 	fmt.Fprintf(&b, "      path: %s/%s.entitlements\n", appName, appName)
-	b.WriteString("      properties: {}\n")
+	writeEntitlementProperties(&b, entitlements)
 
 	// iOS dependencies: SPM packages + watch target + iOS extensions
 	hasIOSDeps := hasWatchOS || hasPackages
@@ -721,7 +732,7 @@ func generateMultiPlatformProjectYAML(appName string, plan *PlannerResult) strin
 }
 
 // generateMacOSProjectYAML produces a native macOS project.yml.
-func generateMacOSProjectYAML(appName string, plan *PlannerResult) string {
+func generateMacOSProjectYAML(appName string, plan *PlannerResult, entitlements map[string]any) string {
 	var b strings.Builder
 
 	bundleID := fmt.Sprintf("%s.%s", bundleIDPrefix(), strings.ToLower(appName))
@@ -799,7 +810,7 @@ func generateMacOSProjectYAML(appName string, plan *PlannerResult) string {
 	// Entitlements
 	b.WriteString("    entitlements:\n")
 	fmt.Fprintf(&b, "      path: %s/%s.entitlements\n", appName, appName)
-	b.WriteString("      properties: {}\n")
+	writeEntitlementProperties(&b, entitlements)
 
 	// Dependencies: SPM packages + extension targets
 	if hasExtensions || hasPackages {
@@ -890,7 +901,7 @@ func generateMacOSProjectYAML(appName string, plan *PlannerResult) string {
 }
 
 // generateIOSProjectYAML produces the iOS project.yml (existing behavior).
-func generateIOSProjectYAML(appName string, plan *PlannerResult) string {
+func generateIOSProjectYAML(appName string, plan *PlannerResult, entitlements map[string]any) string {
 	var b strings.Builder
 
 	bundleID := fmt.Sprintf("%s.%s", bundleIDPrefix(), strings.ToLower(appName))
@@ -982,16 +993,17 @@ func generateIOSProjectYAML(appName string, plan *PlannerResult) string {
 		}
 	}
 
-	// Main app entitlements
+	// Main app entitlements — merge auto-injected entitlements with app-group entitlements
+	mergedEntitlements := make(map[string]any)
+	for k, v := range entitlements {
+		mergedEntitlements[k] = v
+	}
+	if needsAppGroups {
+		mergedEntitlements["com.apple.security.application-groups"] = []any{"group." + bundleID}
+	}
 	b.WriteString("    entitlements:\n")
 	fmt.Fprintf(&b, "      path: %s/%s.entitlements\n", appName, appName)
-	if needsAppGroups {
-		b.WriteString("      properties:\n")
-		fmt.Fprintf(&b, "        com.apple.security.application-groups:\n")
-		fmt.Fprintf(&b, "          - group.%s\n", bundleID)
-	} else {
-		b.WriteString("      properties: {}\n")
-	}
+	writeEntitlementProperties(&b, mergedEntitlements)
 
 	// Main app Info.plist — for keys that can't be expressed as INFOPLIST_KEY_* build settings
 	mainInfoPlist := make(map[string]any)
@@ -1107,7 +1119,7 @@ func generateIOSProjectYAML(appName string, plan *PlannerResult) string {
 // generateTvOSProjectYAML produces the tvOS project.yml for XcodeGen.
 // tvOS apps use TARGETED_DEVICE_FAMILY "3", no orientation settings,
 // no launch screen, and focus-based navigation.
-func generateTvOSProjectYAML(appName string, plan *PlannerResult) string {
+func generateTvOSProjectYAML(appName string, plan *PlannerResult, entitlements map[string]any) string {
 	var b strings.Builder
 
 	bundleID := fmt.Sprintf("%s.%s", bundleIDPrefix(), strings.ToLower(appName))
@@ -1184,7 +1196,7 @@ func generateTvOSProjectYAML(appName string, plan *PlannerResult) string {
 	// Entitlements
 	b.WriteString("    entitlements:\n")
 	fmt.Fprintf(&b, "      path: %s/%s.entitlements\n", appName, appName)
-	b.WriteString("      properties: {}\n")
+	writeEntitlementProperties(&b, entitlements)
 
 	// Dependencies: SPM packages + extension targets
 	if hasExtensions || hasPackages {
@@ -1275,7 +1287,7 @@ func generateTvOSProjectYAML(appName string, plan *PlannerResult) string {
 }
 
 // generateVisionOSProjectYAML produces the visionOS project.yml.
-func generateVisionOSProjectYAML(appName string, plan *PlannerResult) string {
+func generateVisionOSProjectYAML(appName string, plan *PlannerResult, entitlements map[string]any) string {
 	var b strings.Builder
 
 	bundleID := fmt.Sprintf("%s.%s", bundleIDPrefix(), strings.ToLower(appName))
@@ -1352,7 +1364,7 @@ func generateVisionOSProjectYAML(appName string, plan *PlannerResult) string {
 	// Entitlements
 	b.WriteString("    entitlements:\n")
 	fmt.Fprintf(&b, "      path: %s/%s.entitlements\n", appName, appName)
-	b.WriteString("      properties: {}\n")
+	writeEntitlementProperties(&b, entitlements)
 
 	// Dependencies: SPM packages + extension targets
 	if hasExtensions || hasPackages {
@@ -1512,7 +1524,7 @@ func writeIntrinsicWatchExtensionTargetYAML(b *strings.Builder, targetName, sour
 }
 
 // generateWatchOnlyYAML produces project.yml for a standalone watchOS app.
-func generateWatchOnlyYAML(appName string, plan *PlannerResult) string {
+func generateWatchOnlyYAML(appName string, plan *PlannerResult, entitlements map[string]any) string {
 	var b strings.Builder
 
 	bundleID := fmt.Sprintf("%s.%s", bundleIDPrefix(), strings.ToLower(appName))
@@ -1572,7 +1584,7 @@ func generateWatchOnlyYAML(appName string, plan *PlannerResult) string {
 	// Entitlements
 	b.WriteString("    entitlements:\n")
 	fmt.Fprintf(&b, "      path: %s/%s.entitlements\n", appName, appName)
-	b.WriteString("      properties: {}\n")
+	writeEntitlementProperties(&b, entitlements)
 
 	// Dependencies: SPM packages + watch app + optional extension targets
 	b.WriteString("    dependencies:\n")
@@ -1695,7 +1707,7 @@ func generateWatchOnlyYAML(appName string, plan *PlannerResult) string {
 }
 
 // generatePairedYAML produces project.yml for a paired iOS+watchOS app.
-func generatePairedYAML(appName string, plan *PlannerResult) string {
+func generatePairedYAML(appName string, plan *PlannerResult, entitlements map[string]any) string {
 	var b strings.Builder
 
 	bundleID := fmt.Sprintf("%s.%s", bundleIDPrefix(), strings.ToLower(appName))
@@ -1777,7 +1789,7 @@ func generatePairedYAML(appName string, plan *PlannerResult) string {
 
 	b.WriteString("    entitlements:\n")
 	fmt.Fprintf(&b, "      path: %s/%s.entitlements\n", appName, appName)
-	b.WriteString("      properties: {}\n")
+	writeEntitlementProperties(&b, entitlements)
 
 	// iOS target depends on SPM packages + watch target + extensions
 	b.WriteString("    dependencies:\n")

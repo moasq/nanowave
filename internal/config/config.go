@@ -174,6 +174,12 @@ func CheckXcodegen() bool {
 	return err == nil
 }
 
+// CheckSupabaseCLI returns true if the Supabase CLI is installed.
+func CheckSupabaseCLI() bool {
+	_, err := exec.LookPath("supabase")
+	return err == nil
+}
+
 // ClaudeAuthStatus holds the user's Claude authentication state.
 type ClaudeAuthStatus struct {
 	LoggedIn         bool   `json:"loggedIn"`

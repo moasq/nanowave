@@ -10,6 +10,7 @@ import (
 
 	"github.com/moasq/nanowave/internal/claude"
 	"github.com/moasq/nanowave/internal/config"
+	"github.com/moasq/nanowave/internal/integrations"
 	"github.com/moasq/nanowave/internal/terminal"
 )
 
@@ -89,8 +90,8 @@ func readProjectAppName(projectDir string) string {
 	return cfg.AppName
 }
 
-// agenticTools is the set of tools Claude Code needs for writing code, building, and fixing.
-var agenticTools = []string{
+// baseAgenticTools is the set of tools Claude Code needs for writing code, building, and fixing.
+var baseAgenticTools = []string{
 	"Write", "Edit", "Read", "Bash", "Glob", "Grep",
 	"WebFetch", "WebSearch",
 	// Apple docs
@@ -114,9 +115,16 @@ var agenticTools = []string{
 
 // Pipeline orchestrates the multi-phase app generation process.
 type Pipeline struct {
-	claude *claude.Client
-	config *config.Config
-	model  string // user-selected model for code generation (empty = "sonnet")
+	claude          *claude.Client
+	config          *config.Config
+	model           string                    // user-selected model for code generation (empty = "sonnet")
+	manager         *integrations.Manager          // provider-based integration manager (nil = no integrations)
+	activeProviders []integrations.ActiveProvider // resolved providers for current build (transient)
+}
+
+// SetManager sets the integration manager for provider-based integrations.
+func (p *Pipeline) SetManager(m *integrations.Manager) {
+	p.manager = m
 }
 
 // NewPipeline creates a new pipeline orchestrator.
@@ -287,20 +295,102 @@ func (p *Pipeline) Build(ctx context.Context, prompt string, images []string) (*
 		return nil, fmt.Errorf("failed to write Claude project scaffold: %w", err)
 	}
 
-	if err := writeMCPConfig(projectDir); err != nil {
-		return nil, fmt.Errorf("failed to write MCP config: %w", err)
+	// Resolve active integrations from planner output
+	var activeIntegrationIDs []string
+	var activeProviders []integrations.ActiveProvider
+	backendProvisioned := false
+	needsAppleSignIn := false
+
+	if p.manager != nil && len(plan.Integrations) > 0 {
+		terminal.Info(fmt.Sprintf("Resolving %d integration(s): %s", len(plan.Integrations), strings.Join(plan.Integrations, ", ")))
+		ui := &pipelineSetupUI{}
+		resolved, err := p.manager.Resolve(ctx, appName, plan.Integrations, ui)
+		if err != nil {
+			terminal.Warning(fmt.Sprintf("Integration resolution failed: %v", err))
+		}
+		activeProviders = resolved
+		p.activeProviders = resolved // store for buildStreaming access
+		for _, ap := range activeProviders {
+			activeIntegrationIDs = append(activeIntegrationIDs, string(ap.Provider.ID()))
+		}
+		terminal.Detail("Active integrations", fmt.Sprintf("%d: %s", len(activeIntegrationIDs), strings.Join(activeIntegrationIDs, ", ")))
+
+		// Provision via Manager
+		if len(activeProviders) > 0 && analysis.BackendNeeds != nil && analysis.BackendNeeds.NeedsBackend() {
+			authMethods := analysis.BackendNeeds.AuthMethods
+			if analysis.BackendNeeds.Auth && len(authMethods) == 0 {
+				authMethods = []string{"email", "anonymous"}
+			}
+			provReq := integrations.ProvisionRequest{
+				AppName:       appName,
+				BundleID:      fmt.Sprintf("%s.%s", bundleIDPrefix(), strings.ToLower(appName)),
+				Models:        modelsToModelRefs(plan.Models),
+				AuthMethods:   authMethods,
+				NeedsAuth:     analysis.BackendNeeds.Auth,
+				NeedsDB:       analysis.BackendNeeds.DB || len(plan.Models) > 0,
+				NeedsStorage:  analysis.BackendNeeds.Storage,
+				NeedsRealtime: analysis.BackendNeeds.Realtime,
+			}
+			provResult, err := p.manager.Provision(ctx, provReq, activeProviders)
+			if err != nil {
+				terminal.Warning(fmt.Sprintf("Provisioning failed: %v", err))
+			} else if provResult != nil {
+				backendProvisioned = provResult.BackendProvisioned
+				needsAppleSignIn = provResult.NeedsAppleSignIn
+				for _, w := range provResult.Warnings {
+					terminal.Warning(w)
+				}
+				if len(provResult.TablesCreated) > 0 {
+					terminal.Success(fmt.Sprintf("Tables created: %s", strings.Join(provResult.TablesCreated, ", ")))
+				}
+			}
+		}
+
+		// Write MCP config via Manager
+		mcpConfigs, err := p.manager.MCPConfigs(ctx, activeProviders)
+		if err != nil {
+			terminal.Warning(fmt.Sprintf("MCP config generation failed: %v", err))
+		}
+		if err := writeMCPConfig(projectDir, mcpConfigs); err != nil {
+			return nil, fmt.Errorf("failed to write MCP config: %w", err)
+		}
+		terminal.Detail("MCP config", fmt.Sprintf("written to %s/.mcp.json (%d integrations)", projectDir, len(mcpConfigs)))
+
+		// Write settings with Manager tool allowlist
+		mcpTools := p.manager.MCPToolAllowlist(activeProviders)
+		if err := writeSettingsShared(projectDir, mcpTools); err != nil {
+			return nil, fmt.Errorf("failed to update settings with integration permissions: %w", err)
+		}
+	} else {
+		terminal.Detail("Integrations", "none in plan")
 	}
 
 	if err := writeSettingsLocal(projectDir); err != nil {
 		return nil, fmt.Errorf("failed to write settings: %w", err)
 	}
 
-	if err := writeProjectYML(projectDir, plan, appName); err != nil {
-		return nil, fmt.Errorf("failed to write project.yml: %w", err)
-	}
-
+	// Write project_config.json first (source of truth for XcodeGen MCP server).
 	if err := writeProjectConfig(projectDir, plan, appName); err != nil {
 		return nil, fmt.Errorf("failed to write project_config.json: %w", err)
+	}
+
+	// Auto-add Apple Sign-In entitlement to project_config.json when apple auth is detected.
+	// This ensures the XcodeGen MCP server preserves it on future regenerations.
+	if needsAppleSignIn {
+		if err := addAutoEntitlement(projectDir, "com.apple.developer.applesignin", []any{"Default"}, ""); err != nil {
+			terminal.Warning(fmt.Sprintf("Could not add Apple Sign-In entitlement: %v", err))
+		} else {
+			terminal.Success("Apple Sign-In entitlement added to project config")
+		}
+	}
+
+	// Read back entitlements from project_config.json so project.yml includes them
+	// in the entitlements properties section. This ensures XcodeGen writes the correct
+	// .entitlements plist, and regenerate_project preserves them.
+	mainEntitlements := readConfigEntitlements(projectDir, "")
+
+	if err := writeProjectYML(projectDir, plan, appName, mainEntitlements); err != nil {
+		return nil, fmt.Errorf("failed to write project.yml: %w", err)
 	}
 
 	if err := writeGitignore(projectDir); err != nil {
@@ -359,7 +449,7 @@ func (p *Pipeline) Build(ctx context.Context, prompt string, images []string) (*
 
 		var resp *claude.Response
 		if pass == 1 {
-			resp, err = p.buildStreaming(ctx, prompt, appName, projectDir, analysis, plan, sessionID, progress, images)
+			resp, err = p.buildStreaming(ctx, prompt, appName, projectDir, analysis, plan, sessionID, progress, images, backendProvisioned)
 		} else {
 			resp, err = p.completeMissingFilesStreaming(ctx, appName, projectDir, plan, report, sessionID, progress)
 		}
@@ -451,357 +541,4 @@ func (p *Pipeline) Build(ctx context.Context, prompt string, images []string) (*
 		CacheRead:         totalCacheRead,
 		CacheCreated:      totalCacheCreate,
 	}, nil
-}
-
-// EditResult holds the output of an Edit operation.
-type EditResult struct {
-	Summary      string
-	SessionID    string
-	TotalCostUSD float64
-	InputTokens  int
-	OutputTokens int
-	CacheRead    int
-	CacheCreated int
-}
-
-// Edit modifies an existing project using Claude Code.
-// images is an optional list of image file paths to include in the edit prompt.
-func (p *Pipeline) Edit(ctx context.Context, prompt, projectDir, sessionID string, images []string) (*EditResult, error) {
-	appName := readProjectAppName(projectDir)
-	ensureMCPConfig(projectDir)
-
-	platform, platforms, watchProjectShape := detectProjectBuildHints(projectDir)
-	isMulti := len(platforms) > 1
-
-	appendPrompt, err := composeCoderAppendPrompt("editor", platform)
-	if err != nil {
-		return nil, err
-	}
-
-	var userMsg string
-	if isMulti {
-		buildCmds := multiPlatformBuildCommands(appName, platforms)
-		var buildCmdStr strings.Builder
-		for i, cmd := range buildCmds {
-			fmt.Fprintf(&buildCmdStr, "%d. %s\n", i+1, cmd)
-		}
-
-		appendPrompt += "\n\nBuild commands (run ALL):\n" + buildCmdStr.String()
-
-		userMsg = fmt.Sprintf(`Edit this multi-platform app based on the following request:
-
-%s
-
-This project targets: %s
-
-After making changes:
-1. If you need new permissions, extensions, or entitlements, use the xcodegen MCP tools (add_permission, add_extension, etc.)
-2. If adding a new platform, create the source directory, write the @main entry point, use xcodegen MCP tools to add the target, then regenerate
-3. Build each scheme in sequence:
-%s4. If any build fails, read the errors carefully, fix the code, and rebuild
-5. If Xcode says a scheme is missing, run: xcodebuild -list -project %s.xcodeproj and use the listed schemes
-6. Repeat until all builds succeed`, prompt, strings.Join(platforms, ", "), buildCmdStr.String(), appName)
-	} else {
-		destination := canonicalBuildDestinationForShape(platform, watchProjectShape)
-		appendPrompt += fmt.Sprintf("\n\nBuild command:\nxcodebuild -project %s.xcodeproj -scheme %s -destination '%s' -quiet build", appName, appName, destination)
-
-		userMsg = fmt.Sprintf(`Edit this app based on the following request:
-
-%s
-
-After making changes:
-1. If you need new permissions, extensions, or entitlements, use the xcodegen MCP tools (add_permission, add_extension, etc.)
-2. Run: xcodebuild -project %s.xcodeproj -scheme %s -destination '%s' -quiet build
-3. If build fails, read the errors carefully, fix the code, and rebuild
-4. If Xcode says the scheme is missing, run: xcodebuild -list -project %s.xcodeproj and use the listed app scheme
-5. Repeat until the build succeeds`, prompt, appName, appName, destination, appName)
-	}
-
-	progress := terminal.NewProgressDisplay("edit", 0)
-	progress.Start()
-
-	resp, err := p.claude.GenerateStreaming(ctx, userMsg, claude.GenerateOpts{
-		AppendSystemPrompt: appendPrompt,
-		MaxTurns:           30,
-		Model:              p.buildModel(),
-		WorkDir:            projectDir,
-		AllowedTools:       agenticTools,
-		SessionID:          sessionID,
-		Images:             images,
-	}, newProgressCallback(progress))
-
-	if err != nil {
-		progress.StopWithError("Edit failed")
-		return nil, fmt.Errorf("edit failed: %w", err)
-	}
-
-	progress.StopWithSuccess("Changes applied!")
-	showCost(resp)
-
-	return &EditResult{
-		Summary:      resp.Result,
-		SessionID:    resp.SessionID,
-		TotalCostUSD: resp.TotalCostUSD,
-		InputTokens:  resp.Usage.InputTokens,
-		OutputTokens: resp.Usage.OutputTokens,
-		CacheRead:    resp.Usage.CacheReadInputTokens,
-		CacheCreated: resp.Usage.CacheCreationInputTokens,
-	}, nil
-}
-
-// FixResult holds the output of a Fix operation.
-type FixResult struct {
-	Summary      string
-	SessionID    string
-	TotalCostUSD float64
-	InputTokens  int
-	OutputTokens int
-	CacheRead    int
-	CacheCreated int
-}
-
-// Fix auto-fixes build errors in an existing project.
-func (p *Pipeline) Fix(ctx context.Context, projectDir, sessionID string) (*FixResult, error) {
-	appName := readProjectAppName(projectDir)
-	ensureMCPConfig(projectDir)
-
-	platform, platforms, watchProjectShape := detectProjectBuildHints(projectDir)
-	isMulti := len(platforms) > 1
-
-	appendPrompt, err := composeCoderAppendPrompt("fixer", platform)
-	if err != nil {
-		return nil, err
-	}
-
-	var userMsg string
-	if isMulti {
-		buildCmds := multiPlatformBuildCommands(appName, platforms)
-		var buildCmdStr strings.Builder
-		for i, cmd := range buildCmds {
-			fmt.Fprintf(&buildCmdStr, "%d. %s\n", i+1, cmd)
-		}
-
-		userMsg = fmt.Sprintf(`Fix any build errors in this multi-platform project.
-
-This project targets: %s
-
-1. Build each scheme in sequence:
-%s2. Read the error output carefully
-3. Investigate: read the relevant source files to understand context
-4. Fix the errors in the Swift source code
-5. If the error is a project configuration issue, use the xcodegen MCP tools (add_permission, add_extension, regenerate_project, etc.)
-6. If Xcode says a scheme is missing, run: xcodebuild -list -project %s.xcodeproj and use the listed schemes
-7. Rebuild and repeat until all builds succeed`, strings.Join(platforms, ", "), buildCmdStr.String(), appName)
-	} else {
-		destination := canonicalBuildDestinationForShape(platform, watchProjectShape)
-		userMsg = fmt.Sprintf(`Fix any build errors in this project.
-
-1. Run: xcodebuild -project %s.xcodeproj -scheme %s -destination '%s' -quiet build
-2. Read the error output carefully
-3. Investigate: read the relevant source files to understand context
-4. Fix the errors in the Swift source code
-5. If the error is a project configuration issue, use the xcodegen MCP tools (add_permission, add_extension, regenerate_project, etc.)
-6. If Xcode says the scheme is missing, run: xcodebuild -list -project %s.xcodeproj and use the listed app scheme
-7. Rebuild and repeat until the build succeeds`, appName, appName, destination, appName)
-	}
-
-	progress := terminal.NewProgressDisplay("fix", 0)
-	progress.Start()
-
-	resp, err := p.claude.GenerateStreaming(ctx, userMsg, claude.GenerateOpts{
-		AppendSystemPrompt: appendPrompt,
-		MaxTurns:           30,
-		Model:              p.buildModel(),
-		WorkDir:            projectDir,
-		AllowedTools:       agenticTools,
-		SessionID:          sessionID,
-	}, newProgressCallback(progress))
-
-	if err != nil {
-		progress.StopWithError("Fix failed")
-		return nil, fmt.Errorf("fix failed: %w", err)
-	}
-
-	progress.StopWithSuccess("Fix applied")
-	showCost(resp)
-
-	return &FixResult{
-		Summary:      resp.Result,
-		SessionID:    resp.SessionID,
-		TotalCostUSD: resp.TotalCostUSD,
-		InputTokens:  resp.Usage.InputTokens,
-		OutputTokens: resp.Usage.OutputTokens,
-		CacheRead:    resp.Usage.CacheReadInputTokens,
-		CacheCreated: resp.Usage.CacheCreationInputTokens,
-	}, nil
-}
-
-// analyze runs Phase 2: prompt → AnalysisResult.
-func (p *Pipeline) analyze(ctx context.Context, prompt string, intent *IntentDecision, progress *terminal.ProgressDisplay) (*AnalysisResult, error) {
-	systemPrompt, err := composeAnalyzerSystemPrompt(intent)
-	if err != nil {
-		return nil, err
-	}
-
-	progress.AddActivity("Sending request to Claude")
-
-	gotFirstDelta := false
-	resp, err := p.claude.GenerateStreaming(ctx, prompt, claude.GenerateOpts{
-		SystemPrompt: systemPrompt,
-		MaxTurns:     3,
-		Model:        "sonnet",
-	}, func(ev claude.StreamEvent) {
-		switch ev.Type {
-		case "system":
-			progress.AddActivity("Connected to Claude")
-		case "content_block_delta":
-			if ev.Text != "" {
-				if !gotFirstDelta {
-					gotFirstDelta = true
-					progress.AddActivity("Identifying features and requirements")
-				}
-				progress.OnStreamingText(ev.Text)
-			}
-		case "assistant":
-			if ev.Text != "" {
-				progress.OnAssistantText(ev.Text)
-			}
-		case "tool_use":
-			if ev.ToolName != "" {
-				progress.OnToolUse(ev.ToolName, func(key string) string {
-					return extractToolInputString(ev.ToolInput, key)
-				})
-			}
-		}
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	resultText := ""
-	if resp != nil {
-		resultText = resp.Result
-	}
-
-	if strings.TrimSpace(resultText) == "" {
-		return nil, fmt.Errorf("analysis returned empty response — the model may have failed to generate output")
-	}
-
-	return parseAnalysis(resultText)
-}
-
-// plan runs Phase 3: analysis → PlannerResult.
-func (p *Pipeline) plan(ctx context.Context, analysis *AnalysisResult, intent *IntentDecision, progress *terminal.ProgressDisplay) (*PlannerResult, error) {
-	systemPrompt, err := composePlannerSystemPrompt(intent, intent.PlatformHint)
-	if err != nil {
-		return nil, err
-	}
-
-	// Marshal the analysis as the user message
-	analysisJSON, err := json.MarshalIndent(analysis, "", "  ")
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal analysis: %w", err)
-	}
-
-	userMsg := fmt.Sprintf("Create a file-level build plan for this app spec:\n\n%s", string(analysisJSON))
-
-	progress.AddActivity("Sending analysis to Claude")
-
-	gotFirstDelta := false
-	resp, err := p.claude.GenerateStreaming(ctx, userMsg, claude.GenerateOpts{
-		SystemPrompt: systemPrompt,
-		MaxTurns:     3,
-		Model:        "sonnet",
-	}, func(ev claude.StreamEvent) {
-		switch ev.Type {
-		case "system":
-			progress.AddActivity("Connected to Claude")
-		case "content_block_delta":
-			if ev.Text != "" {
-				if !gotFirstDelta {
-					gotFirstDelta = true
-					progress.AddActivity("Designing file structure and models")
-				}
-				progress.OnStreamingText(ev.Text)
-			}
-		case "assistant":
-			if ev.Text != "" {
-				progress.OnAssistantText(ev.Text)
-			}
-		case "tool_use":
-			if ev.ToolName != "" {
-				progress.OnToolUse(ev.ToolName, func(key string) string {
-					return extractToolInputString(ev.ToolInput, key)
-				})
-			}
-		}
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	resultText := ""
-	if resp != nil {
-		resultText = resp.Result
-	}
-
-	return parsePlan(resultText)
-}
-
-// buildStreaming runs Phase 4 with real-time streaming output.
-func (p *Pipeline) buildStreaming(ctx context.Context, prompt, appName, projectDir string, analysis *AnalysisResult, plan *PlannerResult, sessionID string, progress *terminal.ProgressDisplay, images []string) (*claude.Response, error) {
-	appendPrompt, userMsg, err := p.buildPrompts(prompt, appName, projectDir, analysis, plan)
-	if err != nil {
-		return nil, err
-	}
-
-	return p.claude.GenerateStreaming(ctx, userMsg, claude.GenerateOpts{
-		AppendSystemPrompt: appendPrompt,
-		MaxTurns:           30,
-		Model:              p.buildModel(),
-		WorkDir:            projectDir,
-		AllowedTools:       agenticTools,
-		SessionID:          sessionID,
-		Images:             images,
-	}, newProgressCallback(progress))
-}
-
-// completeMissingFilesStreaming runs targeted completion passes for unresolved planned files.
-func (p *Pipeline) completeMissingFilesStreaming(ctx context.Context, appName, projectDir string, plan *PlannerResult, report *FileCompletionReport, sessionID string, progress *terminal.ProgressDisplay) (*claude.Response, error) {
-	appendPrompt, userMsg, err := p.completionPrompts(appName, projectDir, plan, report)
-	if err != nil {
-		return nil, err
-	}
-
-	return p.claude.GenerateStreaming(ctx, userMsg, claude.GenerateOpts{
-		AppendSystemPrompt: appendPrompt,
-		MaxTurns:           20,
-		Model:              p.buildModel(),
-		WorkDir:            projectDir,
-		AllowedTools:       agenticTools,
-		SessionID:          sessionID,
-	}, newProgressCallback(progress))
-}
-
-// finalize ensures xcodegen has run, then does git init + commit.
-func (p *Pipeline) finalize(ctx context.Context, projectDir, appName string) {
-	// Safety net: re-run xcodegen if .xcodeproj is missing (shouldn't happen since we run it in scaffold phase)
-	xcodeprojPath := filepath.Join(projectDir, appName+".xcodeproj")
-	if _, err := os.Stat(xcodeprojPath); os.IsNotExist(err) {
-		_ = runXcodeGen(projectDir)
-	}
-
-	// Git operations are best-effort
-	resp, _ := p.claude.Generate(ctx, fmt.Sprintf(`Run these git commands in order:
-1. git init
-2. git add -A
-3. git commit -m "Initial build: %s"
-
-Just run the commands, no explanation needed.`, appName), claude.GenerateOpts{
-		MaxTurns:     3,
-		Model:        "haiku",
-		WorkDir:      projectDir,
-		AllowedTools: []string{"Bash"},
-	})
-	_ = resp
 }

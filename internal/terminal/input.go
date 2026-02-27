@@ -27,6 +27,7 @@ var SlashCommands = []CommandInfo{
 	{Name: "/clear", Desc: "Clear conversation session"},
 	{Name: "/projects", Desc: "Switch project"},
 	{Name: "/setup", Desc: "Install prerequisites"},
+	{Name: "/integrations", Desc: "Manage backend integrations"},
 	{Name: "/help", Desc: "Show available commands"},
 	{Name: "/quit", Desc: "Exit session"},
 }

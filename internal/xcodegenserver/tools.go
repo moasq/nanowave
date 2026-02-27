@@ -409,11 +409,23 @@ func handleRegenerateProject(ctx context.Context, req *mcp.CallToolRequest, inpu
 		return nil, textOutput{}, fmt.Errorf("failed to get working directory: %w", err)
 	}
 
+	// Regenerate project.yml from project_config.json (preserving entitlements, packages, etc.)
+	// before running xcodegen, matching what applyAndRegenerate does.
+	cfg, err := loadConfig(workDir)
+	if err != nil {
+		return nil, textOutput{}, err
+	}
+
+	yml := generateProjectYAML(cfg)
+	if err := os.WriteFile(filepath.Join(workDir, "project.yml"), []byte(yml), 0o644); err != nil {
+		return nil, textOutput{}, fmt.Errorf("failed to write project.yml: %w", err)
+	}
+
 	if err := runXcodeGen(workDir); err != nil {
 		return nil, textOutput{}, err
 	}
 
-	return nil, textOutput{Message: "xcodegen generate completed successfully. .xcodeproj regenerated."}, nil
+	return nil, textOutput{Message: "project.yml regenerated from project_config.json and xcodegen completed successfully. .xcodeproj regenerated."}, nil
 }
 
 // applyAndRegenerate saves the config, generates project.yml, and runs xcodegen.

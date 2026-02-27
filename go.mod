@@ -6,10 +6,14 @@ require (
 	github.com/modelcontextprotocol/go-sdk v1.3.1
 	github.com/reeflective/readline v1.1.4
 	github.com/spf13/cobra v1.8.1
+	github.com/zalando/go-keyring v0.2.6
 	golang.org/x/term v0.40.0
 )
 
 require (
+	al.essio.dev/pkg/shellescape v1.5.1 // indirect
+	github.com/danieljoos/wincred v1.2.2 // indirect
+	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/google/jsonschema-go v0.4.2 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect

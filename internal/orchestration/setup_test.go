@@ -394,7 +394,7 @@ func TestWriteClaudeProjectScaffoldCreatesArtifacts(t *testing.T) {
 
 func TestWriteMCPConfigUsesPortableNanowaveCommand(t *testing.T) {
 	projectDir := t.TempDir()
-	if err := writeMCPConfig(projectDir); err != nil {
+	if err := writeMCPConfig(projectDir, nil); err != nil {
 		t.Fatalf("writeMCPConfig() error: %v", err)
 	}
 	data, err := os.ReadFile(filepath.Join(projectDir, ".mcp.json"))

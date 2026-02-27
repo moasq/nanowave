@@ -557,6 +557,10 @@ func handleSlashCommand(input string, cfg *config.Config, svc *service.Service, 
 		fmt.Println()
 		return true
 
+	case "/integrations":
+		RunIntegrationsInteractive()
+		return true
+
 	default:
 		terminal.Warning(fmt.Sprintf("Unknown command: %s. Type /help for available commands.", command))
 		fmt.Println()
@@ -735,6 +739,7 @@ func printHelp() {
 	fmt.Printf("  %s/usage%s            Show token usage and costs%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
 	fmt.Printf("  %s/clear%s            Clear conversation session%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
 	fmt.Printf("  %s/setup%s            Install prerequisites%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
+	fmt.Printf("  %s/integrations%s    Manage backend integrations%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
 	fmt.Printf("  %s/help%s             Show this help%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
 	fmt.Printf("  %s/quit%s             Exit session%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
 	fmt.Println()

@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "apple-docs": {
+      "args": [
+        "-y",
+        "@kimsungwhee/apple-docs-mcp"
+      ],
+      "command": "npx"
+    },
+    "xcodegen": {
+      "args": [
+        "mcp",
+        "xcodegen"
+      ],
+      "command": "nanowave"
+    }
+  }
+}

@@ -1,9 +1,13 @@
 package orchestration
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"strings"
+
+	"github.com/moasq/nanowave/internal/integrations"
+	"github.com/moasq/nanowave/internal/terminal"
 )
 
 // appearanceModeDescription returns a human-readable description of the app's
@@ -29,7 +33,7 @@ func appendBuildPlanFileEntry(b *strings.Builder, f FilePlan) {
 }
 
 // buildPrompts constructs the system and user prompts for the build phase.
-func (p *Pipeline) buildPrompts(_ string, appName string, _ string, analysis *AnalysisResult, plan *PlannerResult) (string, string, error) {
+func (p *Pipeline) buildPrompts(_ string, appName string, _ string, analysis *AnalysisResult, plan *PlannerResult, backendProvisioned bool) (string, string, error) {
 	destination := canonicalBuildDestinationForShape(plan.GetPlatform(), plan.GetWatchProjectShape())
 	// Build the append system prompt with coder rules + plan context
 	basePrompt, err := composeCoderAppendPrompt("builder", plan.GetPlatform())
@@ -124,6 +128,42 @@ func (p *Pipeline) buildPrompts(_ string, appName string, _ string, analysis *An
 		appendPrompt.WriteString("</feature-rules>\n")
 	}
 
+	// Inject integration config if any integrations are active
+	var authMethods []string
+	if analysis.BackendNeeds != nil {
+		authMethods = analysis.BackendNeeds.AuthMethods
+		if analysis.BackendNeeds.Auth && len(authMethods) == 0 {
+			authMethods = []string{"email", "anonymous"}
+			terminal.Detail("Auth methods", "analyzer returned empty — defaulting to [email, anonymous]")
+		}
+	}
+
+	backendFirstBlock := ""
+	if p.manager != nil && len(plan.Integrations) > 0 {
+		// Manager-based prompt contributions
+		promptCtx := context.Background()
+		promptReq := integrations.PromptRequest{
+			AppName:            appName,
+			Models:             modelsToModelRefs(plan.Models),
+			AuthMethods:        authMethods,
+			Store:              p.manager.Store(),
+			BackendProvisioned: backendProvisioned,
+		}
+		contributions, err := p.manager.PromptContributions(promptCtx, promptReq, p.activeProviders)
+		if err != nil {
+			terminal.Warning(fmt.Sprintf("Prompt contributions failed: %v", err))
+		}
+		for _, c := range contributions {
+			if c.SystemBlock != "" {
+				appendPrompt.WriteString(c.SystemBlock)
+			}
+			if c.UserBlock != "" {
+				backendFirstBlock = c.UserBlock
+			}
+		}
+
+	}
+
 	// Build user message
 	var featureList strings.Builder
 	for _, f := range analysis.Features {
@@ -158,7 +198,7 @@ BEFORE WRITING CODE:
 1. Use Glob to list all files in the project directory to understand the existing structure
 2. Read the CLAUDE.md file to understand design tokens and architecture
 3. Read project_config.json to understand the project configuration
-Then proceed with writing code.
+%sThen proceed with writing code.
 
 MULTI-PLATFORM SOURCE DIRECTORIES:
 %s
@@ -179,7 +219,7 @@ IMPORTANT:
 - Every View must have a #Preview block
 - Each platform has its own @main App entry point`,
 			analysis.AppName, analysis.Description, featureList.String(), analysis.CoreFlow,
-			sourceDirsList.String(), buildCmdStr.String(), appName)
+			backendFirstBlock, sourceDirsList.String(), buildCmdStr.String(), appName)
 	} else {
 		userMsg = fmt.Sprintf(`Build the %s app following the plan in the system prompt.
 
@@ -193,7 +233,7 @@ BEFORE WRITING CODE:
 1. Use Glob to list all files in the project directory to understand the existing structure
 2. Read the CLAUDE.md file to understand design tokens and architecture
 3. Read project_config.json to understand the project configuration
-Then proceed with writing code.
+%sThen proceed with writing code.
 
 INSTRUCTIONS:
 1. The Xcode project is already configured. Write ALL Swift files under %s/ following the plan file paths exactly.
@@ -210,7 +250,7 @@ IMPORTANT:
 - Use the exact type names and file paths from the plan
 - Every View must have a #Preview block`,
 			analysis.AppName, analysis.Description, featureList.String(), analysis.CoreFlow,
-			appName, appName, appName, destination, appName)
+			backendFirstBlock, appName, appName, appName, destination, appName)
 	}
 
 	return appendPrompt.String(), userMsg, nil
