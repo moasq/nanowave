@@ -1,0 +1,29 @@
+{
+  "mcpServers": {
+    "apple-docs": {
+      "args": [
+        "-y",
+        "@kimsungwhee/apple-docs-mcp"
+      ],
+      "command": "npx"
+    },
+    "supabase": {
+      "args": [
+        "mcp",
+        "supabase"
+      ],
+      "command": "nanowave",
+      "env": {
+        "SUPABASE_ACCESS_TOKEN": "sbp_test_token_123",
+        "SUPABASE_PROJECT_REF": "abcdefghijkl"
+      }
+    },
+    "xcodegen": {
+      "args": [
+        "mcp",
+        "xcodegen"
+      ],
+      "command": "nanowave"
+    }
+  }
+}

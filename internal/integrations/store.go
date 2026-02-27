@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
+
+	"github.com/moasq/nanowave/internal/integrations/secrets"
 )
 
 // storeFile is the filename for persisted integration configs.
@@ -24,20 +27,39 @@ type storeData struct {
 	Providers map[ProviderID]map[string]*IntegrationConfig `json:"providers"`
 }
 
+// secretRefPrefix marks a PAT field as a reference to a secret store key.
+const secretRefPrefix = "secret:"
+
 // IntegrationStore persists integration configs to ~/.nanowave/integrations.json.
+// Sensitive fields (PAT) are stored in the OS keychain (or file fallback) and
+// replaced with "secret:<key>" references in the JSON file.
 type IntegrationStore struct {
-	mu   sync.Mutex
-	dir  string // directory containing the store file (e.g. ~/.nanowave)
-	data *storeData
+	mu      sync.Mutex
+	dir     string // directory containing the store file (e.g. ~/.nanowave)
+	data    *storeData
+	secrets secrets.SecretStore
 }
 
 // NewIntegrationStore creates a store rooted at the given directory.
+// It initializes the best available secret store (OS keychain or file fallback).
 func NewIntegrationStore(nanowaveRoot string) *IntegrationStore {
 	return &IntegrationStore{
 		dir: nanowaveRoot,
 		data: &storeData{
 			Providers: make(map[ProviderID]map[string]*IntegrationConfig),
 		},
+		secrets: secrets.New(nanowaveRoot),
+	}
+}
+
+// NewIntegrationStoreWithSecrets creates a store with a custom secret store (for testing).
+func NewIntegrationStoreWithSecrets(nanowaveRoot string, ss secrets.SecretStore) *IntegrationStore {
+	return &IntegrationStore{
+		dir: nanowaveRoot,
+		data: &storeData{
+			Providers: make(map[ProviderID]map[string]*IntegrationConfig),
+		},
+		secrets: ss,
 	}
 }
 
@@ -92,7 +114,35 @@ func (s *IntegrationStore) Load() error {
 		_ = s.saveLocked()
 	}
 
+	// Migrate raw PATs to secret store
+	s.migratePATsToSecretStore()
+
 	return nil
+}
+
+// migratePATsToSecretStore moves any raw PAT values from the JSON config
+// into the secret store, replacing them with "secret:<key>" references.
+// This is a one-time migration that happens on Load().
+func (s *IntegrationStore) migratePATsToSecretStore() {
+	needsSave := false
+	for provID, apps := range s.data.Providers {
+		for appName, cfg := range apps {
+			if cfg.PAT != "" && !strings.HasPrefix(cfg.PAT, secretRefPrefix) {
+				// Raw PAT found — migrate to secret store
+				key := secrets.SecretKey(string(provID), appName, "pat")
+				if err := s.secrets.Set(key, cfg.PAT); err != nil {
+					// Migration is best-effort, but warn so the user knows
+					fmt.Fprintf(os.Stderr, "warning: failed to migrate %s/%s credentials to secure storage: %v\n", provID, appName, err)
+					continue
+				}
+				cfg.PAT = secretRefPrefix + key
+				needsSave = true
+			}
+		}
+	}
+	if needsSave {
+		_ = s.saveLocked()
+	}
 }
 
 // needsMigration checks if the JSON has old flat format where provider values
@@ -127,10 +177,11 @@ func (s *IntegrationStore) saveLocked() error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(s.dir, storeFile), data, 0o644)
+	return os.WriteFile(filepath.Join(s.dir, storeFile), data, 0o600)
 }
 
 // GetProvider returns the config for a provider and app name, or nil if not configured.
+// Secret references in the PAT field are resolved from the secret store transparently.
 func (s *IntegrationStore) GetProvider(id ProviderID, appName string) (*IntegrationConfig, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -144,14 +195,37 @@ func (s *IntegrationStore) GetProvider(id ProviderID, appName string) (*Integrat
 	if !ok {
 		return nil, nil
 	}
-	copy := *cfg
-	return &copy, nil
+	cp := *cfg
+
+	// Resolve secret reference
+	if strings.HasPrefix(cp.PAT, secretRefPrefix) {
+		key := strings.TrimPrefix(cp.PAT, secretRefPrefix)
+		val, err := s.secrets.Get(key)
+		if err == nil {
+			cp.PAT = val
+		} else {
+			// Secret not found — clear PAT so callers know it's missing
+			cp.PAT = ""
+		}
+	}
+
+	return &cp, nil
 }
 
 // SetProvider stores or updates a provider config for a specific app.
+// The PAT is automatically moved to the secret store and replaced with a reference.
 func (s *IntegrationStore) SetProvider(cfg IntegrationConfig, appName string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	// Store PAT in secret store if it's a raw value (not already a reference)
+	if cfg.PAT != "" && !strings.HasPrefix(cfg.PAT, secretRefPrefix) {
+		key := secrets.SecretKey(string(cfg.Provider), appName, "pat")
+		if err := s.secrets.Set(key, cfg.PAT); err != nil {
+			return fmt.Errorf("failed to store credentials securely: %w", err)
+		}
+		cfg.PAT = secretRefPrefix + key
+	}
 
 	if s.data.Providers[cfg.Provider] == nil {
 		s.data.Providers[cfg.Provider] = make(map[string]*IntegrationConfig)
@@ -161,9 +235,18 @@ func (s *IntegrationStore) SetProvider(cfg IntegrationConfig, appName string) er
 }
 
 // RemoveProvider deletes a provider config for a specific app.
+// Also removes the corresponding secret from the secret store.
 func (s *IntegrationStore) RemoveProvider(id ProviderID, appName string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	// Clean up secret if present
+	if apps, ok := s.data.Providers[id]; ok {
+		if cfg, ok := apps[appName]; ok && strings.HasPrefix(cfg.PAT, secretRefPrefix) {
+			key := strings.TrimPrefix(cfg.PAT, secretRefPrefix)
+			_ = s.secrets.Delete(key)
+		}
+	}
 
 	apps, ok := s.data.Providers[id]
 	if !ok {

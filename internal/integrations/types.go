@@ -40,10 +40,3 @@ func (b *BackendNeeds) NeedsBackend() bool {
 	return b != nil && (b.Auth || b.DB || b.Storage)
 }
 
-// HITLAction represents a user action the pipeline needs before continuing.
-type HITLAction struct {
-	Message     string // What the user needs to do
-	URL         string // URL to open (optional)
-	Field       string // What to paste back (optional)
-	ContinueMsg string // What "continue" means in this context
-}

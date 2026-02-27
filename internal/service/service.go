@@ -1,18 +1,13 @@
 package service
 
 import (
-	"bufio"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
-	"sync"
 	"time"
 	"unicode"
 
@@ -20,133 +15,12 @@ import (
 
 	"github.com/moasq/nanowave/internal/claude"
 	"github.com/moasq/nanowave/internal/config"
+	"github.com/moasq/nanowave/internal/integrations"
+	"github.com/moasq/nanowave/internal/integrations/providers"
 	"github.com/moasq/nanowave/internal/orchestration"
 	"github.com/moasq/nanowave/internal/storage"
 	"github.com/moasq/nanowave/internal/terminal"
 )
-
-// rankSimulator scores a device based on its type identifier.
-// Higher scores are preferred. This avoids hardcoding device marketing names
-// which change across Xcode versions.
-func rankSimulator(deviceTypeID, family, platform string) int {
-	if platform == "macos" {
-		return -1 // macOS has no simulators
-	}
-
-	lower := strings.ToLower(deviceTypeID)
-
-	if platform == "visionos" {
-		if !strings.Contains(lower, "apple-vision") {
-			return -1
-		}
-		switch {
-		case strings.Contains(lower, "4k"):
-			return 100
-		default:
-			return 60
-		}
-	}
-
-	if platform == "tvos" {
-		if !strings.Contains(lower, "apple-tv") {
-			return -1
-		}
-		switch {
-		case strings.Contains(lower, "4k"):
-			return 100
-		default:
-			return 60
-		}
-	}
-
-	if platform == "watchos" {
-		if !strings.Contains(lower, "watch") {
-			return -1
-		}
-		switch {
-		case strings.Contains(lower, "ultra"):
-			return 100
-		case strings.Contains(lower, "series"):
-			return 80
-		case strings.Contains(lower, "se"):
-			return 50
-		default:
-			return 60
-		}
-	}
-
-	switch family {
-	case "ipad":
-		if !strings.Contains(lower, "ipad") {
-			return -1
-		}
-		switch {
-		case strings.Contains(lower, "ipad-pro") && strings.Contains(lower, "13"):
-			return 100
-		case strings.Contains(lower, "ipad-pro"):
-			return 95
-		case strings.Contains(lower, "ipad-air") && strings.Contains(lower, "13"):
-			return 85
-		case strings.Contains(lower, "ipad-air"):
-			return 80
-		case strings.Contains(lower, "ipad-mini"):
-			return 60
-		default:
-			return 70
-		}
-
-	case "universal":
-		// Accept both iPhone and iPad, prefer pro models
-		isIPhone := strings.Contains(lower, "iphone")
-		isIPad := strings.Contains(lower, "ipad")
-		if !isIPhone && !isIPad {
-			return -1
-		}
-		switch {
-		case isIPhone && strings.Contains(lower, "pro-max"):
-			return 100
-		case isIPhone && strings.Contains(lower, "pro"):
-			return 95
-		case isIPad && strings.Contains(lower, "ipad-pro"):
-			return 90
-		case isIPhone && !strings.Contains(lower, "se"):
-			return 80
-		case isIPad:
-			return 75
-		default:
-			return 50
-		}
-
-	default: // "iphone"
-		if !strings.Contains(lower, "iphone") {
-			return -1
-		}
-		switch {
-		case strings.Contains(lower, "pro-max"):
-			return 100
-		case strings.Contains(lower, "pro"):
-			return 90
-		case strings.Contains(lower, "plus"):
-			return 80
-		case strings.Contains(lower, "air"):
-			return 70
-		case strings.Contains(lower, "se"):
-			return 50
-		default:
-			return 75 // standard iPhone models
-		}
-	}
-}
-
-const defaultRunLogWatchSeconds = 30
-
-// SimulatorDevice represents an available simulator.
-type SimulatorDevice struct {
-	Name         string
-	UDID         string
-	Runtime      string // e.g. "iOS 18.1"
-	DeviceTypeID string // e.g. "com.apple.CoreSimulator.SimDeviceType.iPhone-16-Pro"
-}
 
 // Service coordinates app generation for CLI usage.
 type Service struct {
@@ -155,6 +29,7 @@ type Service struct {
 	projectStore *storage.ProjectStore
 	historyStore *storage.HistoryStore
 	usageStore   *storage.UsageStore
+	manager      *integrations.Manager
 	model        string // user-selected model override (empty = default "sonnet")
 }
 
@@ -172,12 +47,23 @@ func NewService(cfg *config.Config, opts ...ServiceOpts) (*Service, error) {
 		model = opts[0].Model
 	}
 
+	// Initialize integration manager with all registered providers.
+	// Store lives at ~/.nanowave/ (global, not per-project).
+	reg := integrations.NewRegistry()
+	providers.RegisterAll(reg)
+	home, _ := os.UserHomeDir()
+	storeRoot := filepath.Join(home, ".nanowave")
+	intStore := integrations.NewIntegrationStore(storeRoot)
+	_ = intStore.Load()
+	mgr := integrations.NewManager(reg, intStore)
+
 	return &Service{
 		config:       cfg,
 		claude:       claudeClient,
 		projectStore: storage.NewProjectStore(cfg.NanowaveDir),
 		historyStore: storage.NewHistoryStore(cfg.NanowaveDir),
 		usageStore:   storage.NewUsageStore(cfg.NanowaveDir),
+		manager:      mgr,
 		model:        model,
 	}, nil
 }
@@ -286,138 +172,12 @@ func platformBundleIDSuffix(platform string) string {
 	}
 }
 
-// detectDefaultSimulator picks the best available simulator for the current device family.
-// It ranks all available devices dynamically using their device type identifiers
-// rather than hardcoded marketing names, which change across Xcode versions.
-func (s *Service) detectDefaultSimulator() string {
-	family := s.currentDeviceFamily()
-	platform := s.currentPlatform()
-	devices, err := s.ListSimulators()
-	if err != nil || len(devices) == 0 {
-		return "Simulator"
-	}
-
-	bestIdx := 0
-	bestScore := rankSimulator(devices[0].DeviceTypeID, family, platform)
-	for i := 1; i < len(devices); i++ {
-		score := rankSimulator(devices[i].DeviceTypeID, family, platform)
-		if score > bestScore {
-			bestScore = score
-			bestIdx = i
-		}
-	}
-	return devices[bestIdx].Name
-}
-
-// ListSimulators returns available simulator devices for the current platform and device family.
-func (s *Service) ListSimulators() ([]SimulatorDevice, error) {
-	// macOS has no simulators — apps run natively on the Mac.
-	if s.currentPlatform() == "macos" {
-		return nil, nil
-	}
-
-	out, err := exec.Command("xcrun", "simctl", "list", "devices", "available", "-j").Output()
-	if err != nil {
-		return nil, fmt.Errorf("failed to list simulators: %w", err)
-	}
-
-	var result struct {
-		Devices map[string][]struct {
-			Name                 string `json:"name"`
-			UDID                 string `json:"udid"`
-			IsAvailable          bool   `json:"isAvailable"`
-			DeviceTypeIdentifier string `json:"deviceTypeIdentifier"`
-		} `json:"devices"`
-	}
-	if err := json.Unmarshal(out, &result); err != nil {
-		return nil, fmt.Errorf("failed to parse simulator list: %w", err)
-	}
-
-	platform := s.currentPlatform()
-	family := s.currentDeviceFamily()
-
-	// Filter runtimes by platform
-	runtimeFilter := "iOS"
-	switch platform {
-	case "watchos":
-		runtimeFilter = "watchOS"
-	case "tvos":
-		runtimeFilter = "tvOS"
-	case "visionos":
-		runtimeFilter = "xrOS"
-	}
-
-	var devices []SimulatorDevice
-	for runtime, devs := range result.Devices {
-		if !strings.Contains(runtime, runtimeFilter) {
-			continue
-		}
-		runtimeName := parseRuntimeName(runtime)
-		for _, d := range devs {
-			if !d.IsAvailable {
-				continue
-			}
-			// Use device type identifier for filtering instead of marketing names
-			score := rankSimulator(d.DeviceTypeIdentifier, family, platform)
-			if score < 0 {
-				continue // not relevant for this family/platform
-			}
-			devices = append(devices, SimulatorDevice{
-				Name:         d.Name,
-				UDID:         d.UDID,
-				Runtime:      runtimeName,
-				DeviceTypeID: d.DeviceTypeIdentifier,
-			})
-		}
-	}
-
-	// Sort: newest runtime first, then by rank (best device first), then by name
-	sort.Slice(devices, func(i, j int) bool {
-		if devices[i].Runtime != devices[j].Runtime {
-			return devices[i].Runtime > devices[j].Runtime
-		}
-		ri := rankSimulator(devices[i].DeviceTypeID, family, platform)
-		rj := rankSimulator(devices[j].DeviceTypeID, family, platform)
-		if ri != rj {
-			return ri > rj
-		}
-		return devices[i].Name < devices[j].Name
-	})
-
-	// Deduplicate by name — keep only the newest runtime version
-	seen := map[string]bool{}
-	var unique []SimulatorDevice
-	for _, d := range devices {
-		if seen[d.Name] {
-			continue
-		}
-		seen[d.Name] = true
-		unique = append(unique, d)
-	}
-
-	return unique, nil
-}
-
-// resolveSimulatorUDID looks up the UDID for a simulator by name.
-// Returns "" if the simulator cannot be found.
-func (s *Service) resolveSimulatorUDID(name string) string {
-	devices, err := s.ListSimulators()
-	if err != nil {
-		return ""
-	}
-	for _, d := range devices {
-		if d.Name == name {
-			return d.UDID
-		}
-	}
-	return ""
-}
-
 // build creates a new app from a prompt using the multi-phase pipeline.
 func (s *Service) build(ctx context.Context, prompt string, images []string) error {
 	terminal.Header("Nanowave Build")
 
 	pipeline := orchestration.NewPipeline(s.claude, s.config, s.model)
+	pipeline.SetManager(s.manager)
 	result, err := pipeline.Build(ctx, prompt, images)
 	if err != nil {
 		terminal.Error(fmt.Sprintf("Build failed: %v", err))
@@ -501,6 +261,7 @@ func (s *Service) edit(ctx context.Context, prompt string, images []string) erro
 	terminal.Detail("Project", projectName(project))
 
 	pipeline := orchestration.NewPipeline(s.claude, s.config, s.model)
+	pipeline.SetManager(s.manager)
 	result, err := pipeline.Edit(ctx, prompt, project.ProjectPath, project.SessionID, images)
 	if err != nil {
 		terminal.Error(fmt.Sprintf("Edit failed: %v", err))
@@ -543,6 +304,7 @@ func (s *Service) Fix(ctx context.Context) error {
 	terminal.Detail("Project", projectName(project))
 
 	pipeline := orchestration.NewPipeline(s.claude, s.config, s.model)
+	pipeline.SetManager(s.manager)
 	result, err := pipeline.Fix(ctx, project.ProjectPath, project.SessionID)
 	if err != nil {
 		terminal.Error(fmt.Sprintf("Fix failed: %v", err))
@@ -680,6 +442,7 @@ func (s *Service) Run(ctx context.Context) error {
 
 		// Auto-fix: use Claude to diagnose and repair
 		pipeline := orchestration.NewPipeline(s.claude, s.config, s.model)
+		pipeline.SetManager(s.manager)
 		fixResult, fixErr := pipeline.Fix(ctx, project.ProjectPath, project.SessionID)
 		if fixErr != nil {
 			terminal.Error("Auto-fix failed")
@@ -1068,20 +831,6 @@ func projectName(p *storage.Project) string {
 	return "Unknown"
 }
 
-// parseRuntimeName converts "com.apple.CoreSimulator.SimRuntime.iOS-18-1" to "iOS 18.1".
-func parseRuntimeName(runtime string) string {
-	// Extract the part after the last "SimRuntime."
-	parts := strings.Split(runtime, "SimRuntime.")
-	if len(parts) < 2 {
-		return runtime
-	}
-	name := parts[1]
-	// "iOS-18-1" → "iOS 18.1"
-	name = strings.Replace(name, "-", " ", 1)
-	name = strings.ReplaceAll(name, "-", ".")
-	return name
-}
-
 func projectDerivedDataPath(projectPath string) string {
 	return filepath.Join(projectPath, ".nanowave", "DerivedData")
 }
@@ -1125,168 +874,12 @@ func findBuiltAppInDerivedData(derivedDataPath, scheme, platform string) (string
 	return "", fmt.Errorf("expected %s in %s but found %d app bundle(s): %s", expectedApp, productsDir, len(foundApps), strings.Join(foundApps, ", "))
 }
 
-func isAlreadyBootedSimError(err error, output []byte) bool {
-	if err == nil {
-		return false
-	}
-	text := strings.ToLower(err.Error())
-	if len(output) > 0 {
-		text += " " + strings.ToLower(string(output))
-	}
-	return strings.Contains(text, "already booted") ||
-		strings.Contains(text, "current state: booted") ||
-		strings.Contains(text, "unable to boot device in current state: booted")
-}
-
 func commandOutputSuffix(output []byte) string {
 	trimmed := strings.TrimSpace(string(output))
 	if trimmed == "" {
 		return ""
 	}
 	return "\n" + trimmed
-}
-
-func runLogWatchDuration() time.Duration {
-	raw := strings.TrimSpace(os.Getenv("NANOWAVE_RUN_LOG_WATCH_SECONDS"))
-	if raw == "" {
-		return time.Duration(defaultRunLogWatchSeconds) * time.Second
-	}
-
-	if strings.EqualFold(raw, "follow") {
-		return -1
-	}
-
-	seconds, err := strconv.Atoi(raw)
-	if err != nil || seconds < -1 {
-		return time.Duration(defaultRunLogWatchSeconds) * time.Second
-	}
-
-	if seconds == -1 {
-		return -1
-	}
-
-	return time.Duration(seconds) * time.Second
-}
-
-func streamSimulatorLogs(ctx context.Context, processName, bundleID string, duration time.Duration) error {
-	if duration <= 0 {
-		if duration == 0 {
-			return nil
-		}
-	}
-
-	watchCtx := ctx
-	cancel := func() {}
-	if duration > 0 {
-		watchCtx, cancel = context.WithTimeout(ctx, duration)
-	}
-	defer cancel()
-
-	predicate := fmt.Sprintf(`process == "%s"`, processName)
-	if strings.TrimSpace(bundleID) != "" {
-		predicate = fmt.Sprintf(`process == "%s" OR subsystem CONTAINS[c] "%s"`, processName, bundleID)
-	}
-
-	cmd := exec.CommandContext(watchCtx, "xcrun", "simctl", "spawn", "booted", "log", "stream",
-		"--style", "compact",
-		"--level", "debug",
-		"--predicate", predicate,
-	)
-
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return fmt.Errorf("failed to read log stream stdout: %w", err)
-	}
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		return fmt.Errorf("failed to read log stream stderr: %w", err)
-	}
-
-	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("failed to start simulator log stream: %w", err)
-	}
-
-	var wg sync.WaitGroup
-	wg.Add(2)
-	go streamLogReader(stdout, false, &wg)
-	go streamLogReader(stderr, true, &wg)
-
-	waitErr := cmd.Wait()
-	wg.Wait()
-
-	if watchCtx.Err() == context.DeadlineExceeded {
-		terminal.Info("Stopped log streaming.")
-		return nil
-	}
-	if watchCtx.Err() == context.Canceled {
-		return nil
-	}
-	if waitErr != nil {
-		return fmt.Errorf("simulator log stream failed: %w", waitErr)
-	}
-
-	return nil
-}
-
-// streamMacOSLogs streams native macOS logs using `log stream` directly (no simctl).
-func streamMacOSLogs(ctx context.Context, processName, bundleID string, duration time.Duration) error {
-	if duration <= 0 {
-		if duration == 0 {
-			return nil
-		}
-	}
-
-	watchCtx := ctx
-	cancel := func() {}
-	if duration > 0 {
-		watchCtx, cancel = context.WithTimeout(ctx, duration)
-	}
-	defer cancel()
-
-	predicate := fmt.Sprintf(`process == "%s"`, processName)
-	if strings.TrimSpace(bundleID) != "" {
-		predicate = fmt.Sprintf(`process == "%s" OR subsystem CONTAINS[c] "%s"`, processName, bundleID)
-	}
-
-	cmd := exec.CommandContext(watchCtx, "log", "stream",
-		"--style", "compact",
-		"--level", "debug",
-		"--predicate", predicate,
-	)
-
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return fmt.Errorf("failed to read log stream stdout: %w", err)
-	}
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		return fmt.Errorf("failed to read log stream stderr: %w", err)
-	}
-
-	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("failed to start macOS log stream: %w", err)
-	}
-
-	var wg sync.WaitGroup
-	wg.Add(2)
-	go streamLogReader(stdout, false, &wg)
-	go streamLogReader(stderr, true, &wg)
-
-	waitErr := cmd.Wait()
-	wg.Wait()
-
-	if watchCtx.Err() == context.DeadlineExceeded {
-		terminal.Info("Stopped log streaming.")
-		return nil
-	}
-	if watchCtx.Err() == context.Canceled {
-		return nil
-	}
-	if waitErr != nil {
-		return fmt.Errorf("macOS log stream failed: %w", waitErr)
-	}
-
-	return nil
 }
 
 func currentUsername() string {
@@ -1309,22 +902,4 @@ func sanitizeBundleID(s string) string {
 		return "app"
 	}
 	return result
-}
-
-func streamLogReader(r io.Reader, isErr bool, wg *sync.WaitGroup) {
-	defer wg.Done()
-
-	scanner := bufio.NewScanner(r)
-	scanner.Buffer(make([]byte, 1024), 1024*1024)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		if isErr {
-			fmt.Printf("  %s[sim-log]%s %s\n", terminal.Dim, terminal.Reset, line)
-			continue
-		}
-		fmt.Printf("  %s[sim-log]%s %s\n", terminal.Dim, terminal.Reset, line)
-	}
 }

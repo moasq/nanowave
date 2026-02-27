@@ -2,16 +2,24 @@ package commands
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/moasq/nanowave/internal/config"
 	"github.com/moasq/nanowave/internal/integrations"
+	"github.com/moasq/nanowave/internal/integrations/providers"
 	"github.com/moasq/nanowave/internal/terminal"
 	"github.com/spf13/cobra"
 )
+
+// newCmdManager creates a Manager with all registered providers.
+func newCmdManager() *integrations.Manager {
+	r := integrations.NewRegistry()
+	providers.RegisterAll(r)
+	return integrations.NewManager(r, loadIntegrationStore())
+}
 
 var integrationsCmd = &cobra.Command{
 	Use:   "integrations",
@@ -117,19 +125,25 @@ func integrationsListRun() error {
 }
 
 func integrationsSetupRun(provider string) error {
-	id := integrations.ProviderID(provider)
-	switch id {
-	case integrations.ProviderSupabase:
-		if !config.CheckSupabaseCLI() {
-			terminal.Warning("Supabase CLI not found. Install it with: brew install supabase/tap/supabase")
-			return fmt.Errorf("supabase CLI not installed")
-		}
-		store := loadIntegrationStore()
-		// When run from CLI directly, use a generic project name
-		return integrations.SetupSupabase(store, "my-app", terminalPrintFn, terminalPickFn)
-	default:
+	m := newCmdManager()
+	p, ok := m.GetProvider(integrations.ProviderID(provider))
+	if !ok {
 		return fmt.Errorf("unknown provider: %s", provider)
 	}
+	sc, ok := p.(integrations.SetupCapable)
+	if !ok {
+		return fmt.Errorf("provider %s does not support setup", provider)
+	}
+	if !sc.CLIAvailable() {
+		terminal.Warning(fmt.Sprintf("%s CLI not found. Install it with the provider's install instructions.", p.Meta().Name))
+		return fmt.Errorf("%s CLI not installed", provider)
+	}
+	return sc.Setup(context.Background(), integrations.SetupRequest{
+		Store:   m.Store(),
+		AppName: "my-app",
+		PrintFn: terminalPrintFn,
+		PickFn:  terminalPickFn,
+	})
 }
 
 func integrationsStatusRun() error {
@@ -175,53 +189,52 @@ func integrationsStatusRun() error {
 }
 
 func integrationsRemoveRun(provider string) error {
-	id := integrations.ProviderID(provider)
-	switch id {
-	case integrations.ProviderSupabase:
-		store := loadIntegrationStore()
-		appNames := store.AllAppNames(integrations.ProviderSupabase)
-		if len(appNames) == 0 {
-			terminal.Info("No Supabase integrations configured")
-			return nil
-		}
-
-		// Let user pick which app's integration to remove
-		var options []terminal.PickerOption
-		for _, name := range appNames {
-			label := name
-			if label == "" || label == integrations.DefaultAppKey() {
-				label = "(default)"
-			}
-			options = append(options, terminal.PickerOption{Label: label})
-		}
-		options = append(options, terminal.PickerOption{Label: "All", Desc: "Remove all Supabase integrations and cached credentials"})
-
-		picked := terminal.Pick("Remove Supabase for which app?", options, "")
-		if picked == "" {
-			return nil
-		}
-
-		if picked == "All" {
-			for _, name := range appNames {
-				_ = integrations.RevokeSupabase(store, name)
-			}
-			terminal.Success("All Supabase integrations and cached credentials removed")
-		} else {
-			// Map "(default)" back to the actual key
-			appName := picked
-			if picked == "(default)" {
-				appName = integrations.DefaultAppKey()
-			}
-			if err := integrations.RevokeSupabase(store, appName); err != nil {
-				return err
-			}
-			terminal.Success(fmt.Sprintf("Supabase integration removed for %s", picked))
-		}
-		fmt.Println()
-		return nil
-	default:
+	m := newCmdManager()
+	pid := integrations.ProviderID(provider)
+	p, ok := m.GetProvider(pid)
+	if !ok {
 		return fmt.Errorf("unknown provider: %s", provider)
 	}
+	sc, ok := p.(integrations.SetupCapable)
+	if !ok {
+		return fmt.Errorf("provider %s does not support removal", provider)
+	}
+	store := m.Store()
+	appNames := store.AllAppNames(pid)
+	if len(appNames) == 0 {
+		terminal.Info(fmt.Sprintf("No %s integrations configured", p.Meta().Name))
+		return nil
+	}
+	var options []terminal.PickerOption
+	for _, name := range appNames {
+		label := name
+		if label == "" || label == integrations.DefaultAppKey() {
+			label = "(default)"
+		}
+		options = append(options, terminal.PickerOption{Label: label})
+	}
+	options = append(options, terminal.PickerOption{Label: "All", Desc: fmt.Sprintf("Remove all %s integrations and cached credentials", p.Meta().Name)})
+	picked := terminal.Pick(fmt.Sprintf("Remove %s for which app?", p.Meta().Name), options, "")
+	if picked == "" {
+		return nil
+	}
+	if picked == "All" {
+		for _, name := range appNames {
+			_ = sc.Remove(context.Background(), store, name)
+		}
+		terminal.Success(fmt.Sprintf("All %s integrations and cached credentials removed", p.Meta().Name))
+	} else {
+		appName := picked
+		if picked == "(default)" {
+			appName = integrations.DefaultAppKey()
+		}
+		if err := sc.Remove(context.Background(), store, appName); err != nil {
+			return err
+		}
+		terminal.Success(fmt.Sprintf("%s integration removed for %s", p.Meta().Name, picked))
+	}
+	fmt.Println()
+	return nil
 }
 
 // terminalPrintFn bridges integrations print calls to terminal UI.
@@ -254,43 +267,24 @@ func terminalPickFn(title string, options []string) string {
 	return terminal.Pick(title, pickerOpts, "")
 }
 
-
 // RunIntegrationsInteractive provides the /integrations slash command flow.
 func RunIntegrationsInteractive() {
-	store := loadIntegrationStore()
-	statuses := store.AllStatuses()
+	m := newCmdManager()
+	store := m.Store()
 
 	fmt.Println()
 	terminal.Header("Integrations")
 
-	// Build options for picker
+	// Build options from all registered providers
 	var options []terminal.PickerOption
-	seen := make(map[integrations.ProviderID]bool)
-	for _, s := range statuses {
-		if seen[s.Provider] {
-			continue
-		}
-		seen[s.Provider] = true
-
-		integ := integrations.LookupIntegration(s.Provider)
-		if integ == nil {
-			continue
-		}
-
-		// Count configured apps
-		configuredCount := 0
-		for _, s2 := range statuses {
-			if s2.Provider == s.Provider && s2.Configured {
-				configuredCount++
-			}
-		}
-
+	for _, p := range m.AllProviders() {
+		appNames := store.AllAppNames(p.ID())
 		status := "Not configured"
-		if configuredCount > 0 {
-			status = fmt.Sprintf("✓ %d app(s) configured", configuredCount)
+		if len(appNames) > 0 {
+			status = fmt.Sprintf("✓ %d app(s) configured", len(appNames))
 		}
 		options = append(options, terminal.PickerOption{
-			Label: integ.Name,
+			Label: p.Meta().Name,
 			Desc:  status,
 		})
 	}
@@ -302,75 +296,109 @@ func RunIntegrationsInteractive() {
 		return
 	}
 
-	// Map picked name back to provider
-	switch picked {
-	case "Supabase":
-		appNames := store.AllAppNames(integrations.ProviderSupabase)
-		if len(appNames) > 0 {
-			// Already configured — show statuses + offer actions
+	// Find the provider by name
+	var selectedProvider integrations.Provider
+	for _, p := range m.AllProviders() {
+		if p.Meta().Name == picked {
+			selectedProvider = p
+			break
+		}
+	}
+	if selectedProvider == nil {
+		fmt.Println()
+		return
+	}
+
+	sc, isSetupCapable := selectedProvider.(integrations.SetupCapable)
+	if !isSetupCapable {
+		terminal.Warning(fmt.Sprintf("%s does not support setup", picked))
+		fmt.Println()
+		return
+	}
+
+	pid := selectedProvider.ID()
+	appNames := store.AllAppNames(pid)
+
+	if len(appNames) > 0 {
+		// Already configured — show statuses + offer actions
+		fmt.Println()
+		for _, appName := range appNames {
+			cfg, _ := store.GetProvider(pid, appName)
+			if cfg == nil {
+				continue
+			}
+			appLabel := appName
+			if appLabel == "" || appLabel == integrations.DefaultAppKey() {
+				appLabel = "(default)"
+			}
+			terminal.Detail("App", appLabel)
+			terminal.Detail("URL", cfg.ProjectURL)
+			mark := func(ok bool) string {
+				if ok {
+					return terminal.Green + "✓" + terminal.Reset
+				}
+				return terminal.Red + "✗" + terminal.Reset
+			}
+			terminal.Detail("Anon Key", mark(cfg.AnonKey != ""))
+			terminal.Detail("PAT (MCP)", mark(cfg.PAT != ""))
 			fmt.Println()
-			for _, appName := range appNames {
-				cfg, _ := store.GetProvider(integrations.ProviderSupabase, appName)
-				if cfg == nil {
-					continue
-				}
-				appLabel := appName
-				if appLabel == "" || appLabel == integrations.DefaultAppKey() {
-					appLabel = "(default)"
-				}
-				terminal.Detail("App", appLabel)
-				terminal.Detail("URL", cfg.ProjectURL)
-				mark := func(ok bool) string {
-					if ok {
-						return terminal.Green + "✓" + terminal.Reset
-					}
-					return terminal.Red + "✗" + terminal.Reset
-				}
-				terminal.Detail("Anon Key", mark(cfg.AnonKey != ""))
-				terminal.Detail("PAT (MCP)", mark(cfg.PAT != ""))
-				fmt.Println()
-			}
+		}
 
-			action := terminal.Pick("Action", []terminal.PickerOption{
-				{Label: "Keep", Desc: "No changes"},
-				{Label: "Add new", Desc: "Set up Supabase for another app"},
-				{Label: "Remove", Desc: "Remove a Supabase integration"},
-			}, "")
+		action := terminal.Pick("Action", []terminal.PickerOption{
+			{Label: "Keep", Desc: "No changes"},
+			{Label: "Add new", Desc: fmt.Sprintf("Set up %s for another app", picked)},
+			{Label: "Remove", Desc: fmt.Sprintf("Remove a %s integration", picked)},
+		}, "")
 
-			switch action {
-			case "Remove":
-				_ = integrationsRemoveRun("supabase")
-			case "Add new":
-				if config.CheckSupabaseCLI() {
-					_ = integrations.SetupSupabase(store, "my-app", terminalPrintFn, terminalPickFn)
-				} else {
-					terminal.Warning("Supabase CLI not found. Install: brew install supabase/tap/supabase")
-				}
+		switch action {
+		case "Remove":
+			_ = integrationsRemoveRun(string(pid))
+		case "Add new":
+			if sc.CLIAvailable() {
+				_ = sc.Setup(context.Background(), integrations.SetupRequest{
+					Store:   store,
+					AppName: "my-app",
+					PrintFn: terminalPrintFn,
+					PickFn:  terminalPickFn,
+				})
+			} else {
+				terminal.Warning(fmt.Sprintf("%s CLI not found.", picked))
 			}
-		} else {
-			// Not configured — show options before running setup
-			action := terminal.Pick("Supabase Setup", []terminal.PickerOption{
-				{Label: "Set up automatically", Desc: "Login + create project via Supabase CLI"},
-				{Label: "Enter credentials manually", Desc: "Paste project URL and anon key"},
-				{Label: "Cancel"},
-			}, "")
+		}
+	} else {
+		// Not configured — show setup options
+		action := terminal.Pick(fmt.Sprintf("%s Setup", picked), []terminal.PickerOption{
+			{Label: "Set up automatically", Desc: fmt.Sprintf("Login + create project via %s CLI", picked)},
+			{Label: "Enter credentials manually", Desc: "Paste project URL and anon key"},
+			{Label: "Cancel"},
+		}, "")
 
-			switch action {
-			case "Set up automatically":
-				if config.CheckSupabaseCLI() {
-					_ = integrations.SetupSupabase(store, "my-app", terminalPrintFn, terminalPickFn)
-				} else {
-					terminal.Warning("Supabase CLI not found. Install: brew install supabase/tap/supabase")
-				}
-			case "Enter credentials manually":
-				readLineFn := func(label string) string {
-					fmt.Printf("  %s: ", label)
-					reader := bufio.NewReader(os.Stdin)
-					line, _ := reader.ReadString('\n')
-					return strings.TrimSpace(line)
-				}
-				_ = integrations.SetupSupabaseManual(store, "my-app", readLineFn, terminalPrintFn)
+		switch action {
+		case "Set up automatically":
+			if sc.CLIAvailable() {
+				_ = sc.Setup(context.Background(), integrations.SetupRequest{
+					Store:   store,
+					AppName: "my-app",
+					PrintFn: terminalPrintFn,
+					PickFn:  terminalPickFn,
+				})
+			} else {
+				terminal.Warning(fmt.Sprintf("%s CLI not found.", picked))
 			}
+		case "Enter credentials manually":
+			readLineFn := func(label string) string {
+				fmt.Printf("  %s: ", label)
+				reader := bufio.NewReader(os.Stdin)
+				line, _ := reader.ReadString('\n')
+				return strings.TrimSpace(line)
+			}
+			_ = sc.Setup(context.Background(), integrations.SetupRequest{
+				Store:      store,
+				AppName:    "my-app",
+				Manual:     true,
+				ReadLineFn: readLineFn,
+				PrintFn:    terminalPrintFn,
+			})
 		}
 	}
 	fmt.Println()

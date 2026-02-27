@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "mcp__apple-docs__search_apple_docs",
+      "mcp__apple-docs__get_apple_doc_content",
+      "mcp__apple-docs__search_framework_symbols",
+      "mcp__apple-docs__get_sample_code",
+      "mcp__apple-docs__get_related_apis",
+      "mcp__apple-docs__find_similar_apis",
+      "mcp__apple-docs__get_platform_compatibility",
+      "mcp__xcodegen__add_permission",
+      "mcp__xcodegen__add_extension",
+      "mcp__xcodegen__add_entitlement",
+      "mcp__xcodegen__add_localization",
+      "mcp__xcodegen__set_build_setting",
+      "mcp__xcodegen__get_project_config",
+      "mcp__xcodegen__regenerate_project",
+      "SlashCommand",
+      "Task",
+      "ViewImage",
+      "WebFetch",
+      "WebSearch",
+      "mcp__supabase__execute_sql",
+      "mcp__supabase__list_tables",
+      "mcp__supabase__apply_migration",
+      "mcp__supabase__list_storage_buckets",
+      "mcp__supabase__get_project_url",
+      "mcp__supabase__get_anon_key",
+      "mcp__supabase__get_logs",
+      "mcp__supabase__configure_auth_providers",
+      "mcp__supabase__get_auth_config"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./secrets/**)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./scripts/claude/check-project-config-edits.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./scripts/claude/check-bash-safety.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./scripts/claude/check-swift-structure.sh"
+          },
+          {
+            "type": "command",
+            "command": "./scripts/claude/check-no-placeholders.sh --hook"
+          },
+          {
+            "type": "command",
+            "command": "./scripts/claude/check-previews.sh --hook"
+          },
+          {
+            "type": "command",
+            "command": "./scripts/claude/check-a11y-dynamic-type.sh --hook"
+          },
+          {
+            "type": "command",
+            "command": "./scripts/claude/check-a11y-icon-buttons.sh --hook"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./scripts/claude/run-build-check.sh --hook"
+          }
+        ]
+      }
+    ]
+  }
+}

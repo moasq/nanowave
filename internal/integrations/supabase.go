@@ -664,26 +664,6 @@ func validateSupabaseConnection(projectURL, anonKey string) error {
 	return nil
 }
 
-// EmitHITL displays a message requiring user action outside nanowave and waits for Enter.
-func EmitHITL(action HITLAction, printFn func(level, msg string)) {
-	printFn("header", "Action needed outside nanowave")
-	printFn("info", action.Message)
-	if action.URL != "" {
-		printFn("detail", action.URL)
-	}
-	if action.ContinueMsg != "" {
-		printFn("info", action.ContinueMsg)
-	} else {
-		printFn("info", "Press Enter when done...")
-	}
-	bufio.NewReader(os.Stdin).ReadLine()
-}
-
-// RemoveSupabase removes the Supabase integration config for a specific app.
-func RemoveSupabase(store *IntegrationStore, appName string) error {
-	return store.RemoveProvider(ProviderSupabase, appName)
-}
-
 // RevokeSupabase fully removes all Supabase credentials and config for an app:
 // keyring entries, cached PAT file, and the integration config from the store.
 func RevokeSupabase(store *IntegrationStore, appName string) error {
