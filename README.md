@@ -53,6 +53,7 @@ Every project ships with:
 
 - **SwiftUI** views with `#Preview` blocks, navigation, and state management
 - **SwiftData** models (when persistence is needed)
+- **Supabase** backend — auth (Apple Sign In, email, anonymous), database, storage, and realtime via MCP
 - **Swift Charts** for data visualization
 - **AppTheme** design system — centralized colors, fonts, spacing tokens
 - **SF Symbols** — appropriate icons for every screen
@@ -78,6 +79,9 @@ Apps use Apple-first frameworks wherever possible:
 <td align="center"><a href="https://developer.apple.com/machine-learning/core-ml/"><img src="https://developer.apple.com/assets/elements/icons/core-ml/core-ml-96x96_2x.png" width="40"><br><b>CoreML</b></a><br><sub>Machine learning</sub></td>
 <td align="center"><a href="https://developer.apple.com/augmented-reality/arkit/"><img src="https://developer.apple.com/assets/elements/icons/arkit/arkit-96x96_2x.png" width="40"><br><b>ARKit</b></a><br><sub>Augmented reality</sub></td>
 <td align="center"><a href="https://developer.apple.com/augmented-reality/realitykit/"><img src="https://developer.apple.com/assets/elements/icons/realitykit/realitykit-96x96_2x.png" width="40"><br><b>RealityKit</b></a><br><sub>3D & spatial</sub></td>
+</tr>
+<tr>
+<td align="center"><a href="https://supabase.com"><img src="https://cdn.simpleicons.org/supabase/3FCF8E" width="40"><br><b>Supabase</b></a><br><sub>Backend & auth</sub></td>
 </tr>
 </table>
 
@@ -174,6 +178,29 @@ Mention multiple platforms and Nanowave generates a single Xcode project with se
   ✓ Skies is ready!
 ```
 
+### Backend integration
+
+Mention authentication or a database and Nanowave connects [Supabase](https://supabase.com) automatically — auth providers, tables, RLS policies, and storage buckets are provisioned before code generation begins:
+
+```
+> A mood journal with Sign in with Apple, anonymous auth, and cloud sync
+
+  ✓ Analyzed: Aura
+  ✓ Supabase connected (project: aura-xyz)
+  ✓ Tables created: moods
+  ✓ Auth providers: apple, anonymous
+  ✓ Build complete — 10 files
+  ✓ Aura is ready!
+```
+
+Manage connections with `nanowave integrations`:
+
+```bash
+nanowave integrations           # list configured integrations
+nanowave integrations setup     # connect a new provider
+nanowave integrations remove    # disconnect a provider
+```
+
 ### Edit an existing app
 
 Select a project from the picker, then describe changes:
@@ -225,6 +252,7 @@ nanowave run          # build and launch most recent project in simulator
 nanowave info         # show project status
 nanowave open         # open most recent project in Xcode
 nanowave usage        # show usage and cost history
+nanowave integrations # manage backend integrations (Supabase, etc.)
 nanowave setup        # install and verify prerequisites
 
 # Flags
@@ -315,6 +343,7 @@ internal/
 ├── claude/             # Claude Code client (streaming, sessions)
 ├── commands/           # Cobra commands (root, chat, fix, run, setup, etc.)
 ├── config/             # Environment detection, project catalog
+├── integrations/       # Backend integrations (Supabase) + secret store
 ├── orchestration/      # Multi-phase build pipeline
 │   └── skills/         # Embedded AI skill files (70+ skills)
 ├── service/            # Service layer (build, edit, fix, run, info)
