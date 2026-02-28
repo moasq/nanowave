@@ -54,6 +54,7 @@ Every project ships with:
 - **SwiftUI** views with `#Preview` blocks, navigation, and state management
 - **SwiftData** models (when persistence is needed)
 - **Supabase** backend — auth (Apple Sign In, email, anonymous), database, storage, and realtime via MCP
+- **RevenueCat** monetization — subscriptions, one-time purchases, and Apple-compliant paywalls with dynamic pricing
 - **Swift Charts** for data visualization
 - **AppTheme** design system — centralized colors, fonts, spacing tokens
 - **SF Symbols** — appropriate icons for every screen
@@ -82,6 +83,7 @@ Apps use Apple-first frameworks wherever possible:
 </tr>
 <tr>
 <td align="center"><a href="https://supabase.com"><img src="https://cdn.simpleicons.org/supabase/3FCF8E" width="40"><br><b>Supabase</b></a><br><sub>Backend & auth</sub></td>
+<td align="center"><a href="https://www.revenuecat.com"><img src="https://cdn.simpleicons.org/revenuecat/F25A5A" width="40"><br><b>RevenueCat</b></a><br><sub>Subscriptions</sub></td>
 </tr>
 </table>
 
@@ -193,11 +195,29 @@ Mention authentication or a database and Nanowave connects [Supabase](https://su
   ✓ Aura is ready!
 ```
 
-Manage connections with `nanowave integrations`:
+### Monetization
+
+Describe a paid feature or subscription and Nanowave connects [RevenueCat](https://www.revenuecat.com) — products, entitlements, and offerings are provisioned in your dashboard, then a `SubscriptionManager` and Apple-compliant `PaywallView` are generated with live pricing from the App Store:
+
+```
+> A daily journal app with a free tier and a premium subscription
+  that unlocks unlimited entries and cloud backup
+
+  ✓ Analyzed: DayLog
+  ✓ RevenueCat connected (app: daylog-ios)
+  ✓ Products created: premium_monthly, premium_annual
+  ✓ Entitlement: premium
+  ✓ Build complete — 16 files
+  ✓ DayLog is ready!
+```
+
+All pricing is dynamic — no hardcoded dollar amounts. Paywalls include close button, disclosure text, Terms/Privacy links, and Restore Purchases as required by Apple.
+
+### Managing integrations
 
 ```bash
 nanowave integrations           # list configured integrations
-nanowave integrations setup     # connect a new provider
+nanowave integrations setup     # connect a new provider (Supabase, RevenueCat)
 nanowave integrations remove    # disconnect a provider
 ```
 
@@ -252,7 +272,7 @@ nanowave run          # build and launch most recent project in simulator
 nanowave info         # show project status
 nanowave open         # open most recent project in Xcode
 nanowave usage        # show usage and cost history
-nanowave integrations # manage backend integrations (Supabase, etc.)
+nanowave integrations # manage backend integrations (Supabase, RevenueCat)
 nanowave setup        # install and verify prerequisites
 
 # Flags
@@ -343,7 +363,7 @@ internal/
 ├── claude/             # Claude Code client (streaming, sessions)
 ├── commands/           # Cobra commands (root, chat, fix, run, setup, etc.)
 ├── config/             # Environment detection, project catalog
-├── integrations/       # Backend integrations (Supabase) + secret store
+├── integrations/       # Backend integrations (Supabase, RevenueCat) + secret store
 ├── orchestration/      # Multi-phase build pipeline
 │   └── skills/         # Embedded AI skill files (70+ skills)
 ├── service/            # Service layer (build, edit, fix, run, info)
