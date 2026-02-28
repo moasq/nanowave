@@ -148,6 +148,7 @@ func (p *Pipeline) buildPrompts(_ string, appName string, _ string, analysis *An
 			AuthMethods:        authMethods,
 			Store:              p.manager.Store(),
 			BackendProvisioned: backendProvisioned,
+			MonetizationPlan:   monetizationPlanToRef(plan.MonetizationPlan),
 		}
 		contributions, err := p.manager.PromptContributions(promptCtx, promptReq, p.activeProviders)
 		if err != nil {

@@ -152,6 +152,40 @@ List(items) { item in
 }
 ```
 
+## swipeActions — List Only
+
+`.swipeActions` is a **List-specific modifier**. It silently does nothing inside `ScrollView`, `LazyVStack`, or `VStack`.
+
+```swift
+// WORKS — swipeActions inside List
+List {
+    ForEach(items) { item in
+        ItemRow(item: item)
+            .swipeActions(edge: .trailing) {
+                Button(role: .destructive) { delete(item) } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+            }
+    }
+}
+
+// BROKEN — swipeActions silently ignored
+ScrollView {
+    LazyVStack {
+        ForEach(items) { item in
+            ItemRow(item: item)
+                .swipeActions(edge: .trailing) {   // Does NOTHING
+                    Button(role: .destructive) { delete(item) } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
+                }
+        }
+    }
+}
+```
+
+If you need swipe-to-delete, you MUST use `List`, not `ScrollView + LazyVStack`.
+
 ## Summary Checklist
 
 - [ ] ForEach uses stable identity (never `.indices` for dynamic content)
@@ -161,3 +195,4 @@ List(items) { item in
 - [ ] Don't convert enumerated sequences to arrays
 - [ ] Use `.refreshable` for pull-to-refresh
 - [ ] Custom list styling uses appropriate modifiers
+- [ ] `.swipeActions` only used inside `List` (not ScrollView/LazyVStack)

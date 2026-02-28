@@ -316,20 +316,29 @@ func (p *Pipeline) Build(ctx context.Context, prompt string, images []string) (*
 		terminal.Detail("Active integrations", fmt.Sprintf("%d: %s", len(activeIntegrationIDs), strings.Join(activeIntegrationIDs, ", ")))
 
 		// Provision via Manager
-		if len(activeProviders) > 0 && analysis.BackendNeeds != nil && analysis.BackendNeeds.NeedsBackend() {
-			authMethods := analysis.BackendNeeds.AuthMethods
-			if analysis.BackendNeeds.Auth && len(authMethods) == 0 {
-				authMethods = []string{"email", "anonymous"}
+		if len(activeProviders) > 0 && (analysis.BackendNeeds != nil && analysis.BackendNeeds.NeedsBackend() || plan.MonetizationPlan != nil) {
+			var authMethods []string
+			if analysis.BackendNeeds != nil {
+				authMethods = analysis.BackendNeeds.AuthMethods
+				if analysis.BackendNeeds.Auth && len(authMethods) == 0 {
+					authMethods = []string{"email", "anonymous"}
+				}
 			}
 			provReq := integrations.ProvisionRequest{
 				AppName:       appName,
 				BundleID:      fmt.Sprintf("%s.%s", bundleIDPrefix(), strings.ToLower(appName)),
 				Models:        modelsToModelRefs(plan.Models),
 				AuthMethods:   authMethods,
-				NeedsAuth:     analysis.BackendNeeds.Auth,
-				NeedsDB:       analysis.BackendNeeds.DB || len(plan.Models) > 0,
-				NeedsStorage:  analysis.BackendNeeds.Storage,
-				NeedsRealtime: analysis.BackendNeeds.Realtime,
+				NeedsAuth:     analysis.BackendNeeds != nil && analysis.BackendNeeds.Auth,
+				NeedsDB:       analysis.BackendNeeds != nil && (analysis.BackendNeeds.DB || len(plan.Models) > 0),
+				NeedsStorage:  analysis.BackendNeeds != nil && analysis.BackendNeeds.Storage,
+				NeedsRealtime: analysis.BackendNeeds != nil && analysis.BackendNeeds.Realtime,
+			}
+			// Wire monetization plan for RevenueCat provisioning
+			if plan.MonetizationPlan != nil {
+				provReq.NeedsMonetization = true
+				provReq.MonetizationType = plan.MonetizationPlan.Model
+				provReq.MonetizationPlan = monetizationPlanToRef(plan.MonetizationPlan)
 			}
 			provResult, err := p.manager.Provision(ctx, provReq, activeProviders)
 			if err != nil {
@@ -343,6 +352,15 @@ func (p *Pipeline) Build(ctx context.Context, prompt string, images []string) (*
 				if len(provResult.TablesCreated) > 0 {
 					terminal.Success(fmt.Sprintf("Tables created: %s", strings.Join(provResult.TablesCreated, ", ")))
 				}
+			}
+		}
+
+		// Generate StoreKit configuration file for local testing
+		if plan.MonetizationPlan != nil {
+			if err := writeStoreKitConfig(projectDir, appName, plan.MonetizationPlan); err != nil {
+				terminal.Warning(fmt.Sprintf("StoreKit config generation failed: %v", err))
+			} else {
+				terminal.Success("StoreKit configuration file generated")
 			}
 		}
 

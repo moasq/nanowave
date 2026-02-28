@@ -5,6 +5,7 @@ package providers
 
 import (
 	"github.com/moasq/nanowave/internal/integrations"
+	"github.com/moasq/nanowave/internal/integrations/providers/revenuecat"
 	"github.com/moasq/nanowave/internal/integrations/providers/supabase"
 )
 
@@ -13,6 +14,6 @@ import (
 // requires one line here and one new package.
 func RegisterAll(r *integrations.Registry) {
 	r.Register(supabase.New())
-	// r.Register(revenuecat.New())      // future
+	r.Register(revenuecat.New())
 	// r.Register(appstoreconnect.New())  // future
 }

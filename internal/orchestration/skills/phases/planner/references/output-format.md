@@ -43,7 +43,7 @@ An extension with an empty `kind` will produce a broken Xcode project (invalid b
 
 Include a key if ANY file uses that feature. Design-system, navigation, layout, components, and swiftui are always loaded — do NOT include them.
 
-Features: authentication, notifications, localization, dark-mode, app-review, website-links, haptics, timers, charts, camera, maps, biometrics, healthkit, speech, storage, apple-translation, siri-intents, foundation-models, supabase, repositories
+Features: authentication, notifications, localization, dark-mode, app-review, website-links, haptics, timers, charts, camera, maps, biometrics, healthkit, speech, storage, apple-translation, siri-intents, foundation-models, supabase, repositories, revenuecat, paywall, subscription-manager
 
 UI refinement: view-complexity, typography, color-contrast, spacing-layout, feedback-states, view-composition, accessibility, gestures, adaptive-layout, liquid-glass, animations
 
@@ -52,7 +52,7 @@ Extensions: widgets, live-activities, share-extension, notification-service, saf
 ## Integrations
 
 When `backend_needs` is present in the analysis, include an `integrations` array listing the backend providers to activate.
-Currently available: `"supabase"`.
+Currently available: `"supabase"`, `"revenuecat"`.
 
 When integrations includes `"supabase"`:
 - Add `"supabase"` to `rule_keys` so the Supabase skill is loaded
@@ -102,6 +102,48 @@ When `backend_needs.auth` is true:
 - Plan `Features/Common/AuthGuardView.swift` (gate mode) or inline auth checks (optional mode)
 - When Supabase is also present: AuthService delegates to `SupabaseService.shared.client.auth` for actual auth calls
 
+When `backend_needs.monetization` is true:
+- Add `"revenuecat"` to `integrations` array
+- Add `"revenuecat"`, `"paywall"`, and `"subscription-manager"` to `rule_keys`
+- Add the RevenueCat package: `{"name": "RevenueCat", "reason": "In-app purchases and subscription management via RevenueCat SDK"}`
+- Include a `monetization_plan` object in the planner output (see below)
+- Plan `Config/AppConfig.swift` with static RevenueCat API key constants
+- Plan `Services/Subscription/SubscriptionManager.swift` — `@Observable` singleton with `isPremium`, `creditBalance`
+- Plan `Features/Paywall/PaywallView.swift` — custom paywall UI (NOT RevenueCat's built-in PaywallView)
+- Plan `Features/Paywall/PaywallViewModel.swift` — offerings fetch, purchase flow
+- Plan supporting components: `PaywallPlanCard.swift`, `PaywallFeatureRow.swift`, `PaywallFooter.swift`
+
+`monetization_plan` format:
+```json
+"monetization_plan": {
+  "model": "subscription",
+  "products": [
+    {"identifier": "premium_monthly", "type": "subscription", "display_name": "Monthly", "price": "9.99", "duration": "P1M"},
+    {"identifier": "premium_yearly", "type": "subscription", "display_name": "Yearly", "price": "49.99", "duration": "P1Y"}
+  ],
+  "entitlement": "premium",
+  "free_credits": 0
+}
+```
+
+- `model`: `"subscription"`, `"consumable"`, or `"hybrid"` (matches `backend_needs.monetization_type`)
+- `products`: array of products to create in RevenueCat and App Store Connect
+- `entitlement`: the entitlement key (e.g., `"premium"`)
+- `free_credits`: initial free credits for consumable/hybrid models (0 = none)
+
+For consumable credit packs:
+```json
+"monetization_plan": {
+  "model": "consumable",
+  "products": [
+    {"identifier": "credits_10", "type": "consumable", "display_name": "10 Credits", "price": "4.99", "credits": 10},
+    {"identifier": "credits_50", "type": "consumable", "display_name": "50 Credits", "price": "19.99", "credits": 50}
+  ],
+  "entitlement": "credits",
+  "free_credits": 5
+}
+```
+
 ## Package Entries
 
 **Default is ZERO packages.** Most apps need none. Only add a package when: (1) no native API exists for the capability, or (2) the native approach would require 100+ lines of complex code that the package eliminates. See the workflow reference for the full decision threshold and native-first table.
@@ -134,6 +176,7 @@ Available curated packages (the build phase resolves exact URLs, versions, and p
 | QR codes (stylized) | EFQRCode |
 | Keychain storage | KeychainSwift, Valet |
 | Backend | Supabase |
+| Monetization | RevenueCat |
 
 If a feature needs a package not in this table, include your best guess — the build phase will search the internet and resolve it.
 
