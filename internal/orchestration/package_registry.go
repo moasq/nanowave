@@ -60,6 +60,7 @@ var packageCategories = []PackageCategory{
 
 	// Backend
 	{Key: "backend", Label: "Backend", Description: "Server-side backend SDKs"},
+	{Key: "monetization", Label: "Monetization", Description: "In-app purchases, subscriptions, and paywall management"},
 }
 
 // curatedPackages is the registry of pre-validated, top-tier SPM packages.
@@ -408,6 +409,18 @@ var curatedPackages = []CuratedPackage{
 		RepoName:    "supabase-swift",
 		Products:    []string{"Supabase"},
 		MinVersion:  "2.0.0",
+	},
+
+	// ── Monetization ──────────────────────────────────────────────────
+	{
+		Key:         "purchases-ios",
+		Name:        "RevenueCat",
+		Category:    "monetization",
+		Description: "In-app purchases and subscriptions via RevenueCat SDK",
+		RepoURL:     "https://github.com/RevenueCat/purchases-ios",
+		RepoName:    "purchases-ios",
+		Products:    []string{"RevenueCat"},
+		MinVersion:  "5.0.0",
 	},
 }
 

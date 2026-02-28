@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"github.com/moasq/nanowave/internal/revenuecatserver"
 	"github.com/moasq/nanowave/internal/supabaseserver"
 	"github.com/moasq/nanowave/internal/xcodegenserver"
 	"github.com/spf13/cobra"
@@ -30,7 +31,17 @@ var mcpSupabaseCmd = &cobra.Command{
 	},
 }
 
+var mcpRevenuecatCmd = &cobra.Command{
+	Use:   "revenuecat",
+	Short: "Run the RevenueCat MCP server",
+	Long:  "Starts the RevenueCat MCP server over stdio. Used by Claude Code to manage RevenueCat products, entitlements, and offerings via the REST API v2.",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return revenuecatserver.Run(cmd.Context())
+	},
+}
+
 func init() {
 	mcpCmd.AddCommand(mcpXcodegenCmd)
 	mcpCmd.AddCommand(mcpSupabaseCmd)
+	mcpCmd.AddCommand(mcpRevenuecatCmd)
 }

@@ -44,11 +44,13 @@ type IntentDecision struct {
 
 // BackendNeeds indicates which backend capabilities an app requires.
 type BackendNeeds struct {
-	Auth        bool     `json:"auth"`
-	AuthMethods []string `json:"auth_methods,omitempty"` // "email", "apple", "google", "anonymous"
-	DB          bool     `json:"db"`
-	Storage     bool     `json:"storage"`
-	Realtime    bool     `json:"realtime,omitempty"` // enable Supabase Realtime on tables
+	Auth             bool     `json:"auth"`
+	AuthMethods      []string `json:"auth_methods,omitempty"` // "email", "apple", "google", "anonymous"
+	DB               bool     `json:"db"`
+	Storage          bool     `json:"storage"`
+	Realtime         bool     `json:"realtime,omitempty"`          // enable Supabase Realtime on tables
+	Monetization     bool     `json:"monetization,omitempty"`      // in-app purchases / subscriptions needed
+	MonetizationType string   `json:"monetization_type,omitempty"` // "subscription", "consumable", "hybrid"
 }
 
 // NeedsBackend returns true if any backend capability is required.
@@ -86,8 +88,9 @@ type PlannerResult struct {
 	Localizations     []string        `json:"localizations"`
 	RuleKeys          []string        `json:"rule_keys"`
 	Packages          []PackagePlan   `json:"packages"`
-	Integrations      []string        `json:"integrations,omitempty"`
-	BuildOrder        []string        `json:"build_order"`
+	Integrations      []string          `json:"integrations,omitempty"`
+	MonetizationPlan  *MonetizationPlan `json:"monetization_plan,omitempty"`
+	BuildOrder        []string          `json:"build_order"`
 }
 
 // GetDeviceFamily returns the device family, defaulting to "iphone" for iOS.
@@ -360,4 +363,22 @@ type Permission struct {
 type PackagePlan struct {
 	Name   string `json:"name"`
 	Reason string `json:"reason"`
+}
+
+// MonetizationPlan describes the in-app purchase / subscription setup.
+type MonetizationPlan struct {
+	Model       string        `json:"model"`        // "subscription", "consumable", "hybrid"
+	Products    []ProductPlan `json:"products"`
+	Entitlement string        `json:"entitlement"`   // e.g., "premium"
+	FreeCredits int           `json:"free_credits"`   // initial free amount (0 = none)
+}
+
+// ProductPlan describes a single in-app purchase product.
+type ProductPlan struct {
+	Identifier  string `json:"identifier"`     // e.g., "premium_monthly", "credits_50"
+	Type        string `json:"type"`           // "subscription", "consumable"
+	DisplayName string `json:"display_name"`
+	Price       string `json:"price"`          // e.g., "9.99"
+	Credits     int    `json:"credits,omitempty"` // for consumable credit packs
+	Duration    string `json:"duration,omitempty"` // ISO 8601: "P1M", "P1Y", "P1W"
 }

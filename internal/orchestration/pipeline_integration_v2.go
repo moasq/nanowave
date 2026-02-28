@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/moasq/nanowave/internal/claude"
-	"github.com/moasq/nanowave/internal/config"
 	"github.com/moasq/nanowave/internal/integrations"
 	"github.com/moasq/nanowave/internal/terminal"
 )
@@ -33,15 +32,25 @@ func askSetupConfirm(providerID string) inlineSetupChoice {
 		name = integ.Name
 	}
 
-	options := []terminal.PickerOption{
-		{Label: "Automatic", Desc: "Connect via " + name + " CLI (opens browser, ~30 seconds)"},
-		{Label: "Manual", Desc: "Enter project URL and anon key manually"},
-		{Label: "Skip", Desc: "Continue without backend — use placeholder credentials"},
+	var options []terminal.PickerOption
+	switch integrations.ProviderID(providerID) {
+	case integrations.ProviderRevenueCat:
+		options = []terminal.PickerOption{
+			{Label: "Guided", Desc: "Enter API key → pick project & app from your account"},
+			{Label: "Manual", Desc: "Enter project ID, app ID, and API keys directly"},
+			{Label: "Skip", Desc: "Continue without monetization — use placeholder keys"},
+		}
+	default:
+		options = []terminal.PickerOption{
+			{Label: "Automatic", Desc: "Connect via " + name + " CLI (opens browser, ~30 seconds)"},
+			{Label: "Manual", Desc: "Enter project URL and anon key manually"},
+			{Label: "Skip", Desc: "Continue without backend — use placeholder credentials"},
+		}
 	}
 
 	picked := terminal.Pick(fmt.Sprintf("Set up %s now?", name), options, "")
 	switch picked {
-	case "Automatic":
+	case "Automatic", "Guided":
 		return setupChoiceAuto
 	case "Manual":
 		return setupChoiceManual
@@ -299,10 +308,11 @@ func (u *pipelineSetupUI) PromptSetup(ctx context.Context, sc integrations.Setup
 	if sc.CLIAvailable() {
 		terminal.Info(fmt.Sprintf("Setting up %s for %s...", p.Meta().Name, appName))
 		err := sc.Setup(ctx, integrations.SetupRequest{
-			Store:   store,
-			AppName: appName,
-			PrintFn: pipelinePrintFn,
-			PickFn:  pipelinePickFn,
+			Store:      store,
+			AppName:    appName,
+			ReadLineFn: pipelineReadLineFn,
+			PrintFn:    pipelinePrintFn,
+			PickFn:     pipelinePickFn,
 		})
 		if err != nil {
 			terminal.Error(fmt.Sprintf("Auto-setup failed: %v", err))
@@ -323,10 +333,11 @@ func (u *pipelineSetupUI) promptManualSetup(ctx context.Context, sc integrations
 		switch choice {
 		case setupChoiceAuto:
 			err := sc.Setup(ctx, integrations.SetupRequest{
-				Store:   store,
-				AppName: appName,
-				PrintFn: pipelinePrintFn,
-				PickFn:  pipelinePickFn,
+				Store:      store,
+				AppName:    appName,
+				ReadLineFn: pipelineReadLineFn,
+				PrintFn:    pipelinePrintFn,
+				PickFn:     pipelinePickFn,
 			})
 			if err != nil {
 				terminal.Error(fmt.Sprintf("Setup failed: %v", err))
@@ -354,8 +365,27 @@ func (u *pipelineSetupUI) promptManualSetup(ctx context.Context, sc integrations
 	}
 }
 
-func (u *pipelineSetupUI) ValidateExisting(_ context.Context, sc integrations.SetupCapable, p integrations.Provider, store *integrations.IntegrationStore, appName string, cfg *integrations.IntegrationConfig) *integrations.IntegrationConfig {
-	terminal.Success(fmt.Sprintf("%s connected (project: %s)", p.Meta().Name, cfg.ProjectRef))
+func (u *pipelineSetupUI) ValidateExisting(ctx context.Context, sc integrations.SetupCapable, p integrations.Provider, store *integrations.IntegrationStore, appName string, cfg *integrations.IntegrationConfig) *integrations.IntegrationConfig {
+	projectLabel := cfg.ProjectURL
+	if projectLabel == "" {
+		projectLabel = cfg.ProjectRef
+	}
+
+	// RevenueCat: each new build should confirm credentials since the user may
+	// want a different RC project/app. Other providers (Supabase) reuse silently.
+	if p.ID() == integrations.ProviderRevenueCat {
+		options := []terminal.PickerOption{
+			{Label: "Reuse", Desc: fmt.Sprintf("Use existing credentials (project: %s)", projectLabel)},
+			{Label: "New", Desc: "Set up with a different RevenueCat project/key"},
+		}
+		picked := terminal.Pick("Found existing RevenueCat config", options, "")
+		if picked == "New" {
+			_ = store.RemoveProvider(p.ID(), appName)
+			return u.promptManualSetup(ctx, sc, p, store, appName)
+		}
+	}
+
+	terminal.Success(fmt.Sprintf("%s connected (project: %s)", p.Meta().Name, projectLabel))
 	terminal.Detail("Config details", fmt.Sprintf("URL=%s, has_anon_key=%t, has_PAT=%t",
 		cfg.ProjectURL, cfg.AnonKey != "", cfg.PAT != ""))
 
@@ -373,8 +403,6 @@ func (u *pipelineSetupUI) ValidateExisting(_ context.Context, sc integrations.Se
 				return updated
 			}
 			terminal.Error(fmt.Sprintf("Setup failed: %v", err))
-		} else if !config.CheckSupabaseCLI() {
-			terminal.Warning(fmt.Sprintf("%s CLI not found — cannot refresh PAT", p.Meta().Name))
 		}
 	}
 	return cfg
@@ -382,3 +410,126 @@ func (u *pipelineSetupUI) ValidateExisting(_ context.Context, sc integrations.Se
 
 func (u *pipelineSetupUI) Info(msg string)    { terminal.Info(msg) }
 func (u *pipelineSetupUI) Warning(msg string) { terminal.Warning(msg) }
+
+// monetizationPlanToRef converts orchestration.MonetizationPlan to integrations.MonetizationPlan.
+// Same bridge pattern as modelsToModelRefs.
+func monetizationPlanToRef(plan *MonetizationPlan) *integrations.MonetizationPlan {
+	if plan == nil {
+		return nil
+	}
+	products := make([]integrations.MonetizationProduct, len(plan.Products))
+	for i, p := range plan.Products {
+		products[i] = integrations.MonetizationProduct{
+			Identifier:  p.Identifier,
+			Type:        p.Type,
+			DisplayName: p.DisplayName,
+			Price:       p.Price,
+			Credits:     p.Credits,
+			Duration:    p.Duration,
+		}
+	}
+	return &integrations.MonetizationPlan{
+		Model:       plan.Model,
+		Products:    products,
+		Entitlement: plan.Entitlement,
+		FreeCredits: plan.FreeCredits,
+	}
+}
+
+// writeStoreKitConfig generates a .storekit configuration file for local testing.
+func writeStoreKitConfig(projectDir, appName string, plan *MonetizationPlan) error {
+	type storeKitProduct struct {
+		DisplayName           string `json:"displayName"`
+		Identifier            string `json:"identifier"`
+		ProductCategory       string `json:"productCategory"`
+		ReferenceName         string `json:"referenceName"`
+		Type                  string `json:"type"`
+	}
+
+	type storeKitSubscription struct {
+		DisplayName     string `json:"displayName"`
+		Identifier      string `json:"identifier"`
+		ProductCategory string `json:"productCategory"`
+		ReferenceName   string `json:"referenceName"`
+		Type            string `json:"type"`
+		SubscriptionPeriod string `json:"subscriptionPeriod,omitempty"`
+	}
+
+	type storeKitSubscriptionGroup struct {
+		ID            string                 `json:"id"`
+		Name          string                 `json:"name"`
+		Subscriptions []storeKitSubscription `json:"subscriptions"`
+	}
+
+	type storeKitConfig struct {
+		Identifier           string                      `json:"identifier"`
+		NonRenewingSubscriptions []any                   `json:"nonRenewingSubscriptions"`
+		Products             []storeKitProduct           `json:"products"`
+		Settings             map[string]any              `json:"settings"`
+		SubscriptionGroups   []storeKitSubscriptionGroup `json:"subscriptionGroups"`
+		Version              map[string]int              `json:"version"`
+	}
+
+	var products []storeKitProduct
+	var subscriptions []storeKitSubscription
+
+	for _, p := range plan.Products {
+		if p.Type == "consumable" {
+			products = append(products, storeKitProduct{
+				DisplayName:     p.DisplayName,
+				Identifier:      p.Identifier,
+				ProductCategory: "nonConsumable",
+				ReferenceName:   p.DisplayName,
+				Type:            "Consumable",
+			})
+		} else {
+			period := "P1M"
+			if p.Duration != "" {
+				period = p.Duration
+			}
+			subscriptions = append(subscriptions, storeKitSubscription{
+				DisplayName:        p.DisplayName,
+				Identifier:         p.Identifier,
+				ProductCategory:    "subscription",
+				ReferenceName:      p.DisplayName,
+				Type:               "RecurringSubscription",
+				SubscriptionPeriod: period,
+			})
+		}
+	}
+
+	config := storeKitConfig{
+		Identifier:               fmt.Sprintf("%s.storekit", appName),
+		NonRenewingSubscriptions: []any{},
+		Products:                 products,
+		Settings: map[string]any{
+			"_applicationInternalID": "",
+			"_developerTeamID":       "",
+		},
+		Version: map[string]int{"major": 3, "minor": 0},
+	}
+
+	if len(subscriptions) > 0 {
+		config.SubscriptionGroups = []storeKitSubscriptionGroup{
+			{
+				ID:            "group_default",
+				Name:          "default",
+				Subscriptions: subscriptions,
+			},
+		}
+	}
+
+	data, err := json.MarshalIndent(config, "", "  ")
+	if err != nil {
+		return err
+	}
+	data = append(data, '\n')
+
+	// Place inside the app source directory so XcodeGen's syncedFolder picks it up automatically.
+	appDir := filepath.Join(projectDir, appName)
+	if err := os.MkdirAll(appDir, 0o755); err != nil {
+		return fmt.Errorf("create app directory: %w", err)
+	}
+	filename := fmt.Sprintf("%s.storekit", appName)
+	return os.WriteFile(filepath.Join(appDir, filename), data, 0o644)
+}

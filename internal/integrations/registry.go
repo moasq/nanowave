@@ -22,6 +22,14 @@ var integrationRegistry = map[ProviderID]*CuratedIntegration{
 		MCPArgs:     []string{"mcp", "supabase"},
 		DocsMCPPkg:  "@anthropic-ai/supabase-docs-mcp",
 	},
+	ProviderRevenueCat: {
+		ID:          ProviderRevenueCat,
+		Name:        "RevenueCat",
+		Description: "In-app purchases, subscriptions, and paywalls",
+		SPMPackage:  "purchases-ios",
+		MCPCommand:  "nanowave",
+		MCPArgs:     []string{"mcp", "revenuecat"},
+	},
 }
 
 // LookupIntegration returns the curated integration for a provider ID, or nil.
@@ -33,5 +41,6 @@ func LookupIntegration(id ProviderID) *CuratedIntegration {
 func AllIntegrations() []*CuratedIntegration {
 	return []*CuratedIntegration{
 		integrationRegistry[ProviderSupabase],
+		integrationRegistry[ProviderRevenueCat],
 	}
 }

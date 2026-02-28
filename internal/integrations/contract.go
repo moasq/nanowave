@@ -90,6 +90,7 @@ type PromptRequest struct {
 	AuthMethods        []string
 	Store              *IntegrationStore
 	BackendProvisioned bool
+	MonetizationPlan   *MonetizationPlan // product/subscription plan from planner
 }
 
 // PromptContribution is the output of a provider's prompt generation.
@@ -105,7 +106,8 @@ type PromptContribution struct {
 // MCPRequest holds parameters for MCP server configuration.
 type MCPRequest struct {
 	PAT        string
-	ProjectRef string
+	ProjectURL string // provider-specific project ID (e.g. Supabase URL, RevenueCat project ID)
+	ProjectRef string // provider-specific secondary ref (e.g. Supabase ref, RevenueCat app ID)
 }
 
 // MCPServerConfig describes an MCP server entry for .mcp.json.
@@ -118,16 +120,20 @@ type MCPServerConfig struct {
 
 // ProvisionRequest holds parameters for backend provisioning.
 type ProvisionRequest struct {
-	PAT         string
-	ProjectRef  string
-	AppName     string
-	BundleID    string
-	Models      []ModelRef
-	AuthMethods []string
-	NeedsAuth   bool
-	NeedsDB     bool
-	NeedsStorage bool
-	NeedsRealtime bool
+	PAT              string
+	ProjectURL       string // provider-specific project ID (e.g. Supabase URL, RevenueCat project ID)
+	ProjectRef       string // provider-specific secondary ref (e.g. Supabase ref, RevenueCat app ID)
+	AppName          string
+	BundleID         string
+	Models           []ModelRef
+	AuthMethods      []string
+	NeedsAuth        bool
+	NeedsDB          bool
+	NeedsStorage     bool
+	NeedsRealtime    bool
+	NeedsMonetization bool              // in-app purchases / subscriptions
+	MonetizationType  string             // "subscription", "consumable", "hybrid"
+	MonetizationPlan  *MonetizationPlan  // product definitions from planner
 }
 
 // ProvisionResult holds the outcome of backend provisioning.
@@ -158,6 +164,25 @@ type PropertyRef struct {
 type ActiveProvider struct {
 	Provider Provider
 	Config   *IntegrationConfig
+}
+
+// MonetizationPlan is a bridge type mirroring orchestration.MonetizationPlan.
+// Avoids circular import: orchestration → integrations → orchestration.
+type MonetizationPlan struct {
+	Model       string
+	Products    []MonetizationProduct
+	Entitlement string
+	FreeCredits int
+}
+
+// MonetizationProduct mirrors orchestration.ProductPlan fields.
+type MonetizationProduct struct {
+	Identifier  string
+	Type        string
+	DisplayName string
+	Price       string
+	Credits     int
+	Duration    string
 }
 
 // --- Helper functions ---

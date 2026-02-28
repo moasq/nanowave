@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/moasq/nanowave/internal/claude"
+	"github.com/moasq/nanowave/internal/integrations"
 	"github.com/moasq/nanowave/internal/terminal"
 )
 
@@ -32,6 +33,36 @@ func (p *Pipeline) Edit(ctx context.Context, prompt, projectDir, sessionID strin
 	appendPrompt, err := composeCoderAppendPrompt("editor", platform)
 	if err != nil {
 		return nil, err
+	}
+
+	// Resolve existing integrations for this project (no setup prompts — just load stored configs).
+	var activeProviders []integrations.ActiveProvider
+	if p.manager != nil {
+		activeProviders = p.manager.ResolveExisting(appName)
+		if len(activeProviders) > 0 {
+			var names []string
+			for _, ap := range activeProviders {
+				names = append(names, string(ap.Provider.ID()))
+			}
+			terminal.Detail("Edit integrations", strings.Join(names, ", "))
+		}
+	}
+
+	// Inject integration prompt contributions (RevenueCat config, API keys, etc.)
+	if len(activeProviders) > 0 {
+		promptReq := integrations.PromptRequest{
+			AppName: appName,
+			Store:   p.manager.Store(),
+		}
+		contributions, err := p.manager.PromptContributions(ctx, promptReq, activeProviders)
+		if err != nil {
+			terminal.Warning(fmt.Sprintf("Integration prompt contributions failed: %v", err))
+		}
+		for _, c := range contributions {
+			if c.SystemBlock != "" {
+				appendPrompt += c.SystemBlock
+			}
+		}
 	}
 
 	var userMsg string
@@ -73,6 +104,12 @@ After making changes:
 5. Repeat until the build succeeds`, prompt, appName, appName, destination, appName)
 	}
 
+	// Build tool list: base tools + integration MCP tools
+	tools := append([]string(nil), baseAgenticTools...)
+	if p.manager != nil && len(activeProviders) > 0 {
+		tools = append(tools, p.manager.AgentTools(activeProviders)...)
+	}
+
 	progress := terminal.NewProgressDisplay("edit", 0)
 	progress.Start()
 
@@ -81,7 +118,7 @@ After making changes:
 		MaxTurns:           30,
 		Model:              p.buildModel(),
 		WorkDir:            projectDir,
-		AllowedTools:       append([]string(nil), baseAgenticTools...),
+		AllowedTools:       tools,
 		SessionID:          sessionID,
 		Images:             images,
 	}, newProgressCallback(progress))

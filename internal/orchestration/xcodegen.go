@@ -1098,19 +1098,25 @@ func generateIOSProjectYAML(appName string, plan *PlannerResult, entitlements ma
 		}
 	}
 
-	// Explicit scheme — prevents Xcode from trying to debug/show extension widgets on launch
-	if hasExtensions {
+	// Explicit scheme — needed for extensions or StoreKit testing configuration
+	hasMonetization := plan != nil && plan.MonetizationPlan != nil && len(plan.MonetizationPlan.Products) > 0
+	if hasExtensions || hasMonetization {
 		b.WriteString("\nschemes:\n")
 		fmt.Fprintf(&b, "  %s:\n", appName)
 		b.WriteString("    build:\n")
 		b.WriteString("      targets:\n")
 		fmt.Fprintf(&b, "        %s: all\n", appName)
-		for _, ext := range plan.Extensions {
-			name := extensionTargetName(ext, appName)
-			fmt.Fprintf(&b, "        %s: all\n", name)
+		if hasExtensions {
+			for _, ext := range plan.Extensions {
+				name := extensionTargetName(ext, appName)
+				fmt.Fprintf(&b, "        %s: all\n", name)
+			}
 		}
 		b.WriteString("    run:\n")
 		fmt.Fprintf(&b, "      executable: %s\n", appName)
+		if hasMonetization {
+			fmt.Fprintf(&b, "      storeKitConfiguration: %s/%s.storekit\n", appName, appName)
+		}
 	}
 
 	return b.String()

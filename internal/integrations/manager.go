@@ -90,6 +90,7 @@ func (m *Manager) MCPConfigs(ctx context.Context, active []ActiveProvider) ([]MC
 		}
 		req := MCPRequest{
 			PAT:        a.Config.PAT,
+			ProjectURL: a.Config.ProjectURL,
 			ProjectRef: a.Config.ProjectRef,
 		}
 		cfg, err := mc.MCPServer(ctx, req)
@@ -147,6 +148,7 @@ func (m *Manager) Provision(ctx context.Context, req ProvisionRequest, active []
 		// Fill in per-provider credentials from resolved config
 		r := req
 		r.PAT = a.Config.PAT
+		r.ProjectURL = a.Config.ProjectURL
 		r.ProjectRef = a.Config.ProjectRef
 		result, err := pc.Provision(ctx, r)
 		if err != nil {
@@ -164,6 +166,22 @@ func (m *Manager) Provision(ctx context.Context, req ProvisionRequest, active []
 		}
 	}
 	return combined, nil
+}
+
+// ResolveExisting returns active providers that already have stored configs for
+// the given app. Unlike Resolve, this never prompts for setup — it silently
+// skips providers with no config. Used by the Edit/Fix flows where the project
+// was already built and integrations were configured during the original build.
+func (m *Manager) ResolveExisting(appName string) []ActiveProvider {
+	var active []ActiveProvider
+	for _, p := range m.registry.All() {
+		cfg, _ := m.store.GetProvider(p.ID(), appName)
+		if cfg == nil {
+			continue
+		}
+		active = append(active, ActiveProvider{Provider: p, Config: cfg})
+	}
+	return active
 }
 
 // AllProviders returns all registered providers.

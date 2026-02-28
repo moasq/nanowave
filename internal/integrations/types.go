@@ -4,7 +4,8 @@ package integrations
 type ProviderID string
 
 const (
-	ProviderSupabase ProviderID = "supabase"
+	ProviderSupabase   ProviderID = "supabase"
+	ProviderRevenueCat ProviderID = "revenuecat"
 )
 
 // IntegrationConfig stores credentials and connection details for a backend provider.
