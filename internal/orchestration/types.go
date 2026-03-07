@@ -37,6 +37,7 @@ type IntentDecision struct {
 	PlatformHints         []string `json:"platform_hints"`
 	DeviceFamilyHint      string   `json:"device_family_hint"`
 	WatchProjectShapeHint string   `json:"watch_project_shape_hint"`
+	HasASCIntent          bool     `json:"has_asc_intent"`
 	Confidence            float64  `json:"confidence"`
 	Reason                string   `json:"reason"`
 	UsedLLM               bool     `json:"used_llm"`

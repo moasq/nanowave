@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/moasq/nanowave/internal/mcpregistry"
 )
 
 func writeCLAUDEMDIndex(projectDir, appName string) error {
@@ -377,11 +379,11 @@ func writeClaudeMemoryFiles(projectDir, appName, platform, deviceFamily string, 
 }
 
 // writeClaudeProjectScaffold writes shared Claude Code project files for generated apps.
-func writeClaudeProjectScaffold(projectDir, appName, platform string) error {
-	return writeClaudeProjectScaffoldWithShape(projectDir, appName, platform, "")
+func writeClaudeProjectScaffold(projectDir, appName, platform string, reg *mcpregistry.Registry) error {
+	return writeClaudeProjectScaffoldWithShape(projectDir, appName, platform, "", reg)
 }
 
-func writeClaudeProjectScaffoldWithShape(projectDir, appName, platform, watchProjectShape string) error {
+func writeClaudeProjectScaffoldWithShape(projectDir, appName, platform, watchProjectShape string, reg *mcpregistry.Registry) error {
 	if err := writeSkillCatalog(projectDir); err != nil {
 		return err
 	}
@@ -397,7 +399,7 @@ func writeClaudeProjectScaffoldWithShape(projectDir, appName, platform, watchPro
 	if err := writeClaudeWorkflowDocsWithShape(projectDir, appName, platform, watchProjectShape); err != nil {
 		return err
 	}
-	if err := writeSettingsShared(projectDir, nil); err != nil {
+	if err := writeSettingsShared(projectDir, reg, nil); err != nil {
 		return err
 	}
 	if err := writeProjectMakefileWithShape(projectDir, appName, platform, watchProjectShape); err != nil {
@@ -407,10 +409,6 @@ func writeClaudeProjectScaffoldWithShape(projectDir, appName, platform, watchPro
 		return err
 	}
 	return nil
-}
-
-func writeClaudeCommands(projectDir, appName, platform string) error {
-	return writeClaudeCommandsWithShape(projectDir, appName, platform, "")
 }
 
 func writeClaudeCommandsWithShape(projectDir, appName, platform, watchProjectShape string) error {
@@ -647,10 +645,6 @@ Prefer fast checks first and avoid destabilizing app code.
 	return nil
 }
 
-func writeClaudeWorkflowDocs(projectDir, appName, platform string) error {
-	return writeClaudeWorkflowDocsWithShape(projectDir, appName, platform, "")
-}
-
 func writeClaudeWorkflowDocsWithShape(projectDir, appName, platform, watchProjectShape string) error {
 	buildCmd := canonicalBuildCommandForShape(appName, platform, watchProjectShape)
 	content := fmt.Sprintf(`# Claude Workflow (Generated Project)
@@ -711,19 +705,11 @@ Keep Apple docs MCP plus web fallback as the default recovery path.
 	return writeTextFile(filepath.Join(projectDir, "docs", "claude-workflow.md"), content, 0o644)
 }
 
-func writeProjectMakefile(projectDir, appName, platform string) error {
-	return writeProjectMakefileWithShape(projectDir, appName, platform, "")
-}
-
 func writeProjectMakefileWithShape(projectDir, appName, platform, watchProjectShape string) error {
 	buildCmd := canonicalBuildCommandForShape(appName, platform, watchProjectShape)
 	destination := canonicalBuildDestinationForShape(platform, watchProjectShape)
 	content := fmt.Sprintf(".PHONY: build test claude-check mcp-health skills-validate\n\nbuild:\n\t%s\n\nmcp-health:\n\t./scripts/claude/mcp-health.sh\n\nskills-validate:\n\t./scripts/claude/validate-skills.sh\n\nclaude-check:\n\t-./scripts/claude/mcp-health.sh\n\tplutil -lint .mcp.json >/dev/null\n\tplutil -lint .claude/settings.json >/dev/null\n\t./scripts/claude/validate-skills.sh\n\t./scripts/claude/check-no-placeholders.sh\n\t./scripts/claude/check-previews.sh\n\t./scripts/claude/check-swift-structure.sh\n\t./scripts/claude/check-a11y-dynamic-type.sh\n\t./scripts/claude/check-a11y-icon-buttons.sh\n\t./scripts/claude/check-project-config-edits.sh --scan || true\n\t./scripts/claude/run-build-check.sh\n\ntest:\n\t@if [ -d Tests ]; then \\\n\t\techo \"Tests directory found; running xcodebuild test\"; \\\n\t\txcodebuild -project %s.xcodeproj -scheme %s -destination '%s' -quiet test; \\\n\telse \\\n\t\techo \"No Tests directory present; skipping tests\"; \\\n\tfi\n", buildCmd, appName, appName, destination)
 	return writeTextFile(filepath.Join(projectDir, "Makefile"), content, 0o644)
-}
-
-func writeCIWorkflow(projectDir, appName, platform string) error {
-	return writeCIWorkflowWithShape(projectDir, appName, platform, "")
 }
 
 func writeCIWorkflowWithShape(projectDir, appName, platform, watchProjectShape string) error {

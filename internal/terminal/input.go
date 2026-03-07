@@ -20,6 +20,7 @@ var SlashCommands = []CommandInfo{
 	{Name: "/simulator", Desc: "Select simulator device"},
 	{Name: "/model", Desc: "Show or switch model"},
 	{Name: "/fix", Desc: "Auto-fix build errors"},
+	{Name: "/connect", Desc: "App Store Connect (publish, TestFlight, metadata)"},
 	{Name: "/ask", Desc: "Ask a question about your project"},
 	{Name: "/open", Desc: "Open project in Xcode"},
 	{Name: "/info", Desc: "Show project info"},
@@ -227,8 +228,9 @@ func readWithTimeout(buf []byte, timeout time.Duration) int {
 
 // PickerOption represents an option in the interactive picker.
 type PickerOption struct {
-	Label string
-	Desc  string
+	Label       string
+	Desc        string
+	IsTextEntry bool // When true, selecting this option opens a text input prompt
 }
 
 // Pick shows an interactive picker with arrow key navigation.

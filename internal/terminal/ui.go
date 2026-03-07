@@ -1,7 +1,9 @@
 package terminal
 
 import (
+	"bufio"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -27,6 +29,7 @@ type Spinner struct {
 	message string
 	running bool
 	done    chan struct{}
+	exited  chan struct{} // closed when goroutine exits
 }
 
 var spinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
@@ -36,6 +39,7 @@ func NewSpinner(message string) *Spinner {
 	return &Spinner{
 		message: message,
 		done:    make(chan struct{}),
+		exited:  make(chan struct{}),
 	}
 }
 
@@ -50,6 +54,7 @@ func (s *Spinner) Start() {
 	s.mu.Unlock()
 
 	go func() {
+		defer close(s.exited)
 		i := 0
 		for {
 			select {
@@ -87,6 +92,7 @@ func (s *Spinner) Stop() {
 	s.mu.Unlock()
 
 	close(s.done)
+	<-s.exited // wait for goroutine to stop writing
 	fmt.Printf("\r%s\r", strings.Repeat(" ", 80))
 }
 
@@ -206,5 +212,16 @@ func ToolStatus(opts ToolStatusOpts) {
 // Prompt prints the input prompt.
 func Prompt() {
 	fmt.Printf("%s> %s", Bold, Reset)
+}
+
+// ReadSimpleLine reads a single line from stdin. Used for HITL prompts
+// during streaming operations where the full readline editor isn't needed.
+func ReadSimpleLine() string {
+	fmt.Printf("%s> %s", Bold, Reset)
+	scanner := bufio.NewScanner(os.Stdin)
+	if scanner.Scan() {
+		return strings.TrimSpace(scanner.Text())
+	}
+	return ""
 }
 

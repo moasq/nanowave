@@ -17,3 +17,17 @@ User: "Build a meditation app for iPhone and Vision Pro"
 
 User: "A productivity app for iPhone and Mac"
 -> operation: "build", platform_hint: "ios", platform_hints: ["ios", "macos"], device_family_hint: "iphone", confidence: 0.95
+
+## ASC Intent Examples
+
+User: "publish my app to TestFlight"
+-> has_asc_intent: true
+
+User: "build a weather app and publish it"
+-> operation: "build", has_asc_intent: true (mixed — will be refused)
+
+User: "submit to the App Store"
+-> has_asc_intent: true
+
+User: "add a dark mode toggle"
+-> has_asc_intent: false

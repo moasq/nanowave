@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 )
 
 // Client wraps the Claude Code CLI for LLM calls.
@@ -175,7 +176,7 @@ func (c *Client) Generate(ctx context.Context, userMessage string, opts Generate
 
 // StreamEvent represents a parsed event from Claude Code's stream-json output.
 type StreamEvent struct {
-	Type    string // "assistant", "tool_use", "tool_result", "result", "system", "content_block_delta"
+	Type    string // "assistant", "tool_use", "tool_use_start", "tool_input_delta", "tool_result", "result", "system", "content_block_delta"
 	Subtype string // e.g. "init"
 
 	// For tool_use events
@@ -337,6 +338,243 @@ func (c *Client) GenerateStreaming(ctx context.Context, userMessage string, opts
 	return &Response{Result: result, SessionID: sessionID}, nil
 }
 
+// InteractiveSession represents a running Claude Code subprocess with bidirectional
+// stream-json communication. It allows sending follow-up user messages while
+// streaming events — enabling human-in-the-loop interactions where Claude asks
+// questions and the caller provides answers.
+type InteractiveSession struct {
+	cmd       *exec.Cmd
+	stdin     io.WriteCloser
+	stderrBuf bytes.Buffer
+	mu        sync.Mutex
+
+	// Result channels
+	responseCh chan interactiveResult
+}
+
+type interactiveResult struct {
+	response *Response
+	err      error
+}
+
+// SendUserMessage sends a follow-up user message to the running Claude session.
+// Use this when Claude emits an assistant message asking a question and is
+// waiting for user input.
+func (s *InteractiveSession) SendUserMessage(message string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	msg := struct {
+		Type    string `json:"type"`
+		Message struct {
+			Role    string `json:"role"`
+			Content string `json:"content"`
+		} `json:"message"`
+	}{
+		Type: "user",
+		Message: struct {
+			Role    string `json:"role"`
+			Content string `json:"content"`
+		}{
+			Role:    "user",
+			Content: message,
+		},
+	}
+	data, err := json.Marshal(msg)
+	if err != nil {
+		return fmt.Errorf("failed to marshal user message: %w", err)
+	}
+	data = append(data, '\n')
+	_, err = s.stdin.Write(data)
+	return err
+}
+
+// CloseInput signals that no more user messages will be sent.
+// Claude Code will finish processing and return a result.
+func (s *InteractiveSession) CloseInput() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.stdin.Close()
+}
+
+// Stderr returns any stderr output captured from the Claude Code process.
+func (s *InteractiveSession) Stderr() string {
+	return s.stderrBuf.String()
+}
+
+// Wait blocks until the session completes and returns the final response.
+func (s *InteractiveSession) Wait() (*Response, error) {
+	result := <-s.responseCh
+	return result.response, result.err
+}
+
+// StartInteractiveStreaming creates an interactive Claude Code session with
+// bidirectional stream-json communication. Unlike GenerateStreaming (which
+// sends the prompt and closes stdin), this keeps stdin open so follow-up
+// user messages can be sent via SendUserMessage().
+//
+// The onEvent callback is called for each stream event. When Claude emits an
+// assistant message and goes idle (waiting for user input), the caller should
+// detect this, collect user input, and call session.SendUserMessage().
+//
+// When done, call session.CloseInput() then session.Wait() to get the result.
+func (c *Client) StartInteractiveStreaming(ctx context.Context, userMessage string, opts GenerateOpts, onEvent func(StreamEvent)) (*InteractiveSession, error) {
+	userMessage = buildImageContext(userMessage, opts.Images)
+	args := []string{"-p", "--output-format", "stream-json", "--input-format", "stream-json", "--verbose", "--include-partial-messages"}
+
+	maxTurns := opts.MaxTurns
+	if maxTurns == 0 {
+		maxTurns = 1
+	}
+	args = append(args, "--max-turns", fmt.Sprintf("%d", maxTurns))
+
+	if opts.SystemPrompt != "" {
+		args = append(args, "--system-prompt", opts.SystemPrompt)
+	}
+	if opts.AppendSystemPrompt != "" {
+		args = append(args, "--append-system-prompt", opts.AppendSystemPrompt)
+	}
+	if opts.SessionID != "" {
+		args = append(args, "--resume", opts.SessionID)
+	}
+
+	model := opts.Model
+	if model == "" {
+		model = c.model
+	}
+	if model != "" {
+		args = append(args, "--model", model)
+	}
+
+	if opts.MCPConfig != "" {
+		args = append(args, "--mcp-config", opts.MCPConfig)
+	}
+	for _, tool := range opts.AllowedTools {
+		args = append(args, "--allowedTools", tool)
+	}
+
+	cmd := exec.CommandContext(ctx, c.claudePath, args...)
+	if opts.WorkDir != "" {
+		cmd.Dir = opts.WorkDir
+	}
+	cmd.Env = filterEnv(os.Environ(), "CLAUDECODE")
+
+	stdinPipe, err := cmd.StdinPipe()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create stdin pipe: %w", err)
+	}
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create stdout pipe: %w", err)
+	}
+
+	session := &InteractiveSession{
+		cmd:        cmd,
+		stdin:      stdinPipe,
+		responseCh: make(chan interactiveResult, 1),
+	}
+	cmd.Stderr = &session.stderrBuf
+
+	if err := cmd.Start(); err != nil {
+		return nil, fmt.Errorf("failed to start claude: %w", err)
+	}
+
+	// Send initial user message as stream-json
+	if err := session.SendUserMessage(userMessage); err != nil {
+		_ = cmd.Process.Kill()
+		return nil, fmt.Errorf("failed to send initial message: %w", err)
+	}
+
+	// Stream reading goroutine
+	go func() {
+		var lastResponse *Response
+		var sessionID string
+		var assistantText strings.Builder
+
+		streamErr := streamNDJSONLines(stdout, func(line []byte) error {
+			trimmed := bytes.TrimSpace(line)
+			if len(trimmed) == 0 {
+				return nil
+			}
+			if !json.Valid(trimmed) {
+				return fmt.Errorf("invalid JSON stream event (%d bytes)", len(trimmed))
+			}
+
+			ev := parseStreamEvent(trimmed)
+			if ev == nil {
+				return nil
+			}
+
+			if ev.Type == "system" && ev.Subtype == "init" && ev.SessionID != "" {
+				sessionID = ev.SessionID
+			}
+
+			if ev.Type == "content_block_delta" && ev.Text != "" {
+				assistantText.WriteString(ev.Text)
+			} else if ev.Type == "assistant" && ev.Text != "" {
+				assistantText.Reset()
+				assistantText.WriteString(ev.Text)
+			}
+
+			if ev.Type == "result" {
+				result := ev.Result
+				if result == "" {
+					result = assistantText.String()
+				}
+				lastResponse = &Response{
+					Result:       result,
+					TotalCostUSD: ev.CostUSD,
+					SessionID:    ev.SessionID,
+					NumTurns:     ev.NumTurns,
+					Usage:        ev.Usage,
+				}
+				if ev.IsError {
+					return fmt.Errorf("claude returned error: %s", ev.Result)
+				}
+			}
+
+			if onEvent != nil {
+				onEvent(*ev)
+			}
+			return nil
+		})
+
+		// Wait for process to finish
+		waitErr := cmd.Wait()
+
+		if streamErr != nil {
+			if ctx.Err() != nil {
+				session.responseCh <- interactiveResult{err: ctx.Err()}
+			} else {
+				session.responseCh <- interactiveResult{err: fmt.Errorf("failed to read claude stream: %w", streamErr)}
+			}
+			return
+		}
+		if waitErr != nil {
+			if ctx.Err() != nil {
+				session.responseCh <- interactiveResult{err: ctx.Err()}
+			} else if stderrMsg := session.stderrBuf.String(); stderrMsg != "" {
+				session.responseCh <- interactiveResult{err: fmt.Errorf("claude command failed: %w\nstderr: %s", waitErr, stderrMsg)}
+			} else {
+				session.responseCh <- interactiveResult{err: fmt.Errorf("claude command failed: %w", waitErr)}
+			}
+			return
+		}
+
+		if lastResponse != nil {
+			if lastResponse.SessionID == "" {
+				lastResponse.SessionID = sessionID
+			}
+			session.responseCh <- interactiveResult{response: lastResponse}
+		} else {
+			result := assistantText.String()
+			session.responseCh <- interactiveResult{response: &Response{Result: result, SessionID: sessionID}}
+		}
+	}()
+
+	return session, nil
+}
+
 // parseStreamEvent parses a single NDJSON line from stream-json output.
 func parseStreamEvent(line []byte) *StreamEvent {
 	// Claude Code stream-json emits various event shapes.
@@ -365,9 +603,15 @@ func parseStreamEvent(line []byte) *StreamEvent {
 		Event struct {
 			Type  string `json:"type"`
 			Delta struct {
-				Type string `json:"type"`
-				Text string `json:"text"`
+				Type        string `json:"type"`
+				Text        string `json:"text"`
+				PartialJSON string `json:"partial_json"`
 			} `json:"delta"`
+			ContentBlock struct {
+				Type  string          `json:"type"`
+				Name  string          `json:"name"`
+				Input json.RawMessage `json:"input"`
+			} `json:"content_block"`
 		} `json:"event"`
 	}
 
@@ -386,11 +630,32 @@ func parseStreamEvent(line []byte) *StreamEvent {
 		Usage:     raw.Usage,
 	}
 
-	// Handle stream_event with content_block_delta (token-by-token text)
-	if raw.Type == "stream_event" && raw.Event.Type == "content_block_delta" && raw.Event.Delta.Type == "text_delta" {
-		ev.Type = "content_block_delta"
-		ev.Text = raw.Event.Delta.Text
-		return ev
+	// Handle stream_event wrapper events (--include-partial-messages)
+	if raw.Type == "stream_event" {
+		switch raw.Event.Type {
+		case "content_block_start":
+			// Tool use starting — we know the tool name immediately
+			if raw.Event.ContentBlock.Type == "tool_use" && raw.Event.ContentBlock.Name != "" {
+				ev.Type = "tool_use_start"
+				ev.ToolName = raw.Event.ContentBlock.Name
+				return ev
+			}
+			return nil
+		case "content_block_delta":
+			if raw.Event.Delta.Type == "text_delta" && raw.Event.Delta.Text != "" {
+				ev.Type = "content_block_delta"
+				ev.Text = raw.Event.Delta.Text
+				return ev
+			}
+			if raw.Event.Delta.Type == "input_json_delta" && raw.Event.Delta.PartialJSON != "" {
+				ev.Type = "tool_input_delta"
+				ev.Text = raw.Event.Delta.PartialJSON
+				return ev
+			}
+			return nil
+		default:
+			return nil
+		}
 	}
 
 	// Extract tool_use or text from assistant messages

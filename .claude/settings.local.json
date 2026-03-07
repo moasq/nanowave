@@ -49,7 +49,12 @@
       "Bash(make build:*)",
       "Bash(go vet:*)",
       "Bash(make test:*)",
-      "Bash(make skills-source-validate:*)"
+      "Bash(make skills-source-validate:*)",
+      "Bash(npm run:*)",
+      "Bash(./bin/nanowave mcp asc)",
+      "Bash(echo \"exit code: $?\")",
+      "Bash(claude:*)",
+      "mcp__context7__resolve-library-id"
     ]
   },
   "disabledMcpjsonServers": [

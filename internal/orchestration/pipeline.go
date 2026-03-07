@@ -11,6 +11,7 @@ import (
 	"github.com/moasq/nanowave/internal/claude"
 	"github.com/moasq/nanowave/internal/config"
 	"github.com/moasq/nanowave/internal/integrations"
+	"github.com/moasq/nanowave/internal/mcpregistry"
 	"github.com/moasq/nanowave/internal/terminal"
 )
 
@@ -38,18 +39,6 @@ func retryPhase[T any](ctx context.Context, maxRetries int, fn func() (T, error)
 	}
 	var zero T
 	return zero, lastErr
-}
-
-// canonicalBuildDestination returns the Xcode build destination for the given platform.
-func canonicalBuildDestination(platform string) string {
-	return canonicalBuildDestinationForShape(platform, "")
-}
-
-// detectProjectPlatform reads project_config.json and extracts the platform field.
-// Returns "ios" if missing or unreadable (backward compat).
-func detectProjectPlatform(projectDir string) string {
-	platform, _, _ := detectProjectBuildHints(projectDir)
-	return platform
 }
 
 // detectProjectBuildHints reads project_config.json and extracts build-relevant hints.
@@ -90,36 +79,22 @@ func readProjectAppName(projectDir string) string {
 	return cfg.AppName
 }
 
-// baseAgenticTools is the set of tools Claude Code needs for writing code, building, and fixing.
-var baseAgenticTools = []string{
+// coreAgenticTools is the set of non-MCP tools Claude Code always needs.
+// MCP tools (apple-docs, xcodegen) are provided by the registry.
+var coreAgenticTools = []string{
 	"Write", "Edit", "Read", "Bash", "Glob", "Grep",
 	"WebFetch", "WebSearch",
-	// Apple docs
-	"mcp__apple-docs__search_apple_docs",
-	"mcp__apple-docs__get_apple_doc_content",
-	"mcp__apple-docs__search_framework_symbols",
-	"mcp__apple-docs__get_sample_code",
-	"mcp__apple-docs__get_related_apis",
-	"mcp__apple-docs__find_similar_apis",
-	"mcp__apple-docs__get_platform_compatibility",
-	// XcodeGen project config
-	"mcp__xcodegen__add_permission",
-	"mcp__xcodegen__add_extension",
-	"mcp__xcodegen__add_entitlement",
-	"mcp__xcodegen__add_localization",
-	"mcp__xcodegen__set_build_setting",
-	"mcp__xcodegen__get_project_config",
-	"mcp__xcodegen__add_package",
-	"mcp__xcodegen__regenerate_project",
 }
 
 // Pipeline orchestrates the multi-phase app generation process.
 type Pipeline struct {
-	claude          *claude.Client
+	claude          claude.ClaudeAgent
 	config          *config.Config
-	model           string                    // user-selected model for code generation (empty = "sonnet")
+	model           string                         // user-selected model for code generation (empty = "sonnet")
 	manager         *integrations.Manager          // provider-based integration manager (nil = no integrations)
-	activeProviders []integrations.ActiveProvider // resolved providers for current build (transient)
+	registry        *mcpregistry.Registry          // internal MCP server registry (apple-docs, xcodegen)
+	activeProviders []integrations.ActiveProvider   // resolved providers for current build (transient)
+	onStreamEvent   func(claude.StreamEvent)       // optional hook for web UI streaming (nil = CLI-only)
 }
 
 // SetManager sets the integration manager for provider-based integrations.
@@ -127,14 +102,44 @@ func (p *Pipeline) SetManager(m *integrations.Manager) {
 	p.manager = m
 }
 
+// SetStreamHook sets an optional callback invoked for every streaming event.
+// Used by the web UI to mirror CLI progress in the browser.
+func (p *Pipeline) SetStreamHook(hook func(claude.StreamEvent)) {
+	p.onStreamEvent = hook
+}
+
+// makeStreamCallback wraps the terminal progress callback and the optional web hook.
+func (p *Pipeline) makeStreamCallback(progress *terminal.ProgressDisplay) func(claude.StreamEvent) {
+	termCb := newProgressCallback(progress)
+	if p.onStreamEvent == nil {
+		return termCb
+	}
+	hook := p.onStreamEvent
+	return func(ev claude.StreamEvent) {
+		termCb(ev)
+		hook(ev)
+	}
+}
+
 // NewPipeline creates a new pipeline orchestrator.
 // model overrides the default "sonnet" model for build/edit/fix phases.
-func NewPipeline(claudeClient *claude.Client, cfg *config.Config, model string) *Pipeline {
+func NewPipeline(claudeClient claude.ClaudeAgent, cfg *config.Config, model string) *Pipeline {
+	reg := mcpregistry.New()
+	mcpregistry.RegisterAll(reg)
 	return &Pipeline{
-		claude: claudeClient,
-		config: cfg,
-		model:  model,
+		claude:   claudeClient,
+		config:   cfg,
+		model:    model,
+		registry: reg,
 	}
+}
+
+// baseAgenticTools returns core tools plus all MCP tools from the registry.
+func (p *Pipeline) baseAgenticTools() []string {
+	tools := make([]string, len(coreAgenticTools))
+	copy(tools, coreAgenticTools)
+	tools = append(tools, p.registry.AllTools()...)
+	return tools
 }
 
 // buildModel returns the model to use for code generation phases.
@@ -143,6 +148,15 @@ func (p *Pipeline) buildModel() string {
 		return p.model
 	}
 	return "sonnet"
+}
+
+// QuickIntentCheck runs the intent router and returns the decision.
+// Used by Service.Send() to detect ASC intent before entering build/edit.
+func (p *Pipeline) QuickIntentCheck(ctx context.Context, prompt string) (*IntentDecision, error) {
+	progress := terminal.NewProgressDisplay("intent", 0)
+	progress.Start()
+	defer progress.Stop()
+	return p.decideBuildIntent(ctx, prompt, progress)
 }
 
 // Build runs the full pipeline: intent → setup → analyze → plan → build+fix → finalize.
@@ -236,215 +250,22 @@ func (p *Pipeline) Build(ctx context.Context, prompt string, images []string) (*
 		terminal.Detail("Permissions", strings.Join(permNames, ", "))
 	}
 
-	// Now set up the actual workspace with the real app name
-	if err := setupWorkspace(projectDir); err != nil {
-		return nil, fmt.Errorf("workspace setup failed: %w", err)
+	// Set up the actual workspace with the real app name
+	if err := p.setupBuildWorkspace(projectDir, appName, plan); err != nil {
+		return nil, err
 	}
 
-	if err := writeInitialCLAUDEMD(projectDir, appName, plan.GetPlatform(), plan.GetDeviceFamily()); err != nil {
-		return nil, fmt.Errorf("failed to write CLAUDE.md: %w", err)
+	// Resolve and provision integrations
+	provState, err := p.provisionIntegrations(ctx, projectDir, appName, plan, analysis)
+	if err != nil {
+		return nil, err
 	}
 
-	if err := enrichCLAUDEMD(projectDir, plan, appName); err != nil {
-		return nil, fmt.Errorf("failed to enrich CLAUDE.md: %w", err)
+	// Scaffold project files and run XcodeGen
+	if err := p.scaffoldProject(projectDir, appName, plan, provState.needsAppleSignIn); err != nil {
+		return nil, err
 	}
-
-	if err := writeCoreRules(projectDir, plan.GetPlatform(), plan.Packages); err != nil {
-		return nil, fmt.Errorf("failed to write core rules: %w", err)
-	}
-
-	if plan.IsMultiPlatform() {
-		platforms := plan.GetPlatforms()
-		if err := writeAlwaysSkills(projectDir, platforms[0], platforms[1:]...); err != nil {
-			return nil, fmt.Errorf("failed to write always skills: %w", err)
-		}
-	} else {
-		if err := writeAlwaysSkills(projectDir, plan.GetPlatform()); err != nil {
-			return nil, fmt.Errorf("failed to write always skills: %w", err)
-		}
-	}
-
-	// Auto-inject adaptive-layout skill for iPad/universal apps (iOS only)
-	if plan.GetPlatform() == PlatformIOS {
-		if family := plan.GetDeviceFamily(); family == "ipad" || family == "universal" {
-			hasAdaptive := false
-			for _, k := range plan.RuleKeys {
-				if k == "adaptive-layout" {
-					hasAdaptive = true
-					break
-				}
-			}
-			if !hasAdaptive {
-				plan.RuleKeys = append(plan.RuleKeys, "adaptive-layout")
-			}
-		}
-	}
-
-	if err := writeConditionalSkills(projectDir, plan.RuleKeys, plan.GetPlatform()); err != nil {
-		return nil, fmt.Errorf("failed to write conditional skills: %w", err)
-	}
-
-	scaffoldPlatform := plan.GetPlatform()
-	scaffoldShape := plan.GetWatchProjectShape()
-	if plan.IsMultiPlatform() {
-		// For multi-platform, scaffold uses the primary platform (iOS)
-		scaffoldPlatform = PlatformIOS
-		scaffoldShape = ""
-	}
-	if err := writeClaudeProjectScaffoldWithShape(projectDir, appName, scaffoldPlatform, scaffoldShape); err != nil {
-		return nil, fmt.Errorf("failed to write Claude project scaffold: %w", err)
-	}
-
-	// Resolve active integrations from planner output
-	var activeIntegrationIDs []string
-	var activeProviders []integrations.ActiveProvider
-	backendProvisioned := false
-	needsAppleSignIn := false
-
-	if p.manager != nil && len(plan.Integrations) > 0 {
-		terminal.Info(fmt.Sprintf("Resolving %d integration(s): %s", len(plan.Integrations), strings.Join(plan.Integrations, ", ")))
-		ui := &pipelineSetupUI{}
-		resolved, err := p.manager.Resolve(ctx, appName, plan.Integrations, ui)
-		if err != nil {
-			terminal.Warning(fmt.Sprintf("Integration resolution failed: %v", err))
-		}
-		activeProviders = resolved
-		p.activeProviders = resolved // store for buildStreaming access
-		for _, ap := range activeProviders {
-			activeIntegrationIDs = append(activeIntegrationIDs, string(ap.Provider.ID()))
-		}
-		terminal.Detail("Active integrations", fmt.Sprintf("%d: %s", len(activeIntegrationIDs), strings.Join(activeIntegrationIDs, ", ")))
-
-		// Provision via Manager
-		if len(activeProviders) > 0 && (analysis.BackendNeeds != nil && analysis.BackendNeeds.NeedsBackend() || plan.MonetizationPlan != nil) {
-			var authMethods []string
-			if analysis.BackendNeeds != nil {
-				authMethods = analysis.BackendNeeds.AuthMethods
-				if analysis.BackendNeeds.Auth && len(authMethods) == 0 {
-					authMethods = []string{"email", "anonymous"}
-				}
-			}
-			provReq := integrations.ProvisionRequest{
-				AppName:       appName,
-				BundleID:      fmt.Sprintf("%s.%s", bundleIDPrefix(), strings.ToLower(appName)),
-				Models:        modelsToModelRefs(plan.Models),
-				AuthMethods:   authMethods,
-				NeedsAuth:     analysis.BackendNeeds != nil && analysis.BackendNeeds.Auth,
-				NeedsDB:       analysis.BackendNeeds != nil && (analysis.BackendNeeds.DB || len(plan.Models) > 0),
-				NeedsStorage:  analysis.BackendNeeds != nil && analysis.BackendNeeds.Storage,
-				NeedsRealtime: analysis.BackendNeeds != nil && analysis.BackendNeeds.Realtime,
-			}
-			// Wire monetization plan for RevenueCat provisioning
-			if plan.MonetizationPlan != nil {
-				provReq.NeedsMonetization = true
-				provReq.MonetizationType = plan.MonetizationPlan.Model
-				provReq.MonetizationPlan = monetizationPlanToRef(plan.MonetizationPlan)
-			}
-			provResult, err := p.manager.Provision(ctx, provReq, activeProviders)
-			if err != nil {
-				terminal.Warning(fmt.Sprintf("Provisioning failed: %v", err))
-			} else if provResult != nil {
-				backendProvisioned = provResult.BackendProvisioned
-				needsAppleSignIn = provResult.NeedsAppleSignIn
-				for _, w := range provResult.Warnings {
-					terminal.Warning(w)
-				}
-				if len(provResult.TablesCreated) > 0 {
-					terminal.Success(fmt.Sprintf("Tables created: %s", strings.Join(provResult.TablesCreated, ", ")))
-				}
-			}
-		}
-
-		// Generate StoreKit configuration file for local testing
-		if plan.MonetizationPlan != nil {
-			if err := writeStoreKitConfig(projectDir, appName, plan.MonetizationPlan); err != nil {
-				terminal.Warning(fmt.Sprintf("StoreKit config generation failed: %v", err))
-			} else {
-				terminal.Success("StoreKit configuration file generated")
-			}
-		}
-
-		// Write MCP config via Manager
-		mcpConfigs, err := p.manager.MCPConfigs(ctx, activeProviders)
-		if err != nil {
-			terminal.Warning(fmt.Sprintf("MCP config generation failed: %v", err))
-		}
-		if err := writeMCPConfig(projectDir, mcpConfigs); err != nil {
-			return nil, fmt.Errorf("failed to write MCP config: %w", err)
-		}
-		terminal.Detail("MCP config", fmt.Sprintf("written to %s/.mcp.json (%d integrations)", projectDir, len(mcpConfigs)))
-
-		// Write settings with Manager tool allowlist
-		mcpTools := p.manager.MCPToolAllowlist(activeProviders)
-		if err := writeSettingsShared(projectDir, mcpTools); err != nil {
-			return nil, fmt.Errorf("failed to update settings with integration permissions: %w", err)
-		}
-	} else {
-		terminal.Detail("Integrations", "none in plan")
-	}
-
-	if err := writeSettingsLocal(projectDir); err != nil {
-		return nil, fmt.Errorf("failed to write settings: %w", err)
-	}
-
-	// Write project_config.json first (source of truth for XcodeGen MCP server).
-	if err := writeProjectConfig(projectDir, plan, appName); err != nil {
-		return nil, fmt.Errorf("failed to write project_config.json: %w", err)
-	}
-
-	// Auto-add Apple Sign-In entitlement to project_config.json when apple auth is detected.
-	// This ensures the XcodeGen MCP server preserves it on future regenerations.
-	if needsAppleSignIn {
-		if err := addAutoEntitlement(projectDir, "com.apple.developer.applesignin", []any{"Default"}, ""); err != nil {
-			terminal.Warning(fmt.Sprintf("Could not add Apple Sign-In entitlement: %v", err))
-		} else {
-			terminal.Success("Apple Sign-In entitlement added to project config")
-		}
-	}
-
-	// Read back entitlements from project_config.json so project.yml includes them
-	// in the entitlements properties section. This ensures XcodeGen writes the correct
-	// .entitlements plist, and regenerate_project preserves them.
-	mainEntitlements := readConfigEntitlements(projectDir, "")
-
-	if err := writeProjectYML(projectDir, plan, appName, mainEntitlements); err != nil {
-		return nil, fmt.Errorf("failed to write project.yml: %w", err)
-	}
-
-	if err := writeGitignore(projectDir); err != nil {
-		return nil, fmt.Errorf("failed to write .gitignore: %w", err)
-	}
-
-	if plan.IsMultiPlatform() {
-		// Multi-platform: one asset catalog per platform source dir
-		for _, plat := range plan.GetPlatforms() {
-			suffix := PlatformSourceDirSuffix(plat)
-			dirName := appName + suffix
-			if err := writeAssetCatalog(projectDir, dirName, plat); err != nil {
-				return nil, fmt.Errorf("failed to write %s asset catalog: %w", PlatformDisplayName(plat), err)
-			}
-		}
-	} else if IsWatchOS(plan.GetPlatform()) && plan.GetWatchProjectShape() == WatchShapePaired {
-		// Paired: iOS asset catalog for the main app, watchOS for the watch app
-		if err := writeAssetCatalog(projectDir, appName, PlatformIOS); err != nil {
-			return nil, fmt.Errorf("failed to write asset catalog: %w", err)
-		}
-		if err := writeAssetCatalog(projectDir, appName+"Watch", PlatformWatchOS); err != nil {
-			return nil, fmt.Errorf("failed to write watch asset catalog: %w", err)
-		}
-	} else {
-		if err := writeAssetCatalog(projectDir, appName, plan.GetPlatform()); err != nil {
-			return nil, fmt.Errorf("failed to write asset catalog: %w", err)
-		}
-	}
-
-	if err := scaffoldSourceDirs(projectDir, appName, plan); err != nil {
-		return nil, fmt.Errorf("failed to scaffold source dirs: %w", err)
-	}
-
-	if err := runXcodeGen(projectDir); err != nil {
-		return nil, fmt.Errorf("failed to run xcodegen: %w", err)
-	}
+	backendProvisioned := provState.backendProvisioned
 
 	// Phase 4: Build + deterministic completion gate
 	var (

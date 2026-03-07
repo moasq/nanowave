@@ -11,6 +11,7 @@ import (
 
 	"github.com/moasq/nanowave/internal/claude"
 	"github.com/moasq/nanowave/internal/integrations"
+	"github.com/moasq/nanowave/internal/mcpregistry"
 	"github.com/moasq/nanowave/internal/terminal"
 )
 
@@ -139,25 +140,26 @@ func modelsToModelRefs(models []ModelPlan) []integrations.ModelRef {
 	return refs
 }
 
-// writeMCPConfig writes .mcp.json using Manager-provided MCPServerConfig entries.
-func writeMCPConfig(projectDir string, configs []integrations.MCPServerConfig) error {
+// writeMCPConfig writes .mcp.json using internal MCP servers from the registry
+// plus Manager-provided MCPServerConfig entries (supabase, revenuecat, etc.).
+func writeMCPConfig(projectDir string, reg *mcpregistry.Registry, configs []integrations.MCPServerConfig) error {
 	type mcpServerEntry struct {
 		Command string            `json:"command"`
 		Args    []string          `json:"args"`
 		Env     map[string]string `json:"env,omitempty"`
 	}
 
-	servers := map[string]mcpServerEntry{
-		"apple-docs": {
-			Command: "npx",
-			Args:    []string{"-y", "@kimsungwhee/apple-docs-mcp"},
-		},
-		"xcodegen": {
-			Command: "nanowave",
-			Args:    []string{"mcp", "xcodegen"},
-		},
+	servers := make(map[string]mcpServerEntry)
+
+	// Internal servers from registry (apple-docs, xcodegen, asc)
+	for _, s := range reg.Servers() {
+		servers[s.Name] = mcpServerEntry{
+			Command: s.Command,
+			Args:    s.Args,
+		}
 	}
 
+	// Provider-based servers with credentials (supabase, revenuecat)
 	for _, cfg := range configs {
 		servers[cfg.Name] = mcpServerEntry{
 			Command: cfg.Command,
@@ -178,32 +180,20 @@ func writeMCPConfig(projectDir string, configs []integrations.MCPServerConfig) e
 	return os.WriteFile(filepath.Join(projectDir, ".mcp.json"), data, 0o600)
 }
 
-// writeSettingsShared writes team-shared Claude Code settings with Manager-provided MCP tools.
-func writeSettingsShared(projectDir string, mcpTools []string) error {
-	allow := []string{
-		"mcp__apple-docs__search_apple_docs",
-		"mcp__apple-docs__get_apple_doc_content",
-		"mcp__apple-docs__search_framework_symbols",
-		"mcp__apple-docs__get_sample_code",
-		"mcp__apple-docs__get_related_apis",
-		"mcp__apple-docs__find_similar_apis",
-		"mcp__apple-docs__get_platform_compatibility",
-		"mcp__xcodegen__add_permission",
-		"mcp__xcodegen__add_extension",
-		"mcp__xcodegen__add_entitlement",
-		"mcp__xcodegen__add_localization",
-		"mcp__xcodegen__set_build_setting",
-		"mcp__xcodegen__get_project_config",
-		"mcp__xcodegen__regenerate_project",
+// writeSettingsShared writes team-shared Claude Code settings using MCP tools
+// from the registry plus Manager-provided tools (supabase, revenuecat, etc.).
+func writeSettingsShared(projectDir string, reg *mcpregistry.Registry, mcpTools []string) error {
+	allow := make([]string, 0, len(reg.AllTools())+len(mcpTools)+5)
+	allow = append(allow, reg.AllTools()...)
+	allow = append(allow,
 		"SlashCommand",
 		"Task",
 		"ViewImage",
 		"WebFetch",
 		"WebSearch",
-	}
+	)
 	allow = append(allow, mcpTools...)
 
-	// Delegate to the existing writeSettingsSharedWithTools
 	return writeSettingsSharedWithTools(projectDir, allow)
 }
 
@@ -525,7 +515,7 @@ func writeStoreKitConfig(projectDir, appName string, plan *MonetizationPlan) err
 	}
 	data = append(data, '\n')
 
-	// Place inside the app source directory so XcodeGen's syncedFolder picks it up automatically.
+	// Place inside the app source directory so XcodeGen's folder source picks it up automatically.
 	appDir := filepath.Join(projectDir, appName)
 	if err := os.MkdirAll(appDir, 0o755); err != nil {
 		return fmt.Errorf("create app directory: %w", err)

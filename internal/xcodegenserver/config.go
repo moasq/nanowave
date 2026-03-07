@@ -183,6 +183,7 @@ func generateIOSProjectYAMLCfg(cfg *ProjectConfig) string {
 	b.WriteString("        INFOPLIST_KEY_UILaunchScreen_Generation: YES\n")
 	deviceFamilyBuildSettingsCfg(&b, cfg.DeviceFamily)
 	b.WriteString("        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon\n")
+	b.WriteString("        INFOPLIST_KEY_CFBundleIconName: AppIcon\n")
 	b.WriteString("        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor\n")
 	b.WriteString("        ENABLE_PREVIEWS: YES\n")
 	b.WriteString("        SWIFT_EMIT_LOC_STRINGS: YES\n")
@@ -540,6 +541,7 @@ func generatePairedYAMLCfg(cfg *ProjectConfig) string {
 	b.WriteString("        TARGETED_DEVICE_FAMILY: \"1\"\n")
 	b.WriteString("        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait\n")
 	b.WriteString("        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon\n")
+	b.WriteString("        INFOPLIST_KEY_CFBundleIconName: AppIcon\n")
 	b.WriteString("        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor\n")
 	b.WriteString("        ENABLE_PREVIEWS: YES\n")
 	b.WriteString("        SWIFT_EMIT_LOC_STRINGS: YES\n")
@@ -675,6 +677,7 @@ func generatePairedYAMLCfg(cfg *ProjectConfig) string {
 
 func writeWatchOSBuildSettingsCfg(b *strings.Builder) {
 	b.WriteString("        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon\n")
+	b.WriteString("        INFOPLIST_KEY_CFBundleIconName: AppIcon\n")
 	b.WriteString("        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor\n")
 	b.WriteString("        ENABLE_PREVIEWS: YES\n")
 	b.WriteString("        SWIFT_EMIT_LOC_STRINGS: YES\n")

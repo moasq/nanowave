@@ -14,9 +14,9 @@ import (
 
 // addPermissionInput is the input for the add_permission tool.
 type addPermissionInput struct {
-	Key         string `json:"key" jsonschema:"description=The Info.plist key e.g. NSCameraUsageDescription or NSLocationWhenInUseUsageDescription"`
-	Description string `json:"description" jsonschema:"description=User-facing reason string shown in the permission dialog"`
-	Framework   string `json:"framework" jsonschema:"description=The Apple framework that needs this permission e.g. AVFoundation or CoreLocation"`
+	Key         string `json:"key" jsonschema:"The Info.plist key e.g. NSCameraUsageDescription or NSLocationWhenInUseUsageDescription"`
+	Description string `json:"description" jsonschema:"User-facing reason string shown in the permission dialog"`
+	Framework   string `json:"framework" jsonschema:"The Apple framework that needs this permission e.g. AVFoundation or CoreLocation"`
 }
 
 type textOutput struct {
@@ -56,9 +56,9 @@ func handleAddPermission(ctx context.Context, req *mcp.CallToolRequest, input ad
 
 // addExtensionInput is the input for the add_extension tool.
 type addExtensionInput struct {
-	Kind    string `json:"kind" jsonschema:"description=Extension type: widget live_activity share notification_service safari app_clip"`
-	Name    string `json:"name" jsonschema:"description=Target name e.g. MyAppWidget. If empty a default name is generated."`
-	Purpose string `json:"purpose" jsonschema:"description=What this extension does e.g. Shows daily summary on home screen"`
+	Kind    string `json:"kind" jsonschema:"Extension type: widget live_activity share notification_service safari app_clip"`
+	Name    string `json:"name" jsonschema:"Target name e.g. MyAppWidget. If empty a default name is generated."`
+	Purpose string `json:"purpose" jsonschema:"What this extension does e.g. Shows daily summary on home screen"`
 }
 
 func handleAddExtension(ctx context.Context, req *mcp.CallToolRequest, input addExtensionInput) (*mcp.CallToolResult, textOutput, error) {
@@ -132,9 +132,9 @@ func handleAddExtension(ctx context.Context, req *mcp.CallToolRequest, input add
 
 // addEntitlementInput is the input for the add_entitlement tool.
 type addEntitlementInput struct {
-	Target string `json:"target" jsonschema:"description=Target name to add the entitlement to. Empty or omitted means the main app target."`
-	Key    string `json:"key" jsonschema:"description=Entitlement key e.g. com.apple.security.application-groups or com.apple.developer.healthkit"`
-	Value  any    `json:"value" jsonschema:"description=Entitlement value - true for boolean entitlements or an array of strings for list entitlements"`
+	Target string `json:"target" jsonschema:"Target name to add the entitlement to. Empty or omitted means the main app target."`
+	Key    string `json:"key" jsonschema:"Entitlement key e.g. com.apple.security.application-groups or com.apple.developer.healthkit"`
+	Value  any    `json:"value" jsonschema:"Entitlement value - true for boolean entitlements or an array of strings for list entitlements"`
 }
 
 func handleAddEntitlement(ctx context.Context, req *mcp.CallToolRequest, input addEntitlementInput) (*mcp.CallToolResult, textOutput, error) {
@@ -178,7 +178,7 @@ func handleAddEntitlement(ctx context.Context, req *mcp.CallToolRequest, input a
 
 // addLocalizationInput is the input for the add_localization tool.
 type addLocalizationInput struct {
-	Languages []string `json:"languages" jsonschema:"description=Language codes to add e.g. [en ar es]. English (en) is always included."`
+	Languages []string `json:"languages" jsonschema:"Language codes to add e.g. [en ar es]. English (en) is always included."`
 }
 
 func handleAddLocalization(ctx context.Context, req *mcp.CallToolRequest, input addLocalizationInput) (*mcp.CallToolResult, textOutput, error) {
@@ -235,9 +235,9 @@ func handleAddLocalization(ctx context.Context, req *mcp.CallToolRequest, input 
 
 // setBuildSettingInput is the input for the set_build_setting tool.
 type setBuildSettingInput struct {
-	Target string `json:"target" jsonschema:"description=Target name. Empty or omitted means the main app target."`
-	Key    string `json:"key" jsonschema:"description=Build setting key e.g. TARGETED_DEVICE_FAMILY or SWIFT_STRICT_CONCURRENCY"`
-	Value  string `json:"value" jsonschema:"description=Build setting value"`
+	Target string `json:"target" jsonschema:"Target name. Empty or omitted means the main app target."`
+	Key    string `json:"key" jsonschema:"Build setting key e.g. TARGETED_DEVICE_FAMILY or SWIFT_STRICT_CONCURRENCY"`
+	Value  string `json:"value" jsonschema:"Build setting value"`
 }
 
 func handleSetBuildSetting(ctx context.Context, req *mcp.CallToolRequest, input setBuildSettingInput) (*mcp.CallToolResult, textOutput, error) {
@@ -358,10 +358,10 @@ func handleGetProjectConfig(ctx context.Context, req *mcp.CallToolRequest, input
 
 // addPackageInput is the input for the add_package tool.
 type addPackageInput struct {
-	Name       string   `json:"name" jsonschema:"description=Package name e.g. Lottie or SDWebImageSwiftUI"`
-	URL        string   `json:"url" jsonschema:"description=Git repository URL e.g. https://github.com/airbnb/lottie-ios"`
-	MinVersion string   `json:"min_version" jsonschema:"description=Minimum version e.g. 4.0.0"`
-	Products   []string `json:"products" jsonschema:"description=Product names to import. If omitted defaults to package name."`
+	Name       string   `json:"name" jsonschema:"Package name e.g. Lottie or SDWebImageSwiftUI"`
+	URL        string   `json:"url" jsonschema:"Git repository URL e.g. https://github.com/airbnb/lottie-ios"`
+	MinVersion string   `json:"min_version" jsonschema:"Minimum version e.g. 4.0.0"`
+	Products   []string `json:"products" jsonschema:"Product names to import. If omitted defaults to package name."`
 }
 
 func handleAddPackage(ctx context.Context, req *mcp.CallToolRequest, input addPackageInput) (*mcp.CallToolResult, textOutput, error) {

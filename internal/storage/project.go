@@ -10,20 +10,34 @@ import (
 	"time"
 )
 
+// TestFlightSubmission records a single TestFlight submission attempt.
+type TestFlightSubmission struct {
+	ID        string     `json:"id"`
+	AppID     string     `json:"app_id,omitempty"`
+	AppName   string     `json:"app_name,omitempty"`
+	BundleID  string     `json:"bundle_id,omitempty"`
+	Status    string     `json:"status"` // "submitting", "succeeded", "failed"
+	StartedAt time.Time  `json:"started_at"`
+	EndedAt   *time.Time `json:"ended_at,omitempty"`
+	Error     string     `json:"error,omitempty"`
+}
+
 // Project represents a local project.
 type Project struct {
-	ID                  int32     `json:"id"`
-	Name                *string   `json:"name,omitempty"`
-	Status              string    `json:"status"`
-	ProjectPath         string    `json:"project_path"`
-	BundleID            string    `json:"bundle_id"`
-	Platform            string    `json:"platform,omitempty"`
-	Platforms           []string  `json:"platforms,omitempty"`
-	DeviceFamily        string    `json:"device_family,omitempty"`
-	SessionID           string    `json:"session_id,omitempty"`
-	Simulator           string    `json:"simulator,omitempty"`
-	ConversationSummary string    `json:"conversation_summary,omitempty"`
-	CreatedAt           time.Time `json:"created_at"`
+	ID                    int32                  `json:"id"`
+	Name                  *string                `json:"name,omitempty"`
+	Status                string                 `json:"status"`
+	ProjectPath           string                 `json:"project_path"`
+	BundleID              string                 `json:"bundle_id"`
+	Platform              string                 `json:"platform,omitempty"`
+	Platforms             []string               `json:"platforms,omitempty"`
+	DeviceFamily          string                 `json:"device_family,omitempty"`
+	SessionID             string                 `json:"session_id,omitempty"`
+	Simulator             string                 `json:"simulator,omitempty"`
+	ConversationSummary   string                 `json:"conversation_summary,omitempty"`
+	ASCAppID              string                 `json:"asc_app_id,omitempty"`
+	TestFlightSubmissions []TestFlightSubmission `json:"testflight_submissions,omitempty"`
+	CreatedAt             time.Time              `json:"created_at"`
 }
 
 // ProjectStore implements project storage using a local JSON file.

@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/moasq/nanowave/internal/mcpregistry"
 )
 
 func TestWriteCoreRules(t *testing.T) {
@@ -321,7 +323,9 @@ func TestWriteClaudeProjectScaffoldCreatesArtifacts(t *testing.T) {
 		t.Fatalf("writeConditionalSkills() error: %v", err)
 	}
 
-	if err := writeClaudeProjectScaffold(projectDir, "SampleApp", "ios"); err != nil {
+	reg := mcpregistry.New()
+	mcpregistry.RegisterAll(reg)
+	if err := writeClaudeProjectScaffold(projectDir, "SampleApp", "ios", reg); err != nil {
 		t.Fatalf("writeClaudeProjectScaffold() error: %v", err)
 	}
 
@@ -394,7 +398,9 @@ func TestWriteClaudeProjectScaffoldCreatesArtifacts(t *testing.T) {
 
 func TestWriteMCPConfigUsesPortableNanowaveCommand(t *testing.T) {
 	projectDir := t.TempDir()
-	if err := writeMCPConfig(projectDir, nil); err != nil {
+	reg := mcpregistry.New()
+	mcpregistry.RegisterAll(reg)
+	if err := writeMCPConfig(projectDir, reg, nil); err != nil {
 		t.Fatalf("writeMCPConfig() error: %v", err)
 	}
 	data, err := os.ReadFile(filepath.Join(projectDir, ".mcp.json"))
@@ -520,7 +526,9 @@ func TestGeneratedReviewCommandsReferenceNewMemoryAndOutputContract(t *testing.T
 	if err := writeAlwaysSkills(projectDir, "ios"); err != nil {
 		t.Fatalf("writeAlwaysSkills() error: %v", err)
 	}
-	if err := writeClaudeProjectScaffold(projectDir, "SampleApp", "ios"); err != nil {
+	reg := mcpregistry.New()
+	mcpregistry.RegisterAll(reg)
+	if err := writeClaudeProjectScaffold(projectDir, "SampleApp", "ios", reg); err != nil {
 		t.Fatalf("writeClaudeProjectScaffold() error: %v", err)
 	}
 

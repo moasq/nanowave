@@ -6,9 +6,6 @@ import (
 	"strings"
 )
 
-// generateProjectYAML produces the full project.yml content for XcodeGen.
-// When no extensions are present, generates a single-target project.
-// With extensions, generates multi-target YAML with proper dependencies.
 // deviceFamilyBuildSettings returns TARGETED_DEVICE_FAMILY and orientation settings for the given device family.
 func deviceFamilyBuildSettings(b *strings.Builder, family string) {
 	switch family {
@@ -181,6 +178,9 @@ func writeEntitlementProperties(b *strings.Builder, entitlements map[string]any)
 	writeXcodeYAMLMap(b, entitlements, 8)
 }
 
+// generateProjectYAML produces the full project.yml content for XcodeGen.
+// When no extensions are present, generates a single-target project.
+// With extensions, generates multi-target YAML with proper dependencies.
 func generateProjectYAML(appName string, plan *PlannerResult, entitlements map[string]any) string {
 	if plan != nil && plan.IsMultiPlatform() {
 		return generateMultiPlatformProjectYAML(appName, plan, entitlements)
@@ -271,9 +271,9 @@ func generateMultiPlatformProjectYAML(appName string, plan *PlannerResult, entit
 	writeIOSDestinationSettings(&b, plan.GetDeviceFamily())
 	b.WriteString("    sources:\n")
 	fmt.Fprintf(&b, "      - path: %s\n", appName)
-	b.WriteString("        type: syncedFolder\n")
+	b.WriteString("        type: folder\n")
 	b.WriteString("      - path: Shared\n")
-	b.WriteString("        type: syncedFolder\n")
+	b.WriteString("        type: folder\n")
 	b.WriteString("        optional: true\n")
 
 	b.WriteString("    settings:\n")
@@ -289,6 +289,7 @@ func generateMultiPlatformProjectYAML(appName string, plan *PlannerResult, entit
 	b.WriteString("        INFOPLIST_KEY_UILaunchScreen_Generation: YES\n")
 	deviceFamilyBuildSettings(&b, plan.GetDeviceFamily())
 	b.WriteString("        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon\n")
+	b.WriteString("        INFOPLIST_KEY_CFBundleIconName: AppIcon\n")
 	b.WriteString("        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor\n")
 	b.WriteString("        ENABLE_PREVIEWS: YES\n")
 	b.WriteString("        SWIFT_EMIT_LOC_STRINGS: YES\n")
@@ -390,9 +391,9 @@ func generateMultiPlatformProjectYAML(appName string, plan *PlannerResult, entit
 		b.WriteString("      - tvOS\n")
 		b.WriteString("    sources:\n")
 		fmt.Fprintf(&b, "      - path: %sTV\n", appName)
-		b.WriteString("        type: syncedFolder\n")
+		b.WriteString("        type: folder\n")
 		b.WriteString("      - path: Shared\n")
-		b.WriteString("        type: syncedFolder\n")
+		b.WriteString("        type: folder\n")
 		b.WriteString("        optional: true\n")
 
 		b.WriteString("    settings:\n")
@@ -405,6 +406,7 @@ func generateMultiPlatformProjectYAML(appName string, plan *PlannerResult, entit
 		b.WriteString("        GENERATE_INFOPLIST_FILE: YES\n")
 		b.WriteString("        TARGETED_DEVICE_FAMILY: \"3\"\n")
 		b.WriteString("        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon\n")
+	b.WriteString("        INFOPLIST_KEY_CFBundleIconName: AppIcon\n")
 		b.WriteString("        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor\n")
 		b.WriteString("        ENABLE_PREVIEWS: YES\n")
 		b.WriteString("        SWIFT_EMIT_LOC_STRINGS: YES\n")
@@ -458,9 +460,9 @@ func generateMultiPlatformProjectYAML(appName string, plan *PlannerResult, entit
 		b.WriteString("      - visionOS\n")
 		b.WriteString("    sources:\n")
 		fmt.Fprintf(&b, "      - path: %sVision\n", appName)
-		b.WriteString("        type: syncedFolder\n")
+		b.WriteString("        type: folder\n")
 		b.WriteString("      - path: Shared\n")
-		b.WriteString("        type: syncedFolder\n")
+		b.WriteString("        type: folder\n")
 		b.WriteString("        optional: true\n")
 
 		b.WriteString("    settings:\n")
@@ -473,6 +475,7 @@ func generateMultiPlatformProjectYAML(appName string, plan *PlannerResult, entit
 		b.WriteString("        GENERATE_INFOPLIST_FILE: YES\n")
 		b.WriteString("        TARGETED_DEVICE_FAMILY: \"7\"\n")
 		b.WriteString("        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon\n")
+	b.WriteString("        INFOPLIST_KEY_CFBundleIconName: AppIcon\n")
 		b.WriteString("        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor\n")
 		b.WriteString("        ENABLE_PREVIEWS: YES\n")
 		b.WriteString("        SWIFT_EMIT_LOC_STRINGS: YES\n")
@@ -526,9 +529,9 @@ func generateMultiPlatformProjectYAML(appName string, plan *PlannerResult, entit
 		b.WriteString("      - macOS\n")
 		b.WriteString("    sources:\n")
 		fmt.Fprintf(&b, "      - path: %sMac\n", appName)
-		b.WriteString("        type: syncedFolder\n")
+		b.WriteString("        type: folder\n")
 		b.WriteString("      - path: Shared\n")
-		b.WriteString("        type: syncedFolder\n")
+		b.WriteString("        type: folder\n")
 		b.WriteString("        optional: true\n")
 
 		b.WriteString("    settings:\n")
@@ -540,6 +543,7 @@ func generateMultiPlatformProjectYAML(appName string, plan *PlannerResult, entit
 		b.WriteString("        MARKETING_VERSION: \"1.0\"\n")
 		b.WriteString("        GENERATE_INFOPLIST_FILE: YES\n")
 		b.WriteString("        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon\n")
+	b.WriteString("        INFOPLIST_KEY_CFBundleIconName: AppIcon\n")
 		b.WriteString("        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor\n")
 		b.WriteString("        ENABLE_PREVIEWS: YES\n")
 		b.WriteString("        SWIFT_EMIT_LOC_STRINGS: YES\n")
@@ -605,9 +609,9 @@ func generateMultiPlatformProjectYAML(appName string, plan *PlannerResult, entit
 			fmt.Fprintf(&b, "    platform: %s\n", PlatformXcodegenValue(extPlatform))
 			b.WriteString("    sources:\n")
 			fmt.Fprintf(&b, "      - path: %s\n", sourcePath)
-			b.WriteString("        type: syncedFolder\n")
+			b.WriteString("        type: folder\n")
 			b.WriteString("      - path: Shared\n")
-			b.WriteString("        type: syncedFolder\n")
+			b.WriteString("        type: folder\n")
 			b.WriteString("        optional: true\n")
 			b.WriteString("    settings:\n")
 			b.WriteString("      base:\n")
@@ -735,32 +739,16 @@ func generateMultiPlatformProjectYAML(appName string, plan *PlannerResult, entit
 func generateMacOSProjectYAML(appName string, plan *PlannerResult, entitlements map[string]any) string {
 	var b strings.Builder
 
-	bundleID := fmt.Sprintf("%s.%s", bundleIDPrefix(), strings.ToLower(appName))
+	t := newTargetBuilder(&b, appName, PlatformMacOS, plan)
 	hasExtensions := plan != nil && len(plan.Extensions) > 0
 	var resolvedPkgs []*CuratedPackage
 	if plan != nil {
 		resolvedPkgs = resolvePackages(plan.Packages)
 	}
-	hasPackages := len(resolvedPkgs) > 0
 
-	fmt.Fprintf(&b, "name: %s\n", appName)
-	writePackagesSection(&b, resolvedPkgs)
-	b.WriteString("options:\n")
-	fmt.Fprintf(&b, "  bundleIdPrefix: %s\n", bundleIDPrefix())
-	b.WriteString("  deploymentTarget:\n")
-	b.WriteString("    macOS: \"26.0\"\n")
-	b.WriteString("  xcodeVersion: \"16.0\"\n")
-	b.WriteString("  createIntermediateGroups: true\n")
-	b.WriteString("  generateEmptyDirectories: true\n")
-	b.WriteString("  useBaseInternationalization: false\n")
-
-	if plan != nil && len(plan.Localizations) > 0 {
-		b.WriteString("  knownRegions:\n")
-		for _, lang := range plan.Localizations {
-			fmt.Fprintf(&b, "    - %s\n", lang)
-		}
-	}
-	b.WriteString("\n")
+	t.writeHeader(resolvedPkgs)
+	t.writeOptions(map[string]string{"macOS": "26.0"})
+	t.writeLocalizations()
 
 	b.WriteString("targets:\n")
 
@@ -772,23 +760,17 @@ func generateMacOSProjectYAML(appName string, plan *PlannerResult, entitlements 
 	b.WriteString("      - macOS\n")
 	b.WriteString("    sources:\n")
 	fmt.Fprintf(&b, "      - path: %s\n", appName)
-	b.WriteString("        type: syncedFolder\n")
+	b.WriteString("        type: folder\n")
 	if hasExtensions {
 		b.WriteString("      - path: Shared\n")
-		b.WriteString("        type: syncedFolder\n")
+		b.WriteString("        type: folder\n")
 		b.WriteString("        optional: true\n")
 	}
 
-	// Settings — no TARGETED_DEVICE_FAMILY, no UILaunchScreen, no UIApplicationSceneManifest, no orientations
-	b.WriteString("    settings:\n")
-	b.WriteString("      base:\n")
-	b.WriteString("        SWIFT_VERSION: \"6.0\"\n")
-	fmt.Fprintf(&b, "        PRODUCT_BUNDLE_IDENTIFIER: %s\n", bundleID)
-	b.WriteString("        CODE_SIGN_STYLE: Automatic\n")
-	b.WriteString("        CURRENT_PROJECT_VERSION: 1\n")
-	b.WriteString("        MARKETING_VERSION: \"1.0\"\n")
-	b.WriteString("        GENERATE_INFOPLIST_FILE: YES\n")
+	// Settings — no TARGETED_DEVICE_FAMILY, no UILaunchScreen, no UIApplicationSceneManifest
+	t.writeCommonBuildSettings()
 	b.WriteString("        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon\n")
+	b.WriteString("        INFOPLIST_KEY_CFBundleIconName: AppIcon\n")
 	b.WriteString("        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor\n")
 	b.WriteString("        ENABLE_PREVIEWS: YES\n")
 	b.WriteString("        SWIFT_EMIT_LOC_STRINGS: YES\n")
@@ -799,90 +781,15 @@ func generateMacOSProjectYAML(appName string, plan *PlannerResult, entitlements 
 	b.WriteString("        SWIFT_APPROACHABLE_CONCURRENCY: YES\n")
 	b.WriteString("        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor\n")
 
-	if plan != nil {
-		for _, perm := range plan.Permissions {
-			fmt.Fprintf(&b, "        INFOPLIST_KEY_%s: %s\n", perm.Key, xcodeYAMLQuote(perm.Description))
-		}
-	}
+	t.writePermissions()
 
 	appearanceInfoPlistMacOS(&b, appName, appName, plan)
 
-	// Entitlements
-	b.WriteString("    entitlements:\n")
-	fmt.Fprintf(&b, "      path: %s/%s.entitlements\n", appName, appName)
-	writeEntitlementProperties(&b, entitlements)
+	t.writeEntitlements(appName, entitlements)
+	t.writeDependencies(resolvedPkgs, hasExtensions)
+	t.writeExtensionTargets("macOS")
 
-	// Dependencies: SPM packages + extension targets
-	if hasExtensions || hasPackages {
-		b.WriteString("    dependencies:\n")
-		writePackageDependencies(&b, resolvedPkgs)
-		if hasExtensions {
-			for _, ext := range plan.Extensions {
-				name := extensionTargetName(ext, appName)
-				fmt.Fprintf(&b, "      - target: %s\n", name)
-				b.WriteString("        embed: true\n")
-			}
-		}
-	}
-
-	// Extension targets (widget, share, notification_service supported on macOS)
-	if plan != nil {
-		for _, ext := range plan.Extensions {
-			name := extensionTargetName(ext, appName)
-			kind := ext.Kind
-			kindForBundleID := strings.ReplaceAll(kind, "_", "")
-			if kindForBundleID == "" {
-				kindForBundleID = strings.ToLower(name)
-			}
-			extBundleID := fmt.Sprintf("%s.%s", bundleID, kindForBundleID)
-			sourcePath := fmt.Sprintf("Targets/%s", name)
-
-			b.WriteString("\n")
-			fmt.Fprintf(&b, "  %s:\n", name)
-			fmt.Fprintf(&b, "    type: %s\n", xcodegenTargetType(kind))
-			b.WriteString("    platform: macOS\n")
-			b.WriteString("    sources:\n")
-			fmt.Fprintf(&b, "      - path: %s\n", sourcePath)
-			b.WriteString("        type: syncedFolder\n")
-			b.WriteString("      - path: Shared\n")
-			b.WriteString("        type: syncedFolder\n")
-			b.WriteString("        optional: true\n")
-			b.WriteString("    settings:\n")
-			b.WriteString("      base:\n")
-			fmt.Fprintf(&b, "        PRODUCT_BUNDLE_IDENTIFIER: %s\n", extBundleID)
-			b.WriteString("        CODE_SIGN_STYLE: Automatic\n")
-			b.WriteString("        SWIFT_VERSION: \"6.0\"\n")
-			b.WriteString("        GENERATE_INFOPLIST_FILE: YES\n")
-			b.WriteString("        SKIP_INSTALL: YES\n")
-			b.WriteString("        DEAD_CODE_STRIPPING: NO\n")
-			b.WriteString("        CURRENT_PROJECT_VERSION: 1\n")
-			b.WriteString("        MARKETING_VERSION: \"1.0\"\n")
-			b.WriteString("        SWIFT_APPROACHABLE_CONCURRENCY: YES\n")
-			b.WriteString("        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor\n")
-
-			for k, v := range ext.Settings {
-				fmt.Fprintf(&b, "        %s: %s\n", k, xcodeYAMLQuote(v))
-			}
-
-			infoPlist := mergeInfoPlistDefaults(kind, ext.InfoPlist)
-			if len(infoPlist) > 0 {
-				b.WriteString("    info:\n")
-				fmt.Fprintf(&b, "      path: %s/Info.plist\n", sourcePath)
-				b.WriteString("      properties:\n")
-				writeXcodeYAMLMap(&b, infoPlist, 8)
-			}
-
-			entitlements := mergeEntitlementDefaults(kind, ext.Entitlements, bundleID)
-			if len(entitlements) > 0 {
-				b.WriteString("    entitlements:\n")
-				fmt.Fprintf(&b, "      path: %s/%s.entitlements\n", sourcePath, name)
-				b.WriteString("      properties:\n")
-				writeXcodeYAMLMap(&b, entitlements, 8)
-			}
-		}
-	}
-
-	// Scheme
+	// macOS always writes scheme (not conditional on extensions)
 	b.WriteString("\nschemes:\n")
 	fmt.Fprintf(&b, "  %s:\n", appName)
 	b.WriteString("    build:\n")
@@ -904,13 +811,12 @@ func generateMacOSProjectYAML(appName string, plan *PlannerResult, entitlements 
 func generateIOSProjectYAML(appName string, plan *PlannerResult, entitlements map[string]any) string {
 	var b strings.Builder
 
-	bundleID := fmt.Sprintf("%s.%s", bundleIDPrefix(), strings.ToLower(appName))
+	t := newTargetBuilder(&b, appName, PlatformIOS, plan)
 	hasExtensions := plan != nil && len(plan.Extensions) > 0
 	var resolvedPkgs []*CuratedPackage
 	if plan != nil {
 		resolvedPkgs = resolvePackages(plan.Packages)
 	}
-	hasPackages := len(resolvedPkgs) > 0
 	// Check if any extension needs data sharing (app groups)
 	needsAppGroups := false
 	if hasExtensions {
@@ -925,24 +831,9 @@ func generateIOSProjectYAML(appName string, plan *PlannerResult, entitlements ma
 		}
 	}
 
-	fmt.Fprintf(&b, "name: %s\n", appName)
-	writePackagesSection(&b, resolvedPkgs)
-	b.WriteString("options:\n")
-	fmt.Fprintf(&b, "  bundleIdPrefix: %s\n", bundleIDPrefix())
-	b.WriteString("  deploymentTarget:\n")
-	b.WriteString("    iOS: \"26.0\"\n")
-	b.WriteString("  xcodeVersion: \"16.0\"\n")
-	b.WriteString("  createIntermediateGroups: true\n")
-	b.WriteString("  generateEmptyDirectories: true\n")
-	b.WriteString("  useBaseInternationalization: false\n")
-
-	if plan != nil && len(plan.Localizations) > 0 {
-		b.WriteString("  knownRegions:\n")
-		for _, lang := range plan.Localizations {
-			fmt.Fprintf(&b, "    - %s\n", lang)
-		}
-	}
-	b.WriteString("\n")
+	t.writeHeader(resolvedPkgs)
+	t.writeOptions(map[string]string{"iOS": "26.0"})
+	t.writeLocalizations()
 
 	// Targets
 	b.WriteString("targets:\n")
@@ -953,45 +844,22 @@ func generateIOSProjectYAML(appName string, plan *PlannerResult, entitlements ma
 	writeIOSDestinationSettings(&b, plan.GetDeviceFamily())
 	b.WriteString("    sources:\n")
 	fmt.Fprintf(&b, "      - path: %s\n", appName)
-	b.WriteString("        type: syncedFolder\n")
-	// Include Shared/ directory for types shared between main app and extensions
+	b.WriteString("        type: folder\n")
 	if hasExtensions {
 		b.WriteString("      - path: Shared\n")
-		b.WriteString("        type: syncedFolder\n")
+		b.WriteString("        type: folder\n")
 		b.WriteString("        optional: true\n")
 	}
 
-	// Settings
-	b.WriteString("    settings:\n")
-	b.WriteString("      base:\n")
-	b.WriteString("        SWIFT_VERSION: \"6.0\"\n")
-	fmt.Fprintf(&b, "        PRODUCT_BUNDLE_IDENTIFIER: %s\n", bundleID)
-	b.WriteString("        CODE_SIGN_STYLE: Automatic\n")
-	b.WriteString("        CURRENT_PROJECT_VERSION: 1\n")
-	b.WriteString("        MARKETING_VERSION: \"1.0\"\n")
-	b.WriteString("        GENERATE_INFOPLIST_FILE: YES\n")
+	t.writeCommonBuildSettings()
 	b.WriteString("        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES\n")
 	b.WriteString("        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES\n")
 	b.WriteString("        INFOPLIST_KEY_UILaunchScreen_Generation: YES\n")
 	deviceFamilyBuildSettings(&b, plan.GetDeviceFamily())
-	b.WriteString("        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon\n")
-	b.WriteString("        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor\n")
-	b.WriteString("        ENABLE_PREVIEWS: YES\n")
-	b.WriteString("        SWIFT_EMIT_LOC_STRINGS: YES\n")
-	b.WriteString("        LD_RUNPATH_SEARCH_PATHS:\n")
-	b.WriteString("          - \"$(inherited)\"\n")
-	b.WriteString("          - \"@executable_path/Frameworks\"\n")
-	b.WriteString("        SWIFT_APPROACHABLE_CONCURRENCY: YES\n")
-	b.WriteString("        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor\n")
+	t.writeCommonPostBuildSettings()
 
 	appearanceBuildSettings(&b, plan, PlatformIOS)
-
-	if plan != nil {
-		// Permissions as INFOPLIST_KEY_* build settings
-		for _, perm := range plan.Permissions {
-			fmt.Fprintf(&b, "        INFOPLIST_KEY_%s: %s\n", perm.Key, xcodeYAMLQuote(perm.Description))
-		}
-	}
+	t.writePermissions()
 
 	// Main app entitlements — merge auto-injected entitlements with app-group entitlements
 	mergedEntitlements := make(map[string]any)
@@ -999,11 +867,9 @@ func generateIOSProjectYAML(appName string, plan *PlannerResult, entitlements ma
 		mergedEntitlements[k] = v
 	}
 	if needsAppGroups {
-		mergedEntitlements["com.apple.security.application-groups"] = []any{"group." + bundleID}
+		mergedEntitlements["com.apple.security.application-groups"] = []any{"group." + t.bundleID}
 	}
-	b.WriteString("    entitlements:\n")
-	fmt.Fprintf(&b, "      path: %s/%s.entitlements\n", appName, appName)
-	writeEntitlementProperties(&b, mergedEntitlements)
+	t.writeEntitlements(appName, mergedEntitlements)
 
 	// Main app Info.plist — for keys that can't be expressed as INFOPLIST_KEY_* build settings
 	mainInfoPlist := make(map[string]any)
@@ -1022,102 +888,11 @@ func generateIOSProjectYAML(appName string, plan *PlannerResult, entitlements ma
 		writeXcodeYAMLMap(&b, mainInfoPlist, 8)
 	}
 
-	// Dependencies: SPM packages + extension targets
-	if hasExtensions || hasPackages {
-		b.WriteString("    dependencies:\n")
-		writePackageDependencies(&b, resolvedPkgs)
-		if hasExtensions {
-			for _, ext := range plan.Extensions {
-				name := extensionTargetName(ext, appName)
-				fmt.Fprintf(&b, "      - target: %s\n", name)
-				b.WriteString("        embed: true\n")
-			}
-		}
-	}
+	t.writeDependencies(resolvedPkgs, hasExtensions)
+	t.writeExtensionTargets("iOS")
 
-	// Extension targets
-	if plan != nil {
-		for _, ext := range plan.Extensions {
-			name := extensionTargetName(ext, appName)
-			kind := ext.Kind
-			// Bundle IDs cannot contain underscores — remove them.
-			// If kind is empty, derive a bundle-safe suffix from the target name.
-			kindForBundleID := strings.ReplaceAll(kind, "_", "")
-			if kindForBundleID == "" {
-				kindForBundleID = strings.ToLower(name)
-			}
-			extBundleID := fmt.Sprintf("%s.%s", bundleID, kindForBundleID)
-			sourcePath := fmt.Sprintf("Targets/%s", name)
-
-			b.WriteString("\n")
-			fmt.Fprintf(&b, "  %s:\n", name)
-			fmt.Fprintf(&b, "    type: %s\n", xcodegenTargetType(kind))
-			b.WriteString("    platform: iOS\n")
-			b.WriteString("    sources:\n")
-			fmt.Fprintf(&b, "      - path: %s\n", sourcePath)
-			b.WriteString("        type: syncedFolder\n")
-			// Include Shared/ directory so extension can access shared types (e.g. ActivityAttributes)
-			b.WriteString("      - path: Shared\n")
-			b.WriteString("        type: syncedFolder\n")
-			b.WriteString("        optional: true\n")
-			b.WriteString("    settings:\n")
-			b.WriteString("      base:\n")
-			fmt.Fprintf(&b, "        PRODUCT_BUNDLE_IDENTIFIER: %s\n", extBundleID)
-			b.WriteString("        CODE_SIGN_STYLE: Automatic\n")
-			b.WriteString("        SWIFT_VERSION: \"6.0\"\n")
-			b.WriteString("        GENERATE_INFOPLIST_FILE: YES\n")
-			b.WriteString("        SKIP_INSTALL: YES\n")
-			b.WriteString("        DEAD_CODE_STRIPPING: NO\n")
-			b.WriteString("        CURRENT_PROJECT_VERSION: 1\n")
-			b.WriteString("        MARKETING_VERSION: \"1.0\"\n")
-			b.WriteString("        SWIFT_APPROACHABLE_CONCURRENCY: YES\n")
-			b.WriteString("        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor\n")
-
-			// Extra build settings from plan
-			for k, v := range ext.Settings {
-				fmt.Fprintf(&b, "        %s: %s\n", k, xcodeYAMLQuote(v))
-			}
-
-			// Info.plist — merge defaults with plan-specified values
-			infoPlist := mergeInfoPlistDefaults(kind, ext.InfoPlist)
-			if len(infoPlist) > 0 {
-				b.WriteString("    info:\n")
-				fmt.Fprintf(&b, "      path: %s/Info.plist\n", sourcePath)
-				b.WriteString("      properties:\n")
-				writeXcodeYAMLMap(&b, infoPlist, 8)
-			}
-
-			// Entitlements — merge defaults with plan-specified values
-			entitlements := mergeEntitlementDefaults(kind, ext.Entitlements, bundleID)
-			if len(entitlements) > 0 {
-				b.WriteString("    entitlements:\n")
-				fmt.Fprintf(&b, "      path: %s/%s.entitlements\n", sourcePath, name)
-				b.WriteString("      properties:\n")
-				writeXcodeYAMLMap(&b, entitlements, 8)
-			}
-		}
-	}
-
-	// Explicit scheme — needed for extensions or StoreKit testing configuration
 	hasMonetization := plan != nil && plan.MonetizationPlan != nil && len(plan.MonetizationPlan.Products) > 0
-	if hasExtensions || hasMonetization {
-		b.WriteString("\nschemes:\n")
-		fmt.Fprintf(&b, "  %s:\n", appName)
-		b.WriteString("    build:\n")
-		b.WriteString("      targets:\n")
-		fmt.Fprintf(&b, "        %s: all\n", appName)
-		if hasExtensions {
-			for _, ext := range plan.Extensions {
-				name := extensionTargetName(ext, appName)
-				fmt.Fprintf(&b, "        %s: all\n", name)
-			}
-		}
-		b.WriteString("    run:\n")
-		fmt.Fprintf(&b, "      executable: %s\n", appName)
-		if hasMonetization {
-			fmt.Fprintf(&b, "      storeKitConfiguration: %s/%s.storekit\n", appName, appName)
-		}
-	}
+	t.writeScheme(hasExtensions, hasMonetization)
 
 	return b.String()
 }
@@ -1128,36 +903,19 @@ func generateIOSProjectYAML(appName string, plan *PlannerResult, entitlements ma
 func generateTvOSProjectYAML(appName string, plan *PlannerResult, entitlements map[string]any) string {
 	var b strings.Builder
 
-	bundleID := fmt.Sprintf("%s.%s", bundleIDPrefix(), strings.ToLower(appName))
+	t := newTargetBuilder(&b, appName, PlatformTvOS, plan)
 	hasExtensions := plan != nil && len(plan.Extensions) > 0
 	var resolvedPkgs []*CuratedPackage
 	if plan != nil {
 		resolvedPkgs = resolvePackages(plan.Packages)
 	}
-	hasPackages := len(resolvedPkgs) > 0
 
-	fmt.Fprintf(&b, "name: %s\n", appName)
-	writePackagesSection(&b, resolvedPkgs)
-	b.WriteString("options:\n")
-	fmt.Fprintf(&b, "  bundleIdPrefix: %s\n", bundleIDPrefix())
-	b.WriteString("  deploymentTarget:\n")
-	b.WriteString("    tvOS: \"26.0\"\n")
-	b.WriteString("  xcodeVersion: \"16.0\"\n")
-	b.WriteString("  createIntermediateGroups: true\n")
-	b.WriteString("  generateEmptyDirectories: true\n")
-	b.WriteString("  useBaseInternationalization: false\n")
-
-	if plan != nil && len(plan.Localizations) > 0 {
-		b.WriteString("  knownRegions:\n")
-		for _, lang := range plan.Localizations {
-			fmt.Fprintf(&b, "    - %s\n", lang)
-		}
-	}
-	b.WriteString("\n")
+	t.writeHeader(resolvedPkgs)
+	t.writeOptions(map[string]string{"tvOS": "26.0"})
+	t.writeLocalizations()
 
 	b.WriteString("targets:\n")
 
-	// Main app target
 	fmt.Fprintf(&b, "  %s:\n", appName)
 	b.WriteString("    type: application\n")
 	b.WriteString("    platform: tvOS\n")
@@ -1165,129 +923,23 @@ func generateTvOSProjectYAML(appName string, plan *PlannerResult, entitlements m
 	b.WriteString("      - tvOS\n")
 	b.WriteString("    sources:\n")
 	fmt.Fprintf(&b, "      - path: %s\n", appName)
-	b.WriteString("        type: syncedFolder\n")
+	b.WriteString("        type: folder\n")
 	if hasExtensions {
 		b.WriteString("      - path: Shared\n")
-		b.WriteString("        type: syncedFolder\n")
+		b.WriteString("        type: folder\n")
 		b.WriteString("        optional: true\n")
 	}
 
-	// Settings
-	b.WriteString("    settings:\n")
-	b.WriteString("      base:\n")
-	b.WriteString("        SWIFT_VERSION: \"6.0\"\n")
-	fmt.Fprintf(&b, "        PRODUCT_BUNDLE_IDENTIFIER: %s\n", bundleID)
-	b.WriteString("        CODE_SIGN_STYLE: Automatic\n")
-	b.WriteString("        CURRENT_PROJECT_VERSION: 1\n")
-	b.WriteString("        MARKETING_VERSION: \"1.0\"\n")
-	b.WriteString("        GENERATE_INFOPLIST_FILE: YES\n")
+	t.writeCommonBuildSettings()
 	b.WriteString("        TARGETED_DEVICE_FAMILY: \"3\"\n")
-	b.WriteString("        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon\n")
-	b.WriteString("        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor\n")
-	b.WriteString("        ENABLE_PREVIEWS: YES\n")
-	b.WriteString("        SWIFT_EMIT_LOC_STRINGS: YES\n")
-	b.WriteString("        LD_RUNPATH_SEARCH_PATHS:\n")
-	b.WriteString("          - \"$(inherited)\"\n")
-	b.WriteString("          - \"@executable_path/Frameworks\"\n")
-	b.WriteString("        SWIFT_APPROACHABLE_CONCURRENCY: YES\n")
-	b.WriteString("        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor\n")
+	t.writeCommonPostBuildSettings()
 	appearanceBuildSettings(&b, plan, PlatformTvOS)
+	t.writePermissions()
 
-	if plan != nil {
-		for _, perm := range plan.Permissions {
-			fmt.Fprintf(&b, "        INFOPLIST_KEY_%s: %s\n", perm.Key, xcodeYAMLQuote(perm.Description))
-		}
-	}
-
-	// Entitlements
-	b.WriteString("    entitlements:\n")
-	fmt.Fprintf(&b, "      path: %s/%s.entitlements\n", appName, appName)
-	writeEntitlementProperties(&b, entitlements)
-
-	// Dependencies: SPM packages + extension targets
-	if hasExtensions || hasPackages {
-		b.WriteString("    dependencies:\n")
-		writePackageDependencies(&b, resolvedPkgs)
-		if hasExtensions {
-			for _, ext := range plan.Extensions {
-				name := extensionTargetName(ext, appName)
-				fmt.Fprintf(&b, "      - target: %s\n", name)
-				b.WriteString("        embed: true\n")
-			}
-		}
-	}
-
-	// Extension targets (only tv-top-shelf supported on tvOS)
-	if plan != nil {
-		for _, ext := range plan.Extensions {
-			name := extensionTargetName(ext, appName)
-			kind := ext.Kind
-			kindForBundleID := strings.ReplaceAll(kind, "_", "")
-			if kindForBundleID == "" {
-				kindForBundleID = strings.ToLower(name)
-			}
-			extBundleID := fmt.Sprintf("%s.%s", bundleID, kindForBundleID)
-			sourcePath := fmt.Sprintf("Targets/%s", name)
-
-			b.WriteString("\n")
-			fmt.Fprintf(&b, "  %s:\n", name)
-			fmt.Fprintf(&b, "    type: %s\n", xcodegenTargetType(kind))
-			b.WriteString("    platform: tvOS\n")
-			b.WriteString("    sources:\n")
-			fmt.Fprintf(&b, "      - path: %s\n", sourcePath)
-			b.WriteString("        type: syncedFolder\n")
-			b.WriteString("      - path: Shared\n")
-			b.WriteString("        type: syncedFolder\n")
-			b.WriteString("        optional: true\n")
-			b.WriteString("    settings:\n")
-			b.WriteString("      base:\n")
-			fmt.Fprintf(&b, "        PRODUCT_BUNDLE_IDENTIFIER: %s\n", extBundleID)
-			b.WriteString("        CODE_SIGN_STYLE: Automatic\n")
-			b.WriteString("        SWIFT_VERSION: \"6.0\"\n")
-			b.WriteString("        GENERATE_INFOPLIST_FILE: YES\n")
-			b.WriteString("        SKIP_INSTALL: YES\n")
-			b.WriteString("        DEAD_CODE_STRIPPING: NO\n")
-			b.WriteString("        CURRENT_PROJECT_VERSION: 1\n")
-			b.WriteString("        MARKETING_VERSION: \"1.0\"\n")
-			b.WriteString("        SWIFT_APPROACHABLE_CONCURRENCY: YES\n")
-			b.WriteString("        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor\n")
-
-			for k, v := range ext.Settings {
-				fmt.Fprintf(&b, "        %s: %s\n", k, xcodeYAMLQuote(v))
-			}
-
-			infoPlist := mergeInfoPlistDefaults(kind, ext.InfoPlist)
-			if len(infoPlist) > 0 {
-				b.WriteString("    info:\n")
-				fmt.Fprintf(&b, "      path: %s/Info.plist\n", sourcePath)
-				b.WriteString("      properties:\n")
-				writeXcodeYAMLMap(&b, infoPlist, 8)
-			}
-
-			entitlements := mergeEntitlementDefaults(kind, ext.Entitlements, bundleID)
-			if len(entitlements) > 0 {
-				b.WriteString("    entitlements:\n")
-				fmt.Fprintf(&b, "      path: %s/%s.entitlements\n", sourcePath, name)
-				b.WriteString("      properties:\n")
-				writeXcodeYAMLMap(&b, entitlements, 8)
-			}
-		}
-	}
-
-	// Explicit scheme
-	if hasExtensions {
-		b.WriteString("\nschemes:\n")
-		fmt.Fprintf(&b, "  %s:\n", appName)
-		b.WriteString("    build:\n")
-		b.WriteString("      targets:\n")
-		fmt.Fprintf(&b, "        %s: all\n", appName)
-		for _, ext := range plan.Extensions {
-			name := extensionTargetName(ext, appName)
-			fmt.Fprintf(&b, "        %s: all\n", name)
-		}
-		b.WriteString("    run:\n")
-		fmt.Fprintf(&b, "      executable: %s\n", appName)
-	}
+	t.writeEntitlements(appName, entitlements)
+	t.writeDependencies(resolvedPkgs, hasExtensions)
+	t.writeExtensionTargets("tvOS")
+	t.writeScheme(hasExtensions, false)
 
 	return b.String()
 }
@@ -1296,36 +948,19 @@ func generateTvOSProjectYAML(appName string, plan *PlannerResult, entitlements m
 func generateVisionOSProjectYAML(appName string, plan *PlannerResult, entitlements map[string]any) string {
 	var b strings.Builder
 
-	bundleID := fmt.Sprintf("%s.%s", bundleIDPrefix(), strings.ToLower(appName))
+	t := newTargetBuilder(&b, appName, PlatformVisionOS, plan)
 	hasExtensions := plan != nil && len(plan.Extensions) > 0
 	var resolvedPkgs []*CuratedPackage
 	if plan != nil {
 		resolvedPkgs = resolvePackages(plan.Packages)
 	}
-	hasPackages := len(resolvedPkgs) > 0
 
-	fmt.Fprintf(&b, "name: %s\n", appName)
-	writePackagesSection(&b, resolvedPkgs)
-	b.WriteString("options:\n")
-	fmt.Fprintf(&b, "  bundleIdPrefix: %s\n", bundleIDPrefix())
-	b.WriteString("  deploymentTarget:\n")
-	b.WriteString("    visionOS: \"26.0\"\n")
-	b.WriteString("  xcodeVersion: \"16.0\"\n")
-	b.WriteString("  createIntermediateGroups: true\n")
-	b.WriteString("  generateEmptyDirectories: true\n")
-	b.WriteString("  useBaseInternationalization: false\n")
-
-	if plan != nil && len(plan.Localizations) > 0 {
-		b.WriteString("  knownRegions:\n")
-		for _, lang := range plan.Localizations {
-			fmt.Fprintf(&b, "    - %s\n", lang)
-		}
-	}
-	b.WriteString("\n")
+	t.writeHeader(resolvedPkgs)
+	t.writeOptions(map[string]string{"visionOS": "26.0"})
+	t.writeLocalizations()
 
 	b.WriteString("targets:\n")
 
-	// Main app target
 	fmt.Fprintf(&b, "  %s:\n", appName)
 	b.WriteString("    type: application\n")
 	b.WriteString("    platform: visionOS\n")
@@ -1333,129 +968,23 @@ func generateVisionOSProjectYAML(appName string, plan *PlannerResult, entitlemen
 	b.WriteString("      - visionOS\n")
 	b.WriteString("    sources:\n")
 	fmt.Fprintf(&b, "      - path: %s\n", appName)
-	b.WriteString("        type: syncedFolder\n")
+	b.WriteString("        type: folder\n")
 	if hasExtensions {
 		b.WriteString("      - path: Shared\n")
-		b.WriteString("        type: syncedFolder\n")
+		b.WriteString("        type: folder\n")
 		b.WriteString("        optional: true\n")
 	}
 
-	// Settings
-	b.WriteString("    settings:\n")
-	b.WriteString("      base:\n")
-	b.WriteString("        SWIFT_VERSION: \"6.0\"\n")
-	fmt.Fprintf(&b, "        PRODUCT_BUNDLE_IDENTIFIER: %s\n", bundleID)
-	b.WriteString("        CODE_SIGN_STYLE: Automatic\n")
-	b.WriteString("        CURRENT_PROJECT_VERSION: 1\n")
-	b.WriteString("        MARKETING_VERSION: \"1.0\"\n")
-	b.WriteString("        GENERATE_INFOPLIST_FILE: YES\n")
+	t.writeCommonBuildSettings()
 	b.WriteString("        TARGETED_DEVICE_FAMILY: \"7\"\n")
-	b.WriteString("        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon\n")
-	b.WriteString("        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor\n")
-	b.WriteString("        ENABLE_PREVIEWS: YES\n")
-	b.WriteString("        SWIFT_EMIT_LOC_STRINGS: YES\n")
-	b.WriteString("        LD_RUNPATH_SEARCH_PATHS:\n")
-	b.WriteString("          - \"$(inherited)\"\n")
-	b.WriteString("          - \"@executable_path/Frameworks\"\n")
-	b.WriteString("        SWIFT_APPROACHABLE_CONCURRENCY: YES\n")
-	b.WriteString("        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor\n")
+	t.writeCommonPostBuildSettings()
 	appearanceBuildSettings(&b, plan, PlatformVisionOS)
+	t.writePermissions()
 
-	if plan != nil {
-		for _, perm := range plan.Permissions {
-			fmt.Fprintf(&b, "        INFOPLIST_KEY_%s: %s\n", perm.Key, xcodeYAMLQuote(perm.Description))
-		}
-	}
-
-	// Entitlements
-	b.WriteString("    entitlements:\n")
-	fmt.Fprintf(&b, "      path: %s/%s.entitlements\n", appName, appName)
-	writeEntitlementProperties(&b, entitlements)
-
-	// Dependencies: SPM packages + extension targets
-	if hasExtensions || hasPackages {
-		b.WriteString("    dependencies:\n")
-		writePackageDependencies(&b, resolvedPkgs)
-		if hasExtensions {
-			for _, ext := range plan.Extensions {
-				name := extensionTargetName(ext, appName)
-				fmt.Fprintf(&b, "      - target: %s\n", name)
-				b.WriteString("        embed: true\n")
-			}
-		}
-	}
-
-	// Extension targets (only widget supported on visionOS)
-	if plan != nil {
-		for _, ext := range plan.Extensions {
-			name := extensionTargetName(ext, appName)
-			kind := ext.Kind
-			kindForBundleID := strings.ReplaceAll(kind, "_", "")
-			if kindForBundleID == "" {
-				kindForBundleID = strings.ToLower(name)
-			}
-			extBundleID := fmt.Sprintf("%s.%s", bundleID, kindForBundleID)
-			sourcePath := fmt.Sprintf("Targets/%s", name)
-
-			b.WriteString("\n")
-			fmt.Fprintf(&b, "  %s:\n", name)
-			fmt.Fprintf(&b, "    type: %s\n", xcodegenTargetType(kind))
-			b.WriteString("    platform: visionOS\n")
-			b.WriteString("    sources:\n")
-			fmt.Fprintf(&b, "      - path: %s\n", sourcePath)
-			b.WriteString("        type: syncedFolder\n")
-			b.WriteString("      - path: Shared\n")
-			b.WriteString("        type: syncedFolder\n")
-			b.WriteString("        optional: true\n")
-			b.WriteString("    settings:\n")
-			b.WriteString("      base:\n")
-			fmt.Fprintf(&b, "        PRODUCT_BUNDLE_IDENTIFIER: %s\n", extBundleID)
-			b.WriteString("        CODE_SIGN_STYLE: Automatic\n")
-			b.WriteString("        SWIFT_VERSION: \"6.0\"\n")
-			b.WriteString("        GENERATE_INFOPLIST_FILE: YES\n")
-			b.WriteString("        SKIP_INSTALL: YES\n")
-			b.WriteString("        DEAD_CODE_STRIPPING: NO\n")
-			b.WriteString("        CURRENT_PROJECT_VERSION: 1\n")
-			b.WriteString("        MARKETING_VERSION: \"1.0\"\n")
-			b.WriteString("        SWIFT_APPROACHABLE_CONCURRENCY: YES\n")
-			b.WriteString("        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor\n")
-
-			for k, v := range ext.Settings {
-				fmt.Fprintf(&b, "        %s: %s\n", k, xcodeYAMLQuote(v))
-			}
-
-			infoPlist := mergeInfoPlistDefaults(kind, ext.InfoPlist)
-			if len(infoPlist) > 0 {
-				b.WriteString("    info:\n")
-				fmt.Fprintf(&b, "      path: %s/Info.plist\n", sourcePath)
-				b.WriteString("      properties:\n")
-				writeXcodeYAMLMap(&b, infoPlist, 8)
-			}
-
-			entitlements := mergeEntitlementDefaults(kind, ext.Entitlements, bundleID)
-			if len(entitlements) > 0 {
-				b.WriteString("    entitlements:\n")
-				fmt.Fprintf(&b, "      path: %s/%s.entitlements\n", sourcePath, name)
-				b.WriteString("      properties:\n")
-				writeXcodeYAMLMap(&b, entitlements, 8)
-			}
-		}
-	}
-
-	// Explicit scheme
-	if hasExtensions {
-		b.WriteString("\nschemes:\n")
-		fmt.Fprintf(&b, "  %s:\n", appName)
-		b.WriteString("    build:\n")
-		b.WriteString("      targets:\n")
-		fmt.Fprintf(&b, "        %s: all\n", appName)
-		for _, ext := range plan.Extensions {
-			name := extensionTargetName(ext, appName)
-			fmt.Fprintf(&b, "        %s: all\n", name)
-		}
-		b.WriteString("    run:\n")
-		fmt.Fprintf(&b, "      executable: %s\n", appName)
-	}
+	t.writeEntitlements(appName, entitlements)
+	t.writeDependencies(resolvedPkgs, hasExtensions)
+	t.writeExtensionTargets("visionOS")
+	t.writeScheme(hasExtensions, false)
 
 	return b.String()
 }
@@ -1463,6 +992,7 @@ func generateVisionOSProjectYAML(appName string, plan *PlannerResult, entitlemen
 // writeWatchOSBuildSettings writes watchOS-specific build settings.
 func writeWatchOSBuildSettings(b *strings.Builder) {
 	b.WriteString("        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon\n")
+	b.WriteString("        INFOPLIST_KEY_CFBundleIconName: AppIcon\n")
 	b.WriteString("        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor\n")
 	b.WriteString("        ENABLE_PREVIEWS: YES\n")
 	b.WriteString("        SWIFT_EMIT_LOC_STRINGS: YES\n")
@@ -1480,7 +1010,7 @@ func watchExtensionTargetName(appName string) string {
 
 func writeSyncedSourceEntry(b *strings.Builder, path string, excludes []string, optional bool) {
 	fmt.Fprintf(b, "      - path: %s\n", path)
-	b.WriteString("        type: syncedFolder\n")
+	b.WriteString("        type: folder\n")
 	if optional {
 		b.WriteString("        optional: true\n")
 	}
@@ -1757,10 +1287,10 @@ func generatePairedYAML(appName string, plan *PlannerResult, entitlements map[st
 	b.WriteString("      - iOS\n")
 	b.WriteString("    sources:\n")
 	fmt.Fprintf(&b, "      - path: %s\n", appName)
-	b.WriteString("        type: syncedFolder\n")
+	b.WriteString("        type: folder\n")
 	if hasExtensions {
 		b.WriteString("      - path: Shared\n")
-		b.WriteString("        type: syncedFolder\n")
+		b.WriteString("        type: folder\n")
 		b.WriteString("        optional: true\n")
 	}
 
@@ -1778,6 +1308,7 @@ func generatePairedYAML(appName string, plan *PlannerResult, entitlements map[st
 	b.WriteString("        TARGETED_DEVICE_FAMILY: \"1\"\n")
 	b.WriteString("        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait\n")
 	b.WriteString("        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon\n")
+	b.WriteString("        INFOPLIST_KEY_CFBundleIconName: AppIcon\n")
 	b.WriteString("        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor\n")
 	b.WriteString("        ENABLE_PREVIEWS: YES\n")
 	b.WriteString("        SWIFT_EMIT_LOC_STRINGS: YES\n")

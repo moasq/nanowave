@@ -20,5 +20,8 @@ coverage.out
 # claude-docker
 claude-docker/
 
+# ASC Dashboard frontend
+internal/ascui/frontend/node_modules/
+
 # generated project files
 examples/projects/
