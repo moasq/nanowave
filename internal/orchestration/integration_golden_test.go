@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/moasq/nanowave/internal/integrations"
+	"github.com/moasq/nanowave/internal/mcpregistry"
 )
 
 // updateGolden controls whether golden files are rewritten.
@@ -39,10 +40,19 @@ func assertGolden(t *testing.T, name, got string) {
 	}
 }
 
+// testRegistry returns a fully populated MCP registry for golden tests.
+func testRegistry() *mcpregistry.Registry {
+	reg := mcpregistry.New()
+	mcpregistry.RegisterAll(reg)
+	return reg
+}
+
 // TestGolden_BaseAgenticTools locks the output of baseAgenticTools.
 func TestGolden_BaseAgenticTools(t *testing.T) {
-	tools := make([]string, len(baseAgenticTools))
-	copy(tools, baseAgenticTools)
+	reg := testRegistry()
+	tools := make([]string, len(coreAgenticTools))
+	copy(tools, coreAgenticTools)
+	tools = append(tools, reg.AllTools()...)
 	got := strings.Join(tools, "\n") + "\n"
 	assertGolden(t, "agentic_tools_none", got)
 }
@@ -50,7 +60,8 @@ func TestGolden_BaseAgenticTools(t *testing.T) {
 // TestGolden_WriteMCPConfig_NoIntegrations locks the MCP config with no integrations.
 func TestGolden_WriteMCPConfig_NoIntegrations(t *testing.T) {
 	dir := t.TempDir()
-	if err := writeMCPConfig(dir, nil); err != nil {
+	reg := testRegistry()
+	if err := writeMCPConfig(dir, reg, nil); err != nil {
 		t.Fatalf("writeMCPConfig() error: %v", err)
 	}
 	data, err := os.ReadFile(filepath.Join(dir, ".mcp.json"))
@@ -65,6 +76,7 @@ func TestGolden_WriteMCPConfig_NoIntegrations(t *testing.T) {
 // TestGolden_WriteMCPConfig_Supabase locks the MCP config with Supabase active.
 func TestGolden_WriteMCPConfig_Supabase(t *testing.T) {
 	dir := t.TempDir()
+	reg := testRegistry()
 	configs := []integrations.MCPServerConfig{
 		{
 			Name:    "supabase",
@@ -76,7 +88,7 @@ func TestGolden_WriteMCPConfig_Supabase(t *testing.T) {
 			},
 		},
 	}
-	if err := writeMCPConfig(dir, configs); err != nil {
+	if err := writeMCPConfig(dir, reg, configs); err != nil {
 		t.Fatalf("writeMCPConfig() error: %v", err)
 	}
 	data, err := os.ReadFile(filepath.Join(dir, ".mcp.json"))
@@ -94,7 +106,8 @@ func TestGolden_WriteSettingsShared_NoIntegrations(t *testing.T) {
 	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
-	if err := writeSettingsShared(dir, nil); err != nil {
+	reg := testRegistry()
+	if err := writeSettingsShared(dir, reg, nil); err != nil {
 		t.Fatalf("writeSettingsShared() error: %v", err)
 	}
 	data, err := os.ReadFile(filepath.Join(claudeDir, "settings.json"))
@@ -111,6 +124,7 @@ func TestGolden_WriteSettingsShared_Supabase(t *testing.T) {
 	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
+	reg := testRegistry()
 	supabaseTools := []string{
 		"mcp__supabase__execute_sql",
 		"mcp__supabase__list_tables",
@@ -122,7 +136,7 @@ func TestGolden_WriteSettingsShared_Supabase(t *testing.T) {
 		"mcp__supabase__configure_auth_providers",
 		"mcp__supabase__get_auth_config",
 	}
-	if err := writeSettingsShared(dir, supabaseTools); err != nil {
+	if err := writeSettingsShared(dir, reg, supabaseTools); err != nil {
 		t.Fatalf("writeSettingsShared() error: %v", err)
 	}
 	data, err := os.ReadFile(filepath.Join(claudeDir, "settings.json"))

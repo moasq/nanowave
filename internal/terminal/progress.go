@@ -21,6 +21,7 @@ const (
 	PhaseCompiling
 	PhaseFixing
 	PhaseEditing
+	PhaseASC
 )
 
 func (p Phase) label() string {
@@ -39,6 +40,8 @@ func (p Phase) label() string {
 		return "Fixing errors"
 	case PhaseEditing:
 		return "Editing"
+	case PhaseASC:
+		return "Running"
 	default:
 		return "Working"
 	}
@@ -60,6 +63,8 @@ func (p Phase) number() int {
 		return 6
 	case PhaseEditing:
 		return 1
+	case PhaseASC:
+		return 1
 	default:
 		return 1
 	}
@@ -73,26 +78,27 @@ type activity struct {
 
 // ProgressDisplay provides a rich, phase-aware terminal progress UI.
 type ProgressDisplay struct {
-	mu           sync.Mutex
-	phase        Phase
-	totalFiles   int
-	filesWritten int
-	activities   []activity
-	statusText   string          // dimmed assistant text
-	streamingBuf strings.Builder // accumulates streaming text tokens
-	running      bool
-	done         chan struct{}
-	mode         string // "build", "edit", "fix", "analyze", "plan"
-	totalPhases  int
-	buildFailed  bool
-	fixAttempts  int
-	startedAt    time.Time
-	interactive  bool
-	lastRenderID string
+	mu            sync.Mutex
+	phase         Phase
+	totalFiles    int
+	filesWritten  int
+	activities    []activity
+	statusText    string          // dimmed assistant text
+	streamingBuf  strings.Builder // accumulates streaming text tokens
+	running       bool
+	done          chan struct{}
+	mode          string // "build", "edit", "fix", "analyze", "plan"
+	totalPhases   int
+	buildFailed   bool
+	fixAttempts   int
+	startedAt     time.Time
+	interactive   bool
+	lastRenderID  string
+	maxActivities int
 }
 
 const (
-	maxActivities                = 4
+	defaultMaxActivities         = 4
 	maxStatusWidth               = 70
 	structuredStreamingTailRunes = 240
 )
@@ -122,16 +128,25 @@ func NewProgressDisplay(mode string, totalFiles int) *ProgressDisplay {
 	case "fix":
 		startPhase = PhaseCompiling
 		totalPhases = 0
+	case "asc":
+		startPhase = PhaseASC
+		totalPhases = 0
+	}
+
+	maxAct := defaultMaxActivities
+	if mode == "asc" {
+		maxAct = 8
 	}
 
 	return &ProgressDisplay{
-		phase:       startPhase,
-		totalFiles:  totalFiles,
-		mode:        mode,
-		totalPhases: totalPhases,
-		startedAt:   time.Now(),
-		interactive: term.IsTerminal(int(os.Stdout.Fd())),
-		done:        make(chan struct{}),
+		phase:         startPhase,
+		totalFiles:    totalFiles,
+		mode:          mode,
+		totalPhases:   totalPhases,
+		startedAt:     time.Now(),
+		interactive:   term.IsTerminal(int(os.Stdout.Fd())),
+		done:          make(chan struct{}),
+		maxActivities: maxAct,
 	}
 }
 
@@ -197,8 +212,20 @@ func (pd *ProgressDisplay) addActivity(text string) {
 	}
 	pd.activities = append(pd.activities, activity{text: text, done: false})
 	// Trim to max
-	if len(pd.activities) > maxActivities {
-		pd.activities = pd.activities[len(pd.activities)-maxActivities:]
+	if len(pd.activities) > pd.maxActivities {
+		pd.activities = pd.activities[len(pd.activities)-pd.maxActivities:]
+	}
+}
+
+// UpdateLastActivity updates the text of the most recent (in-progress) activity.
+// If there is no in-progress activity, it adds a new one.
+func (pd *ProgressDisplay) UpdateLastActivity(text string) {
+	pd.mu.Lock()
+	defer pd.mu.Unlock()
+	if len(pd.activities) > 0 && !pd.activities[len(pd.activities)-1].done {
+		pd.activities[len(pd.activities)-1].text = text
+	} else {
+		pd.addActivity(text)
 	}
 }
 
@@ -242,6 +269,60 @@ func (pd *ProgressDisplay) SetTotalFiles(total int) {
 	}
 }
 
+// toolActivityLabel returns a human-readable label for a tool use event.
+// Returns "" if no meaningful label can be generated.
+func (pd *ProgressDisplay) toolActivityLabel(toolName string, inputGetter func(key string) string) string {
+	switch toolName {
+	case "Write":
+		path := inputGetter("file_path")
+		if path != "" {
+			return fmt.Sprintf("Writing %s", shortPath(path))
+		}
+		return "Writing file"
+	case "Edit":
+		path := inputGetter("file_path")
+		if path != "" {
+			return fmt.Sprintf("Editing %s", shortPath(path))
+		}
+		return "Editing file"
+	case "Read":
+		path := inputGetter("file_path")
+		if path != "" {
+			return fmt.Sprintf("Reading %s", shortPath(path))
+		}
+		return "Reading file"
+	case "Bash":
+		command := inputGetter("command")
+		if strings.Contains(command, "xcodegen") {
+			return "Generating Xcode project"
+		} else if strings.Contains(command, "xcodebuild") {
+			return "Compiling project"
+		} else if strings.Contains(command, "git") {
+			return "Updating repository"
+		} else if label := ascCommandLabel(command); label != "" {
+			return label
+		} else if command != "" {
+			short := command
+			if len(short) > 80 {
+				short = short[:80] + "..."
+			}
+			return short
+		}
+		return "Running command"
+	case "Glob":
+		return "Searching files..."
+	case "Grep":
+		return "Searching code..."
+	case "WebFetch", "WebSearch":
+		return "Searching web..."
+	default:
+		if label := friendlyToolName(toolName, inputGetter); label != "" {
+			return label
+		}
+		return ""
+	}
+}
+
 // OnToolUse processes a tool_use event and updates the display state.
 func (pd *ProgressDisplay) OnToolUse(toolName string, inputGetter func(key string) string) {
 	pd.mu.Lock()
@@ -251,64 +332,53 @@ func (pd *ProgressDisplay) OnToolUse(toolName string, inputGetter func(key strin
 	pd.statusText = ""
 	pd.streamingBuf.Reset()
 
+	// Update phase based on tool
 	switch toolName {
 	case "Write":
-		path := inputGetter("file_path")
-		if path != "" {
-			short := shortPath(path)
-			if pd.mode == "build" {
-				pd.phase = PhaseBuildingCode
-			}
+		if pd.mode == "build" {
+			pd.phase = PhaseBuildingCode
+		}
+		if inputGetter("file_path") != "" {
 			pd.filesWritten++
 			if pd.filesWritten > pd.totalFiles && pd.totalFiles > 0 {
 				pd.totalFiles = pd.filesWritten
 			}
-			pd.addActivity(fmt.Sprintf("Writing %s", short))
 		}
 	case "Edit":
-		path := inputGetter("file_path")
-		if path != "" {
-			short := shortPath(path)
-			if pd.buildFailed {
-				pd.phase = PhaseFixing
-			} else if pd.mode == "edit" {
-				pd.phase = PhaseEditing
-			}
-			pd.addActivity(fmt.Sprintf("Editing %s", short))
-		}
-	case "Read":
-		path := inputGetter("file_path")
-		if path != "" {
-			short := shortPath(path)
-			pd.addActivity(fmt.Sprintf("Reading %s", short))
+		if pd.buildFailed {
+			pd.phase = PhaseFixing
+		} else if pd.mode == "edit" {
+			pd.phase = PhaseEditing
 		}
 	case "Bash":
 		command := inputGetter("command")
 		if strings.Contains(command, "xcodegen") {
 			pd.phase = PhaseGenerating
-			pd.addActivity("Generating Xcode project")
 		} else if strings.Contains(command, "xcodebuild") {
 			pd.phase = PhaseCompiling
-			pd.addActivity("Compiling project")
-		} else if strings.Contains(command, "git") {
-			pd.addActivity("Updating repository")
-		} else if command != "" {
-			short := command
-			if len(short) > 35 {
-				short = short[:35] + "..."
-			}
-			pd.addActivity(short)
 		}
-	case "Glob":
-		pd.addActivity("Searching files...")
-	case "Grep":
-		pd.addActivity("Searching code...")
-	case "WebFetch", "WebSearch":
-		pd.addActivity("Searching web...")
-	default:
-		if label := friendlyToolName(toolName, inputGetter); label != "" {
-			pd.addActivity(label)
-		}
+	}
+
+	label := pd.toolActivityLabel(toolName, inputGetter)
+	if label != "" {
+		pd.addActivity(label)
+	}
+}
+
+// UpdateToolActivity refines the most recent activity label for a tool
+// as more input becomes available (e.g., from streaming tool_input_delta).
+func (pd *ProgressDisplay) UpdateToolActivity(toolName string, inputGetter func(key string) string) {
+	pd.mu.Lock()
+	defer pd.mu.Unlock()
+
+	label := pd.toolActivityLabel(toolName, inputGetter)
+	if label == "" {
+		return
+	}
+
+	// Update the last in-progress activity
+	if len(pd.activities) > 0 && !pd.activities[len(pd.activities)-1].done {
+		pd.activities[len(pd.activities)-1].text = label
 	}
 }
 
@@ -425,7 +495,7 @@ func (pd *ProgressDisplay) render(frame int) {
 	}
 
 	// Pad to fixed height to avoid flicker
-	for len(lines) < maxActivities+3 {
+	for len(lines) < pd.maxActivities+3 {
 		lines = append(lines, "")
 	}
 
@@ -517,7 +587,7 @@ func formatElapsed(d time.Duration) string {
 
 // clearDisplay clears the progress display area.
 func (pd *ProgressDisplay) clearDisplay() {
-	total := maxActivities + 3
+	total := pd.maxActivities + 3
 	for i := 0; i < total; i++ {
 		fmt.Printf("\033[K\n") // clear line and move down
 	}
@@ -601,14 +671,155 @@ func friendlyToolName(toolName string, inputGetter func(key string) string) stri
 		return "Reading project config"
 	case "mcp__xcodegen__regenerate_project":
 		return "Regenerating Xcode project"
+
 	}
 
 	return ""
 }
 
+// ascCommandLabel returns a friendly display label for asc CLI commands.
+// Returns "" if the command is not an asc command.
+func ascCommandLabel(command string) string {
+	command = strings.TrimSpace(command)
+	if !strings.HasPrefix(command, "asc ") && !strings.HasPrefix(command, "asc\t") {
+		return ""
+	}
+
+	// Parse tokens: asc [namespace] <resource> <action> [flags...]
+	// Examples:
+	//   asc builds list --app ...          → parts: [asc, builds, list, ...]
+	//   asc testflight beta-testers add    → parts: [asc, testflight, beta-testers, add, ...]
+	//   asc testflight review submit       → parts: [asc, testflight, review, submit, ...]
+	//   asc status                         → parts: [asc, status]
+	parts := strings.Fields(command)
+	if len(parts) < 2 {
+		return "Running asc"
+	}
+
+	// Build a lookup key from the first 2-3 subcommand tokens (excluding "asc" and flags)
+	var tokens []string
+	for _, p := range parts[1:] {
+		if strings.HasPrefix(p, "-") {
+			break
+		}
+		tokens = append(tokens, p)
+		if len(tokens) >= 4 {
+			break
+		}
+	}
+
+	key := strings.Join(tokens, " ")
+
+	// 3-level commands (asc testflight <resource> <action>)
+	switch key {
+	case "testflight beta-testers add":
+		return "Adding beta tester"
+	case "testflight beta-testers invite":
+		return "Inviting beta tester"
+	case "testflight beta-testers list":
+		return "Listing beta testers"
+	case "testflight beta-testers remove":
+		return "Removing beta tester"
+	case "testflight beta-groups list":
+		return "Listing beta groups"
+	case "testflight beta-groups create":
+		return "Creating beta group"
+	case "testflight review submit":
+		return "Submitting for Beta App Review"
+	case "testflight review submissions":
+		return "Checking review status"
+	case "testflight review submissions list":
+		return "Checking review status"
+	}
+
+	// 2-level commands (asc <resource> <action>)
+	twoLevel := strings.Join(tokens[:min(2, len(tokens))], " ")
+	switch twoLevel {
+	case "apps list":
+		return "Listing apps"
+	case "apps get", "apps info":
+		return "Getting app info"
+	case "builds list":
+		return "Listing builds"
+	case "builds info":
+		return "Getting build info"
+	case "builds latest":
+		return "Checking latest build"
+	case "builds upload":
+		return "Uploading build"
+	case "builds add-groups":
+		return "Assigning build to group"
+	case "builds test-notes":
+		return "Setting test notes"
+	case "metadata pull", "metadata download":
+		return "Downloading metadata"
+	case "metadata push", "metadata upload":
+		return "Uploading metadata"
+	case "versions create":
+		return "Creating app version"
+	case "versions list":
+		return "Listing app versions"
+	case "versions attach-build":
+		return "Attaching build to version"
+	case "bundle-ids create":
+		return "Registering bundle ID"
+	case "bundle-ids list":
+		return "Listing bundle IDs"
+	case "publish testflight":
+		return "Publishing to TestFlight"
+	case "publish appstore":
+		return "Publishing to App Store"
+	case "age-rating set":
+		return "Setting age rating"
+	case "submit create":
+		return "Submitting for review"
+	case "submit status":
+		return "Checking submission status"
+	case "auth login":
+		return "Authenticating"
+	case "auth status":
+		return "Checking auth status"
+	}
+
+	// 1-level commands (asc <command>)
+	switch tokens[0] {
+	case "status":
+		return "Checking app status"
+	case "doctor":
+		return "Running diagnostics"
+	case "submit":
+		return "Submitting for review"
+	case "publish":
+		return "Publishing"
+	case "builds":
+		return "Checking builds"
+	case "apps":
+		return "Checking apps"
+	case "metadata":
+		return "Managing metadata"
+	case "localizations":
+		return "Managing localizations"
+	case "screenshots":
+		return "Managing screenshots"
+	case "certificates":
+		return "Checking certificates"
+	case "profiles":
+		return "Checking provisioning profiles"
+	case "devices":
+		return "Listing devices"
+	case "testflight":
+		return "Managing TestFlight"
+	case "--help", "help":
+		return "Checking asc CLI help"
+	}
+
+	// Fallback: show "Running asc <first-token>"
+	return truncateActivity("Running asc " + tokens[0])
+}
+
 // truncateActivity truncates an activity label to fit the display.
 func truncateActivity(s string) string {
-	const maxWidth = 45
+	const maxWidth = 80
 	if len(s) > maxWidth {
 		return s[:maxWidth] + "..."
 	}

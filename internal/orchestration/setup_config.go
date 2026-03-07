@@ -22,16 +22,16 @@ func writeSettingsLocal(projectDir string) error {
 
 // ensureProjectConfigs writes .mcp.json, settings.json, and settings.local.json if they don't exist.
 // Used by Edit and Fix flows on existing projects that may lack these files.
-func ensureProjectConfigs(projectDir string) {
+func (p *Pipeline) ensureProjectConfigs(projectDir string) {
 	mcpPath := filepath.Join(projectDir, ".mcp.json")
 	if _, err := os.Stat(mcpPath); os.IsNotExist(err) {
-		_ = writeMCPConfig(projectDir, nil)
+		_ = writeMCPConfig(projectDir, p.registry, nil)
 	}
 	claudeDir := filepath.Join(projectDir, ".claude")
 	sharedSettingsPath := filepath.Join(claudeDir, "settings.json")
 	if _, err := os.Stat(sharedSettingsPath); os.IsNotExist(err) {
 		_ = os.MkdirAll(claudeDir, 0o755)
-		_ = writeSettingsShared(projectDir, nil)
+		_ = writeSettingsShared(projectDir, p.registry, nil)
 	}
 	settingsPath := filepath.Join(claudeDir, "settings.local.json")
 	if _, err := os.Stat(settingsPath); os.IsNotExist(err) {

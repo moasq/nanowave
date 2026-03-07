@@ -9,9 +9,9 @@ Module: `github.com/moasq/nanowave`
 cmd/nanowave/          → CLI entry point (cobra)
 internal/
   commands/            → Cobra command definitions (root, setup, interactive, run, fix, info, mcp)
-  orchestration/       → Build pipeline (intent → analyze → plan → build → fix → finalize)
+  orchestration/       → Build pipeline (intent → analyze → plan → build → finalize)
     skills/            → Embedded skill files (//go:embed skills)
-    pipeline.go        → Primary orchestrator (Pipeline struct, Build/Edit/Fix methods)
+    pipeline.go        → Primary orchestrator (Pipeline struct, Build/Edit methods)
     setup.go           → Workspace + CLAUDE.md memory file generation
     build_prompts.go   → Build-phase prompt construction
     phase_prompts.go   → Phase prompt composition (composeAnalyzerSystemPrompt, etc.)
@@ -21,6 +21,11 @@ internal/
     skill_compliance.go → Anthropic skill format validator (ValidateAnthropicSourceSkills)
     completion.go      → File completion gate (PlannedFileStatus, FileCompletionReport)
     intent_router.go   → Pre-analysis intent detection
+  asc/                 → App Store Connect types, credentials, agreements, bundle ID, iris API
+  appleauth/           → Apple ID SRP authentication, 2FA, onboarding, session cookies
+  icons/               → App icon discovery, resizing, Contents.json generation, upload server
+  ascserver/           → ASC MCP server
+  mcpregistry/         → Internal MCP server registry (apple-docs, xcodegen, asc)
   claude/              → Claude API client (GenerateStreaming, StreamEvent)
   config/              → CLI configuration management
   terminal/            → Terminal UI (ProgressDisplay, spinner, colors)
@@ -97,7 +102,7 @@ make build && make test && make skills-source-validate
 
 | Area | Files |
 |------|-------|
-| Pipeline entry | `pipeline.go` — `Build()`, `Edit()`, `Fix()` methods |
+| Pipeline entry | `pipeline.go` — `Build()`, `Edit()` methods |
 | JSON parsing | `helpers.go` — `parseClaudeJSON[T]()`, `extractJSON()`, `sanitizeToPascalCase()` |
 | Type contracts | `types.go` — all phase input/output structs |
 | Platform logic | `platform_features.go` — `ValidatePlatform()`, `FilterRuleKeysForPlatform()` |

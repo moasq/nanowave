@@ -129,8 +129,7 @@ func (p *Pipeline) buildStreaming(ctx context.Context, prompt, appName, projectD
 		return nil, err
 	}
 
-	tools := make([]string, len(baseAgenticTools))
-	copy(tools, baseAgenticTools)
+	tools := p.baseAgenticTools()
 	if p.manager != nil {
 		tools = append(tools, p.manager.AgentTools(p.activeProviders)...)
 	}
@@ -162,7 +161,7 @@ func (p *Pipeline) buildStreaming(ctx context.Context, prompt, appName, projectD
 		AllowedTools:       tools,
 		SessionID:          sessionID,
 		Images:             images,
-	}, newProgressCallback(progress))
+	}, p.makeStreamCallback(progress))
 }
 
 // completeMissingFilesStreaming runs targeted completion passes for unresolved planned files.
@@ -172,8 +171,7 @@ func (p *Pipeline) completeMissingFilesStreaming(ctx context.Context, appName, p
 		return nil, err
 	}
 
-	tools := make([]string, len(baseAgenticTools))
-	copy(tools, baseAgenticTools)
+	tools := p.baseAgenticTools()
 
 	return p.claude.GenerateStreaming(ctx, userMsg, claude.GenerateOpts{
 		AppendSystemPrompt: appendPrompt,
@@ -182,5 +180,5 @@ func (p *Pipeline) completeMissingFilesStreaming(ctx context.Context, appName, p
 		WorkDir:            projectDir,
 		AllowedTools:       tools,
 		SessionID:          sessionID,
-	}, newProgressCallback(progress))
+	}, p.makeStreamCallback(progress))
 }

@@ -1,4 +1,4 @@
-.PHONY: build install clean test deps run release-snapshot skills-source-validate validate-app validate-lines e2e
+.PHONY: build install clean test deps run release-snapshot skills-source-validate validate-app validate-lines e2e frontend-build frontend-dev
 
 BINARY_NAME=nanowave
 BUILD_DIR=./bin
@@ -46,3 +46,9 @@ validate-lines:
 
 e2e:
 	./claude-docker/test-e2e.sh
+
+frontend-build:
+	cd internal/ascui/frontend && npm install && npm run build
+
+frontend-dev:
+	cd internal/ascui/frontend && npm run dev

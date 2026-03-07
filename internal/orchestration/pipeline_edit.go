@@ -21,18 +21,24 @@ type EditResult struct {
 	CacheCreated int
 }
 
-// Edit modifies an existing project using Claude Code.
-// images is an optional list of image file paths to include in the edit prompt.
+// Edit handles all work on an existing project — edits, fixes, refactors, etc.
+// Claude Code determines the right action from the prompt itself.
+// images is an optional list of image file paths to include.
 func (p *Pipeline) Edit(ctx context.Context, prompt, projectDir, sessionID string, images []string) (*EditResult, error) {
 	appName := readProjectAppName(projectDir)
-	ensureProjectConfigs(projectDir)
+	p.ensureProjectConfigs(projectDir)
 
 	platform, platforms, watchProjectShape := detectProjectBuildHints(projectDir)
 	isMulti := len(platforms) > 1
 
+	// Load both editor and fixer skills — Claude decides which context to use.
 	appendPrompt, err := composeCoderAppendPrompt("editor", platform)
 	if err != nil {
 		return nil, err
+	}
+	fixerSkill, err := composeCoderAppendPrompt("fixer", platform)
+	if err == nil {
+		appendPrompt += "\n\n" + fixerSkill
 	}
 
 	// Resolve existing integrations for this project (no setup prompts — just load stored configs).
@@ -44,7 +50,7 @@ func (p *Pipeline) Edit(ctx context.Context, prompt, projectDir, sessionID strin
 			for _, ap := range activeProviders {
 				names = append(names, string(ap.Provider.ID()))
 			}
-			terminal.Detail("Edit integrations", strings.Join(names, ", "))
+			terminal.Detail("Integrations", strings.Join(names, ", "))
 		}
 	}
 
@@ -65,52 +71,29 @@ func (p *Pipeline) Edit(ctx context.Context, prompt, projectDir, sessionID strin
 		}
 	}
 
-	var userMsg string
+	// Build commands go into system prompt so Claude always knows how to build.
 	if isMulti {
 		buildCmds := multiPlatformBuildCommands(appName, platforms)
 		var buildCmdStr strings.Builder
 		for i, cmd := range buildCmds {
 			fmt.Fprintf(&buildCmdStr, "%d. %s\n", i+1, cmd)
 		}
-
 		appendPrompt += "\n\nBuild commands (run ALL):\n" + buildCmdStr.String()
-
-		userMsg = fmt.Sprintf(`Edit this multi-platform app based on the following request:
-
-%s
-
-This project targets: %s
-
-After making changes:
-1. If you need new permissions, extensions, or entitlements, use the xcodegen MCP tools (add_permission, add_extension, etc.)
-2. If adding a new platform, create the source directory, write the @main entry point, use xcodegen MCP tools to add the target, then regenerate
-3. Build each scheme in sequence:
-%s4. If any build fails, read the errors carefully, fix the code, and rebuild
-5. If Xcode says a scheme is missing, run: xcodebuild -list -project %s.xcodeproj and use the listed schemes
-6. Repeat until all builds succeed`, prompt, strings.Join(platforms, ", "), buildCmdStr.String(), appName)
 	} else {
 		destination := canonicalBuildDestinationForShape(platform, watchProjectShape)
 		appendPrompt += fmt.Sprintf("\n\nBuild command:\nxcodebuild -project %s.xcodeproj -scheme %s -destination '%s' -quiet build", appName, appName, destination)
-
-		userMsg = fmt.Sprintf(`Edit this app based on the following request:
-
-%s
-
-After making changes:
-1. If you need new permissions, extensions, or entitlements, use the xcodegen MCP tools (add_permission, add_extension, etc.)
-2. Run: xcodebuild -project %s.xcodeproj -scheme %s -destination '%s' -quiet build
-3. If build fails, read the errors carefully, fix the code, and rebuild
-4. If Xcode says the scheme is missing, run: xcodebuild -list -project %s.xcodeproj and use the listed app scheme
-5. Repeat until the build succeeds`, prompt, appName, appName, destination, appName)
 	}
 
+	// The user's prompt is the user message — Claude figures out the intent.
+	userMsg := prompt
+
 	// Build tool list: base tools + integration MCP tools
-	tools := append([]string(nil), baseAgenticTools...)
+	tools := p.baseAgenticTools()
 	if p.manager != nil && len(activeProviders) > 0 {
 		tools = append(tools, p.manager.AgentTools(activeProviders)...)
 	}
 
-	progress := terminal.NewProgressDisplay("edit", 0)
+	progress := terminal.NewProgressDisplay("working", 0)
 	progress.Start()
 
 	resp, err := p.claude.GenerateStreaming(ctx, userMsg, claude.GenerateOpts{
@@ -121,14 +104,14 @@ After making changes:
 		AllowedTools:       tools,
 		SessionID:          sessionID,
 		Images:             images,
-	}, newProgressCallback(progress))
+	}, p.makeStreamCallback(progress))
 
 	if err != nil {
-		progress.StopWithError("Edit failed")
-		return nil, fmt.Errorf("edit failed: %w", err)
+		progress.StopWithError("Failed")
+		return nil, fmt.Errorf("operation failed: %w", err)
 	}
 
-	progress.StopWithSuccess("Changes applied!")
+	progress.StopWithSuccess("Done!")
 	showCost(resp)
 
 	return &EditResult{

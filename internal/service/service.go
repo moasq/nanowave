@@ -68,9 +68,24 @@ func NewService(cfg *config.Config, opts ...ServiceOpts) (*Service, error) {
 	}, nil
 }
 
-// Send auto-routes to build (no project), question (detected question), or edit.
+// Send auto-routes to build (no project) or handles the request on an existing project.
 // images is an optional list of absolute paths to image files to include.
 func (s *Service) Send(ctx context.Context, prompt string, images []string) error {
+	// Guard: refuse mixed build+ASC requests — publishing must be a separate step.
+	pipeline := orchestration.NewPipeline(s.claude, s.config, s.model)
+	intent, err := pipeline.QuickIntentCheck(ctx, prompt)
+	if err == nil && intent != nil && intent.HasASCIntent {
+		terminal.Warning("App Store Connect operations must be run separately from build/edit.")
+		terminal.Info("Build your app first, then use /connect for publishing and App Store management.")
+		fmt.Println()
+		terminal.Info("Examples:")
+		fmt.Printf("  %s/connect check my app status%s\n", terminal.Bold, terminal.Reset)
+		fmt.Printf("  %s/connect submit to TestFlight%s\n", terminal.Bold, terminal.Reset)
+		fmt.Printf("  %s/connect publish to App Store%s\n", terminal.Bold, terminal.Reset)
+		fmt.Println()
+		return nil
+	}
+
 	if !s.config.HasProject() {
 		if err := s.build(ctx, prompt, images); err != nil {
 			return err
@@ -250,14 +265,14 @@ func (s *Service) build(ctx context.Context, prompt string, images []string) err
 	return nil
 }
 
-// edit modifies an existing project.
+// edit handles all work on an existing project — edits, fixes, refactors, etc.
 func (s *Service) edit(ctx context.Context, prompt string, images []string) error {
 	project, err := s.projectStore.Load()
 	if err != nil || project == nil {
 		return fmt.Errorf("no active project found")
 	}
 
-	terminal.Header("Nanowave Edit")
+	terminal.Header("Nanowave")
 	terminal.Detail("Project", projectName(project))
 
 	pipeline := orchestration.NewPipeline(s.claude, s.config, s.model)
@@ -293,33 +308,34 @@ func (s *Service) edit(ctx context.Context, prompt string, images []string) erro
 	return nil
 }
 
-// Fix auto-fixes build errors in the current project.
-func (s *Service) Fix(ctx context.Context) error {
+// ASC runs the App Store Connect flow directly in the terminal.
+func (s *Service) ASC(ctx context.Context, prompt string) error {
 	project, err := s.projectStore.Load()
 	if err != nil || project == nil {
-		return fmt.Errorf("no active project found. Run `nanowave` first")
+		return fmt.Errorf("no active project found")
 	}
 
-	terminal.Header("Nanowave Fix")
-	terminal.Detail("Project", projectName(project))
-
 	pipeline := orchestration.NewPipeline(s.claude, s.config, s.model)
-	pipeline.SetManager(s.manager)
-	result, err := pipeline.Fix(ctx, project.ProjectPath, project.SessionID)
+
+	if prompt == "" {
+		prompt = "Submit this app to TestFlight for beta testing."
+	}
+
+	result, err := pipeline.ASCFull(ctx, prompt, project.ProjectPath, project.SessionID)
 	if err != nil {
-		terminal.Error(fmt.Sprintf("Fix failed: %v", err))
+		terminal.Error(fmt.Sprintf("ASC operation failed: %v", err))
 		return err
 	}
 
 	// Record usage
 	s.usageStore.RecordUsage(result.TotalCostUSD, result.InputTokens, result.OutputTokens, result.CacheRead, result.CacheCreated)
-
-	// Update session ID for conversation continuity
 	if result.SessionID != "" {
 		project.SessionID = result.SessionID
 		s.projectStore.Save(project)
 	}
 
+	// Print summary
+	printSummary(result.Summary)
 	return nil
 }
 
@@ -440,10 +456,11 @@ func (s *Service) Run(ctx context.Context) error {
 	} else {
 		spinner.StopWithMessage(fmt.Sprintf("%s%s!%s Build failed — auto-fixing...", terminal.Bold, terminal.Yellow, terminal.Reset))
 
-		// Auto-fix: use Claude to diagnose and repair
+		// Auto-fix: use Claude to diagnose and repair via Edit
 		pipeline := orchestration.NewPipeline(s.claude, s.config, s.model)
 		pipeline.SetManager(s.manager)
-		fixResult, fixErr := pipeline.Fix(ctx, project.ProjectPath, project.SessionID)
+		fixPrompt := "Build the project, read any compilation errors, and fix all of them. Rebuild and repeat until the build succeeds."
+		fixResult, fixErr := pipeline.Edit(ctx, fixPrompt, project.ProjectPath, project.SessionID, nil)
 		if fixErr != nil {
 			terminal.Error("Auto-fix failed")
 			return fmt.Errorf("xcodebuild failed: %w\n%s", err, string(buildOutput))
@@ -473,7 +490,7 @@ func (s *Service) Run(ctx context.Context) error {
 
 		if retryErr != nil {
 			spinner.StopWithMessage(fmt.Sprintf("%s%s✗%s Build still failing after auto-fix", terminal.Bold, terminal.Red, terminal.Reset))
-			terminal.Info("Run `nanowave fix` to try again")
+			terminal.Info("Try describing the issue to fix it")
 			return fmt.Errorf("xcodebuild failed after fix: %w\n%s", retryErr, string(retryOutput))
 		}
 		spinner.StopWithMessage(fmt.Sprintf("%s%s✓%s Build fixed!", terminal.Bold, terminal.Green, terminal.Reset))

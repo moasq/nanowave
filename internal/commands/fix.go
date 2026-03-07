@@ -15,6 +15,6 @@ var fixCmd = &cobra.Command{
 			printNoProjectFoundCreateFirst()
 			return err
 		}
-		return svc.Fix(cmd.Context())
+		return svc.Send(cmd.Context(), "Build the project, read any compilation errors, and fix all of them. Rebuild and repeat until the build succeeds.", nil)
 	},
 }

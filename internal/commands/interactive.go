@@ -484,8 +484,26 @@ func handleSlashCommand(input string, cfg *config.Config, svc *service.Service, 
 		if !requireProjectForSlashCommand(cfg) {
 			return true
 		}
-		if err := runWithSlashCommandContext(cmd, svc.Fix); err != nil {
+		fixPrompt := "Build the project, read any compilation errors, and fix all of them. Rebuild and repeat until the build succeeds."
+		if err := svc.Send(cmd.Context(), fixPrompt, nil); err != nil {
 			terminal.Error(fmt.Sprintf("Fix failed: %v", err))
+		}
+		fmt.Println()
+		return true
+
+	case "/connect":
+		if !requireProjectForSlashCommand(cfg) {
+			return true
+		}
+		ascPrompt := arg
+		err := runWithSlashCommandContext(cmd, func(ctx context.Context) error {
+			return svc.ASC(ctx, ascPrompt)
+		})
+		if err != nil {
+			if !strings.Contains(err.Error(), "not authenticated") &&
+				!strings.Contains(err.Error(), "asc CLI not found") {
+				terminal.Error(fmt.Sprintf("ASC failed: %v", err))
+			}
 		}
 		fmt.Println()
 		return true
@@ -732,6 +750,7 @@ func printHelp() {
 	fmt.Printf("  %s/simulator [name]%s Select simulator device%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
 	fmt.Printf("  %s/model [name]%s     Show or switch model (sonnet, opus, haiku)%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
 	fmt.Printf("  %s/fix%s              Auto-fix build errors%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
+	fmt.Printf("  %s/connect <action>%s App Store Connect (publish, TestFlight)%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
 	fmt.Printf("  %s/ask <question>%s  Ask about your project (cheap, read-only)%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
 	fmt.Printf("  %s/open%s             Open project in Xcode%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
 	fmt.Printf("  %s/projects%s         Switch to another project%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)

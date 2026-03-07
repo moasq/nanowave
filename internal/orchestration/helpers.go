@@ -381,19 +381,67 @@ func sanitizeToPascalCase(name string) string {
 }
 
 // newProgressCallback returns a callback that updates a ProgressDisplay based on Claude Code streaming events.
+// It handles both real-time stream events (tool_use_start, tool_input_delta) and
+// full message events (tool_use, assistant) for maximum visibility.
 func newProgressCallback(progress *terminal.ProgressDisplay) func(claude.StreamEvent) {
+	var (
+		currentTool    string
+		inputBuf       strings.Builder
+		toolRegistered bool // whether we've added an activity for the current tool
+	)
+
 	return func(ev claude.StreamEvent) {
 		switch ev.Type {
-		case "tool_use":
-			if ev.ToolName != "" {
-				progress.OnToolUse(ev.ToolName, func(key string) string {
-					return extractToolInputString(ev.ToolInput, key)
-				})
+		case "tool_use_start":
+			// Real-time: tool is starting, we know the name immediately.
+			// Add a preliminary activity with just the tool name.
+			currentTool = ev.ToolName
+			inputBuf.Reset()
+			toolRegistered = false
+
+			// Register an initial activity with empty input
+			progress.OnToolUse(currentTool, func(key string) string { return "" })
+			toolRegistered = true
+
+		case "tool_input_delta":
+			// Real-time: streaming tool input JSON. Accumulate and try to
+			// refine the activity label once we have enough input to parse.
+			inputBuf.WriteString(ev.Text)
+
+			if currentTool != "" && toolRegistered {
+				accumulated := inputBuf.String()
+				// Try to extract a better label from partial input
+				getter := func(key string) string {
+					return extractToolInputString(json.RawMessage(accumulated), key)
+				}
+				// Only update if we can extract a meaningful field
+				if getter("command") != "" || getter("file_path") != "" || getter("query") != "" || getter("pattern") != "" {
+					progress.UpdateToolActivity(currentTool, getter)
+				}
 			}
+
+		case "tool_use":
+			// Full message: tool call with complete input (arrives after execution).
+			// If we already registered via tool_use_start, just update; otherwise add.
+			if ev.ToolName != "" {
+				getter := func(key string) string {
+					return extractToolInputString(ev.ToolInput, key)
+				}
+				if toolRegistered && ev.ToolName == currentTool {
+					progress.UpdateToolActivity(ev.ToolName, getter)
+				} else {
+					progress.OnToolUse(ev.ToolName, getter)
+				}
+			}
+			currentTool = ""
+			inputBuf.Reset()
+			toolRegistered = false
+
 		case "content_block_delta":
 			if ev.Text != "" {
 				progress.OnStreamingText(ev.Text)
 			}
+
 		case "assistant":
 			if ev.Text != "" {
 				progress.OnAssistantText(ev.Text)
