@@ -21,6 +21,10 @@ Return valid JSON for AnalysisResult. Do not ask questions. Do not output markdo
 }
 ```
 
+## Edit Mode
+
+When the prompt includes "Existing project:" context, the request is an edit to an existing app. Focus your analysis on the NEW capabilities being requested — not the entire app. Use the existing app name. Only include features and backend needs that are new or changing.
+
 ## Rules
 
 - `backend_needs` — include only when the app requires cloud/backend features OR monetization.

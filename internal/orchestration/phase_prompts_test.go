@@ -186,7 +186,7 @@ func TestBuildAndCompletionPromptsIncludePhaseSkillsAndRuleKeys(t *testing.T) {
 		BuildOrder: []string{"Models/Item.swift"},
 	}
 
-	appendPrompt, _, err := p.buildPrompts("", "Sample", t.TempDir(), analysis, plan, false)
+	appendPrompt, _, err := p.buildPrompts("", "Sample", t.TempDir(), analysis, plan, false, ActionContext{})
 	if err != nil {
 		t.Fatalf("buildPrompts() error: %v", err)
 	}

@@ -271,9 +271,9 @@ func generateMultiPlatformProjectYAML(appName string, plan *PlannerResult, entit
 	writeIOSDestinationSettings(&b, plan.GetDeviceFamily())
 	b.WriteString("    sources:\n")
 	fmt.Fprintf(&b, "      - path: %s\n", appName)
-	b.WriteString("        type: folder\n")
+	b.WriteString("        type: syncedFolder\n")
 	b.WriteString("      - path: Shared\n")
-	b.WriteString("        type: folder\n")
+	b.WriteString("        type: syncedFolder\n")
 	b.WriteString("        optional: true\n")
 
 	b.WriteString("    settings:\n")
@@ -391,9 +391,9 @@ func generateMultiPlatformProjectYAML(appName string, plan *PlannerResult, entit
 		b.WriteString("      - tvOS\n")
 		b.WriteString("    sources:\n")
 		fmt.Fprintf(&b, "      - path: %sTV\n", appName)
-		b.WriteString("        type: folder\n")
+		b.WriteString("        type: syncedFolder\n")
 		b.WriteString("      - path: Shared\n")
-		b.WriteString("        type: folder\n")
+		b.WriteString("        type: syncedFolder\n")
 		b.WriteString("        optional: true\n")
 
 		b.WriteString("    settings:\n")
@@ -460,9 +460,9 @@ func generateMultiPlatformProjectYAML(appName string, plan *PlannerResult, entit
 		b.WriteString("      - visionOS\n")
 		b.WriteString("    sources:\n")
 		fmt.Fprintf(&b, "      - path: %sVision\n", appName)
-		b.WriteString("        type: folder\n")
+		b.WriteString("        type: syncedFolder\n")
 		b.WriteString("      - path: Shared\n")
-		b.WriteString("        type: folder\n")
+		b.WriteString("        type: syncedFolder\n")
 		b.WriteString("        optional: true\n")
 
 		b.WriteString("    settings:\n")
@@ -529,9 +529,9 @@ func generateMultiPlatformProjectYAML(appName string, plan *PlannerResult, entit
 		b.WriteString("      - macOS\n")
 		b.WriteString("    sources:\n")
 		fmt.Fprintf(&b, "      - path: %sMac\n", appName)
-		b.WriteString("        type: folder\n")
+		b.WriteString("        type: syncedFolder\n")
 		b.WriteString("      - path: Shared\n")
-		b.WriteString("        type: folder\n")
+		b.WriteString("        type: syncedFolder\n")
 		b.WriteString("        optional: true\n")
 
 		b.WriteString("    settings:\n")
@@ -609,9 +609,9 @@ func generateMultiPlatformProjectYAML(appName string, plan *PlannerResult, entit
 			fmt.Fprintf(&b, "    platform: %s\n", PlatformXcodegenValue(extPlatform))
 			b.WriteString("    sources:\n")
 			fmt.Fprintf(&b, "      - path: %s\n", sourcePath)
-			b.WriteString("        type: folder\n")
+			b.WriteString("        type: syncedFolder\n")
 			b.WriteString("      - path: Shared\n")
-			b.WriteString("        type: folder\n")
+			b.WriteString("        type: syncedFolder\n")
 			b.WriteString("        optional: true\n")
 			b.WriteString("    settings:\n")
 			b.WriteString("      base:\n")
@@ -760,10 +760,10 @@ func generateMacOSProjectYAML(appName string, plan *PlannerResult, entitlements 
 	b.WriteString("      - macOS\n")
 	b.WriteString("    sources:\n")
 	fmt.Fprintf(&b, "      - path: %s\n", appName)
-	b.WriteString("        type: folder\n")
+	b.WriteString("        type: syncedFolder\n")
 	if hasExtensions {
 		b.WriteString("      - path: Shared\n")
-		b.WriteString("        type: folder\n")
+		b.WriteString("        type: syncedFolder\n")
 		b.WriteString("        optional: true\n")
 	}
 
@@ -844,10 +844,10 @@ func generateIOSProjectYAML(appName string, plan *PlannerResult, entitlements ma
 	writeIOSDestinationSettings(&b, plan.GetDeviceFamily())
 	b.WriteString("    sources:\n")
 	fmt.Fprintf(&b, "      - path: %s\n", appName)
-	b.WriteString("        type: folder\n")
+	b.WriteString("        type: syncedFolder\n")
 	if hasExtensions {
 		b.WriteString("      - path: Shared\n")
-		b.WriteString("        type: folder\n")
+		b.WriteString("        type: syncedFolder\n")
 		b.WriteString("        optional: true\n")
 	}
 
@@ -923,10 +923,10 @@ func generateTvOSProjectYAML(appName string, plan *PlannerResult, entitlements m
 	b.WriteString("      - tvOS\n")
 	b.WriteString("    sources:\n")
 	fmt.Fprintf(&b, "      - path: %s\n", appName)
-	b.WriteString("        type: folder\n")
+	b.WriteString("        type: syncedFolder\n")
 	if hasExtensions {
 		b.WriteString("      - path: Shared\n")
-		b.WriteString("        type: folder\n")
+		b.WriteString("        type: syncedFolder\n")
 		b.WriteString("        optional: true\n")
 	}
 
@@ -968,10 +968,10 @@ func generateVisionOSProjectYAML(appName string, plan *PlannerResult, entitlemen
 	b.WriteString("      - visionOS\n")
 	b.WriteString("    sources:\n")
 	fmt.Fprintf(&b, "      - path: %s\n", appName)
-	b.WriteString("        type: folder\n")
+	b.WriteString("        type: syncedFolder\n")
 	if hasExtensions {
 		b.WriteString("      - path: Shared\n")
-		b.WriteString("        type: folder\n")
+		b.WriteString("        type: syncedFolder\n")
 		b.WriteString("        optional: true\n")
 	}
 
@@ -1010,7 +1010,7 @@ func watchExtensionTargetName(appName string) string {
 
 func writeSyncedSourceEntry(b *strings.Builder, path string, excludes []string, optional bool) {
 	fmt.Fprintf(b, "      - path: %s\n", path)
-	b.WriteString("        type: folder\n")
+	b.WriteString("        type: syncedFolder\n")
 	if optional {
 		b.WriteString("        optional: true\n")
 	}
@@ -1287,10 +1287,10 @@ func generatePairedYAML(appName string, plan *PlannerResult, entitlements map[st
 	b.WriteString("      - iOS\n")
 	b.WriteString("    sources:\n")
 	fmt.Fprintf(&b, "      - path: %s\n", appName)
-	b.WriteString("        type: folder\n")
+	b.WriteString("        type: syncedFolder\n")
 	if hasExtensions {
 		b.WriteString("      - path: Shared\n")
-		b.WriteString("        type: folder\n")
+		b.WriteString("        type: syncedFolder\n")
 		b.WriteString("        optional: true\n")
 	}
 

@@ -11,34 +11,46 @@
 ```swift
 struct PaywallView: View {
     @Environment(\.dismiss) private var dismiss
-    @State private var selectedPackage: Package?
-    @State private var packages: [Package] = []
-    @State private var isPurchasing = false
-    @State private var errorMessage: String?
+    @State private var manager = SubscriptionManager.shared
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: AppTheme.Spacing.lg) {
-                    heroSection
-                    featureList
-                    planCards
-                    ctaButton
-                    footer
+            ZStack {
+                ScrollView {
+                    VStack(spacing: AppTheme.Spacing.lg) {
+                        heroSection
+                        featureList
+                        planCards
+                        ctaButton
+                        footer
+                    }
+                    .padding(AppTheme.Spacing.md)
                 }
-                .padding(AppTheme.Spacing.md)
-            }
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Close") { dismiss() }
+                    }
+                }
+
+                if manager.purchaseSuccess {
+                    purchaseSuccessOverlay
                 }
             }
         }
-        .task { await loadOfferings() }
-        .alert("Error", isPresented: .constant(errorMessage != nil)) {
-            Button("OK") { errorMessage = nil }
+        .task { await manager.loadOfferings() }
+        .onChange(of: manager.purchaseSuccess) { _, success in
+            if success {
+                Task {
+                    try? await Task.sleep(for: .seconds(1.5))
+                    manager.resetPurchaseSuccess()
+                    dismiss()
+                }
+            }
+        }
+        .alert("Error", isPresented: .constant(manager.errorMessage != nil)) {
+            Button("OK") { manager.errorMessage = nil }
         } message: {
-            Text(errorMessage ?? "")
+            Text(manager.errorMessage ?? "")
         }
     }
 }
@@ -75,11 +87,11 @@ struct PaywallFeatureRow: View {
 ```swift
 private var planCards: some View {
     VStack(spacing: AppTheme.Spacing.sm) {
-        ForEach(packages, id: \.identifier) { package in
+        ForEach(manager.packages, id: \.identifier) { package in
             PaywallPlanCard(
                 package: package,
-                isSelected: selectedPackage?.identifier == package.identifier,
-                onTap: { selectedPackage = package }
+                isSelected: manager.selectedPackage?.identifier == package.identifier,
+                onTap: { manager.selectedPackage = package }
             )
         }
     }
@@ -91,9 +103,10 @@ private var planCards: some View {
 ```swift
 private var ctaButton: some View {
     Button {
-        Task { await purchase() }
+        guard let pkg = manager.selectedPackage else { return }
+        Task { await manager.purchase(pkg) }
     } label: {
-        if isPurchasing {
+        if manager.isLoading {
             ProgressView()
         } else {
             Text("Subscribe")
@@ -101,7 +114,7 @@ private var ctaButton: some View {
         }
     }
     .buttonStyle(.borderedProminent)
-    .disabled(selectedPackage == nil || isPurchasing)
+    .disabled(manager.selectedPackage == nil || manager.isLoading)
 }
 
 private var footer: some View {
@@ -117,47 +130,38 @@ private var footer: some View {
         .font(AppTheme.Fonts.caption)
 
         Button("Restore Purchases") {
-            Task { await restore() }
+            Task { await manager.restore() }
         }
         .font(AppTheme.Fonts.caption)
     }
     .multilineTextAlignment(.center)
 }
+```
 
-private func loadOfferings() async {
-    do {
-        let offerings = try await Purchases.shared.offerings()
-        packages = offerings.current?.availablePackages ?? []
-        selectedPackage = packages.first
-    } catch {
-        errorMessage = "Could not load plans. Please try again."
-    }
-}
+## Purchase Success Overlay
 
-private func purchase() async {
-    guard let package = selectedPackage else { return }
-    isPurchasing = true
-    defer { isPurchasing = false }
-    do {
-        let result = try await Purchases.shared.purchase(package: package)
-        if !result.userCancelled {
-            dismiss()
+```swift
+private var purchaseSuccessOverlay: some View {
+    ZStack {
+        Color.black.opacity(0.6)
+            .ignoresSafeArea()
+
+        VStack(spacing: AppTheme.Spacing.md) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 64))
+                .foregroundStyle(AppTheme.Colors.success)
+                .symbolEffect(.bounce, value: manager.purchaseSuccess)
+
+            Text("You're all set!")
+                .font(AppTheme.Fonts.title2)
+                .foregroundStyle(.white)
+
+            Text("Your premium access is now active")
+                .font(AppTheme.Fonts.body)
+                .foregroundStyle(.white.opacity(0.8))
         }
-    } catch {
-        errorMessage = error.localizedDescription
     }
-}
-
-private func restore() async {
-    do {
-        let info = try await Purchases.shared.restorePurchases()
-        if info.entitlements[AppConfig.entitlementID]?.isActive == true {
-            dismiss()
-        } else {
-            errorMessage = "No active subscriptions found."
-        }
-    } catch {
-        errorMessage = error.localizedDescription
-    }
+    .transition(.opacity)
+    .animation(.easeInOut(duration: 0.3), value: manager.purchaseSuccess)
 }
 ```

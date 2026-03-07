@@ -77,6 +77,22 @@ func SaveIrisCookies(appleID string, jar http.CookieJar) error {
 	return os.WriteFile(path, data, 0o600)
 }
 
+// ClearIrisSessions removes all stored iris session files.
+func ClearIrisSessions() {
+	home, _ := os.UserHomeDir()
+	irisDir := filepath.Join(home, ".asc", "iris")
+	entries, err := os.ReadDir(irisDir)
+	if err != nil {
+		return
+	}
+	for _, e := range entries {
+		if !e.IsDir() && strings.HasSuffix(e.Name(), ".json") {
+			os.Remove(filepath.Join(irisDir, e.Name()))
+		}
+	}
+	log.Printf("[appleauth] cleared all iris sessions")
+}
+
 // LoadIrisCookies restores saved iris session cookies into a cookie jar.
 // Returns the jar or an error if no session is available.
 func LoadIrisCookies() (http.CookieJar, error) {

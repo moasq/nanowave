@@ -153,19 +153,19 @@ func generateIOSProjectYAMLCfg(cfg *ProjectConfig) string {
 	writeIOSDestinationSettingsCfg(&b, cfg.DeviceFamily)
 	b.WriteString("    sources:\n")
 	fmt.Fprintf(&b, "      - path: %s\n", appName)
-	b.WriteString("        type: folder\n")
+	b.WriteString("        type: syncedFolder\n")
 	if hasLocalizations {
 		b.WriteString("        excludes:\n")
 		b.WriteString("          - \"*.lproj\"\n")
 		fmt.Fprintf(&b, "      - path: %s\n", appName)
-		b.WriteString("        type: folder\n")
+		b.WriteString("        type: syncedFolder\n")
 		b.WriteString("        includes:\n")
 		b.WriteString("          - \"*.lproj\"\n")
 		b.WriteString("        buildPhase: resources\n")
 	}
 	if hasExtensions {
 		b.WriteString("      - path: Shared\n")
-		b.WriteString("        type: folder\n")
+		b.WriteString("        type: syncedFolder\n")
 		b.WriteString("        optional: true\n")
 	}
 
@@ -262,9 +262,9 @@ func generateIOSProjectYAMLCfg(cfg *ProjectConfig) string {
 		b.WriteString("    platform: iOS\n")
 		b.WriteString("    sources:\n")
 		fmt.Fprintf(&b, "      - path: %s\n", sourcePath)
-		b.WriteString("        type: folder\n")
+		b.WriteString("        type: syncedFolder\n")
 		b.WriteString("      - path: Shared\n")
-		b.WriteString("        type: folder\n")
+		b.WriteString("        type: syncedFolder\n")
 		b.WriteString("        optional: true\n")
 		b.WriteString("    settings:\n")
 		b.WriteString("      base:\n")
@@ -520,10 +520,10 @@ func generatePairedYAMLCfg(cfg *ProjectConfig) string {
 	b.WriteString("      - iOS\n")
 	b.WriteString("    sources:\n")
 	fmt.Fprintf(&b, "      - path: %s\n", appName)
-	b.WriteString("        type: folder\n")
+	b.WriteString("        type: syncedFolder\n")
 	if hasExtensions {
 		b.WriteString("      - path: Shared\n")
-		b.WriteString("        type: folder\n")
+		b.WriteString("        type: syncedFolder\n")
 		b.WriteString("        optional: true\n")
 	}
 
@@ -695,7 +695,7 @@ func watchExtensionTargetName(appName string) string {
 
 func writeFolderSourceEntryCfg(b *strings.Builder, path string, excludes []string, optional bool) {
 	fmt.Fprintf(b, "      - path: %s\n", path)
-	b.WriteString("        type: folder\n")
+	b.WriteString("        type: syncedFolder\n")
 	if optional {
 		b.WriteString("        optional: true\n")
 	}

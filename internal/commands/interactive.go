@@ -248,6 +248,7 @@ func runInteractive(cmd *cobra.Command) error {
 	if imgCache != nil {
 		defer imgCache.cleanup()
 	}
+	defer terminal.CleanupClipboard()
 
 	// Print project status if a project is selected
 	if cfg.HasProject() {
@@ -255,7 +256,7 @@ func runInteractive(cmd *cobra.Command) error {
 		fmt.Println()
 	}
 
-	fmt.Printf("  %sPress Enter to submit. Esc+Enter for newline. Drag images to attach.%s\n\n", terminal.Dim, terminal.Reset)
+	fmt.Printf("  %sPress Enter to submit. Esc+Enter for newline. Ctrl+V to paste image. Drag images to attach.%s\n\n", terminal.Dim, terminal.Reset)
 
 	// Set up signal handling for Ctrl+C
 	sigChan := make(chan os.Signal, 1)
@@ -763,6 +764,6 @@ func printHelp() {
 	fmt.Printf("  %s/quit%s             Exit session%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
 	fmt.Println()
 	fmt.Printf("  %sJust type a description and press Enter to submit.%s\n", terminal.Dim, terminal.Reset)
-	fmt.Printf("  %sEsc+Enter for newline. Drag image files to attach.%s\n", terminal.Dim, terminal.Reset)
+	fmt.Printf("  %sEsc+Enter for newline. Ctrl+V to paste image. Drag images to attach.%s\n", terminal.Dim, terminal.Reset)
 	fmt.Println()
 }

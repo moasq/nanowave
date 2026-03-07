@@ -7,6 +7,10 @@
 
 Return ONLY valid PlannerResult JSON with design, files, models, permissions, extensions, localizations, platform, platforms, watch_project_shape, device_family, rule_keys, packages, integrations, and build_order.
 
+## Edit Mode
+
+When the prompt says "Plan ONLY the new/modified files for this edit", output only NEW or MODIFIED files. Existing files that don't change should NOT appear in the files array. Include any new integrations, packages, or rule_keys needed for the changes.
+
 ## File Entry Fields
 
 Every file entry must include:

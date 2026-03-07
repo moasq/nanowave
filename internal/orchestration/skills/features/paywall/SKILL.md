@@ -29,17 +29,32 @@ struct PaywallView: View {
     @State private var manager = SubscriptionManager.shared
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: AppTheme.Spacing.lg) {
-                closeButton
-                heroSection
-                planCards
-                ctaButton
-                footer
+        ZStack {
+            ScrollView {
+                VStack(spacing: AppTheme.Spacing.lg) {
+                    closeButton
+                    heroSection
+                    planCards
+                    ctaButton
+                    footer
+                }
+                .padding(AppTheme.Spacing.md)
             }
-            .padding(AppTheme.Spacing.md)
+
+            if manager.purchaseSuccess {
+                purchaseSuccessOverlay
+            }
         }
         .task { await manager.loadOfferings() }
+        .onChange(of: manager.purchaseSuccess) { _, success in
+            if success {
+                Task {
+                    try? await Task.sleep(for: .seconds(1.5))
+                    manager.resetPurchaseSuccess()
+                    dismiss()
+                }
+            }
+        }
     }
 
     private var planCards: some View {
@@ -67,6 +82,42 @@ struct PaywallView: View {
     }
 }
 ```
+
+## Purchase Success Overlay (REQUIRED)
+
+After a successful purchase, the paywall MUST show a success overlay before auto-dismissing. This gives the user clear confirmation that their purchase went through.
+
+```swift
+private var purchaseSuccessOverlay: some View {
+    ZStack {
+        Color.black.opacity(0.6)
+            .ignoresSafeArea()
+
+        VStack(spacing: AppTheme.Spacing.md) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 64))
+                .foregroundStyle(AppTheme.Colors.success)
+                .symbolEffect(.bounce, value: manager.purchaseSuccess)
+
+            Text("You're all set!")
+                .font(AppTheme.Fonts.title2)
+                .foregroundStyle(.white)
+
+            Text("Your premium access is now active")
+                .font(AppTheme.Fonts.body)
+                .foregroundStyle(.white.opacity(0.8))
+        }
+    }
+    .transition(.opacity)
+    .animation(.easeInOut(duration: 0.3), value: manager.purchaseSuccess)
+}
+```
+
+Key points:
+- The overlay appears immediately when `purchaseSuccess` becomes `true`
+- After 1.5 seconds, the paywall resets the flag and auto-dismisses
+- The underlying views don't need to do anything — `isPremium` is already updated, so feature gates unlock automatically
+- Use `AppTheme.Colors.success` if defined, otherwise use `.green`
 
 ## Plan Card Pattern
 

@@ -81,6 +81,11 @@ func (c *Checklist) CompleteItem(status ChecklistStatus, detail string) {
 	fmt.Printf("  %s%s%s%s %s%s\n", Bold, color, marker, Reset, detail, Reset)
 }
 
+// HasActive returns whether a checklist item is currently in progress.
+func (c *Checklist) HasActive() bool {
+	return c.hasActive
+}
+
 // Finish stops any active spinner and prints a blank separator line.
 func (c *Checklist) Finish() {
 	if c.hasActive {
