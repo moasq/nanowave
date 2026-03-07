@@ -229,6 +229,15 @@ func RunUploadServer(ctx context.Context, appIconDir, platform string) bool {
 		}
 	})
 
+	mux.HandleFunc("/icon", func(w http.ResponseWriter, r *http.Request) {
+		src := FindSourceIcon(appIconDir)
+		if src == "" {
+			http.Error(w, "no icon available", 404)
+			return
+		}
+		http.ServeFile(w, r, src)
+	})
+
 	mux.HandleFunc("/skip", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{"ok":true}`))

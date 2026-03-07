@@ -228,8 +228,9 @@ func readWithTimeout(buf []byte, timeout time.Duration) int {
 
 // PickerOption represents an option in the interactive picker.
 type PickerOption struct {
-	Label string
-	Desc  string
+	Label       string
+	Desc        string
+	IsTextEntry bool // When true, selecting this option opens a text input prompt
 }
 
 // Pick shows an interactive picker with arrow key navigation.

@@ -3,6 +3,7 @@ package orchestration
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -379,5 +380,105 @@ func TestExtractToolInputString(t *testing.T) {
 				t.Errorf("extractToolInputString(%q, %q) = %q, want %q", tt.input, tt.key, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestParseQuestionOptions(t *testing.T) {
+	tests := []struct {
+		name        string
+		input       string
+		wantText    string
+		wantOptions int
+		wantFirst   string
+	}{
+		{
+			name:        "no options block",
+			input:       "What is your app description?",
+			wantText:    "What is your app description?",
+			wantOptions: 0,
+		},
+		{
+			name: "with options block",
+			input: `Age Rating: What age rating fits your app?
+
+[OPTIONS]
+- 4+ | No objectionable content
+- 9+ | Mild cartoon violence
+- 12+ | Infrequent mature themes
+- 17+ | Frequent mature themes
+[/OPTIONS]`,
+			wantText:    "Age Rating: What age rating fits your app?",
+			wantOptions: 4,
+			wantFirst:   "4+",
+		},
+		{
+			name:        "malformed no end tag",
+			input:       "Question\n[OPTIONS]\n- A | desc",
+			wantText:    "Question\n[OPTIONS]\n- A | desc",
+			wantOptions: 0,
+		},
+		{
+			name: "option without description",
+			input: `Pick one:
+
+[OPTIONS]
+- Alpha
+- Beta
+[/OPTIONS]`,
+			wantText:    "Pick one:",
+			wantOptions: 2,
+			wantFirst:   "Alpha",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			text, opts := parseQuestionOptions(tt.input)
+			if text != tt.wantText {
+				t.Errorf("text = %q, want %q", text, tt.wantText)
+			}
+			if len(opts) != tt.wantOptions {
+				t.Errorf("got %d options, want %d", len(opts), tt.wantOptions)
+			}
+			if tt.wantFirst != "" && len(opts) > 0 && opts[0].Label != tt.wantFirst {
+				t.Errorf("first option label = %q, want %q", opts[0].Label, tt.wantFirst)
+			}
+		})
+	}
+}
+
+func TestParseQuestionOptionsInputTag(t *testing.T) {
+	input := `**Description**: I'd suggest: "A great app."
+
+[OPTIONS]
+- Use this suggestion | Accept the suggested description
+- Enter my own | [INPUT] Type a custom value
+[/OPTIONS]`
+
+	text, opts := parseQuestionOptions(input)
+	if !strings.Contains(text, "I'd suggest") {
+		t.Errorf("display text should contain suggestion, got %q", text)
+	}
+	if len(opts) != 2 {
+		t.Fatalf("expected 2 options, got %d", len(opts))
+	}
+
+	// First option: not text entry
+	if opts[0].Label != "Use this suggestion" {
+		t.Errorf("first label = %q, want %q", opts[0].Label, "Use this suggestion")
+	}
+	if opts[0].IsTextEntry {
+		t.Error("first option should not be text entry")
+	}
+
+	// Second option: text entry, [INPUT] stripped from desc
+	if opts[1].Label != "Enter my own" {
+		t.Errorf("second label = %q, want %q", opts[1].Label, "Enter my own")
+	}
+	if !opts[1].IsTextEntry {
+		t.Error("second option should be text entry")
+	}
+	if opts[1].Desc != "Type a custom value" {
+		t.Errorf("second desc = %q, want %q", opts[1].Desc, "Type a custom value")
 	}
 }

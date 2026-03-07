@@ -87,14 +87,16 @@ type ProgressDisplay struct {
 	streamingBuf  strings.Builder // accumulates streaming text tokens
 	running       bool
 	done          chan struct{}
-	mode          string // "build", "edit", "fix", "analyze", "plan"
+	stopped       chan struct{} // closed when renderLoop exits
+	mode          string       // "build", "edit", "fix", "analyze", "plan"
 	totalPhases   int
 	buildFailed   bool
 	fixAttempts   int
 	startedAt     time.Time
 	interactive   bool
-	lastRenderID  string
-	maxActivities int
+	lastRenderID    string
+	maxActivities   int
+	lastRenderLines int // tracks previous render height for dynamic clearing
 }
 
 const (
@@ -146,6 +148,7 @@ func NewProgressDisplay(mode string, totalFiles int) *ProgressDisplay {
 		startedAt:     time.Now(),
 		interactive:   term.IsTerminal(int(os.Stdout.Fd())),
 		done:          make(chan struct{}),
+		stopped:       make(chan struct{}),
 		maxActivities: maxAct,
 	}
 }
@@ -174,6 +177,7 @@ func (pd *ProgressDisplay) Stop() {
 	pd.mu.Unlock()
 
 	close(pd.done)
+	<-pd.stopped // wait for renderLoop to exit before clearing
 	if pd.interactive {
 		pd.clearDisplay()
 	}
@@ -434,6 +438,7 @@ func (pd *ProgressDisplay) OnAssistantText(text string) {
 
 // renderLoop runs the rendering goroutine.
 func (pd *ProgressDisplay) renderLoop() {
+	defer close(pd.stopped)
 	frame := 0
 	for {
 		select {
@@ -494,19 +499,27 @@ func (pd *ProgressDisplay) render(frame int) {
 		lines = append(lines, fmt.Sprintf("  %s%s%s", Dim, statusText, Reset))
 	}
 
-	// Pad to fixed height to avoid flicker
-	for len(lines) < pd.maxActivities+3 {
-		lines = append(lines, "")
-	}
-
-	// Move cursor up and overwrite
 	totalLines := len(lines)
-	if frame > 0 {
-		fmt.Printf("\033[%dA", totalLines) // move up
+
+	// Move cursor up and overwrite previous render
+	pd.mu.Lock()
+	prevLines := pd.lastRenderLines
+	pd.lastRenderLines = totalLines
+	pd.mu.Unlock()
+
+	if frame > 0 && prevLines > 0 {
+		fmt.Printf("\033[%dA", prevLines) // move up to top of previous render
 	}
 	for _, line := range lines {
-		// Clear line and print
 		fmt.Printf("\r\033[K%s\n", line)
+	}
+	// Clear any leftover lines from a previous taller render
+	if prevLines > totalLines {
+		for i := 0; i < prevLines-totalLines; i++ {
+			fmt.Printf("\r\033[K\n")
+		}
+		// Move cursor back up to just below current content
+		fmt.Printf("\033[%dA", prevLines-totalLines)
 	}
 }
 
@@ -587,7 +600,10 @@ func formatElapsed(d time.Duration) string {
 
 // clearDisplay clears the progress display area.
 func (pd *ProgressDisplay) clearDisplay() {
-	total := pd.maxActivities + 3
+	total := pd.lastRenderLines
+	if total <= 0 {
+		total = 1 // at minimum clear the header line
+	}
 	for i := 0; i < total; i++ {
 		fmt.Printf("\033[K\n") // clear line and move down
 	}
@@ -678,6 +694,8 @@ func friendlyToolName(toolName string, inputGetter func(key string) string) stri
 }
 
 // ascCommandLabel returns a friendly display label for asc CLI commands.
+// Instead of a hardcoded mapping, it dynamically constructs a label from
+// the command tokens — so new asc subcommands automatically get readable labels.
 // Returns "" if the command is not an asc command.
 func ascCommandLabel(command string) string {
 	command = strings.TrimSpace(command)
@@ -685,18 +703,12 @@ func ascCommandLabel(command string) string {
 		return ""
 	}
 
-	// Parse tokens: asc [namespace] <resource> <action> [flags...]
-	// Examples:
-	//   asc builds list --app ...          → parts: [asc, builds, list, ...]
-	//   asc testflight beta-testers add    → parts: [asc, testflight, beta-testers, add, ...]
-	//   asc testflight review submit       → parts: [asc, testflight, review, submit, ...]
-	//   asc status                         → parts: [asc, status]
 	parts := strings.Fields(command)
 	if len(parts) < 2 {
 		return "Running asc"
 	}
 
-	// Build a lookup key from the first 2-3 subcommand tokens (excluding "asc" and flags)
+	// Extract subcommand tokens (everything after "asc" until the first flag).
 	var tokens []string
 	for _, p := range parts[1:] {
 		if strings.HasPrefix(p, "-") {
@@ -708,113 +720,89 @@ func ascCommandLabel(command string) string {
 		}
 	}
 
-	key := strings.Join(tokens, " ")
-
-	// 3-level commands (asc testflight <resource> <action>)
-	switch key {
-	case "testflight beta-testers add":
-		return "Adding beta tester"
-	case "testflight beta-testers invite":
-		return "Inviting beta tester"
-	case "testflight beta-testers list":
-		return "Listing beta testers"
-	case "testflight beta-testers remove":
-		return "Removing beta tester"
-	case "testflight beta-groups list":
-		return "Listing beta groups"
-	case "testflight beta-groups create":
-		return "Creating beta group"
-	case "testflight review submit":
-		return "Submitting for Beta App Review"
-	case "testflight review submissions":
-		return "Checking review status"
-	case "testflight review submissions list":
-		return "Checking review status"
+	if len(tokens) == 0 {
+		return "Running asc"
 	}
 
-	// 2-level commands (asc <resource> <action>)
-	twoLevel := strings.Join(tokens[:min(2, len(tokens))], " ")
-	switch twoLevel {
-	case "apps list":
-		return "Listing apps"
-	case "apps get", "apps info":
-		return "Getting app info"
-	case "builds list":
-		return "Listing builds"
-	case "builds info":
-		return "Getting build info"
-	case "builds latest":
-		return "Checking latest build"
-	case "builds upload":
-		return "Uploading build"
-	case "builds add-groups":
-		return "Assigning build to group"
-	case "builds test-notes":
-		return "Setting test notes"
-	case "metadata pull", "metadata download":
-		return "Downloading metadata"
-	case "metadata push", "metadata upload":
-		return "Uploading metadata"
-	case "versions create":
-		return "Creating app version"
-	case "versions list":
-		return "Listing app versions"
-	case "versions attach-build":
-		return "Attaching build to version"
-	case "bundle-ids create":
-		return "Registering bundle ID"
-	case "bundle-ids list":
-		return "Listing bundle IDs"
-	case "publish testflight":
-		return "Publishing to TestFlight"
-	case "publish appstore":
-		return "Publishing to App Store"
-	case "age-rating set":
-		return "Setting age rating"
-	case "submit create":
-		return "Submitting for review"
-	case "submit status":
-		return "Checking submission status"
-	case "auth login":
-		return "Authenticating"
-	case "auth status":
-		return "Checking auth status"
+	// Dynamically build a label from the tokens.
+	// The last token is treated as the action verb; preceding tokens provide context.
+	//
+	// Examples:
+	//   [builds, list]                  → "Listing builds"
+	//   [testflight, beta-testers, add] → "Adding beta testers"  (context: testflight)
+	//   [status]                        → "Checking status"
+	//   [publish, testflight]           → "Publishing testflight"
+	//   [apps, get]                     → "Getting apps"
+
+	action := tokens[len(tokens)-1]
+	var context string
+	if len(tokens) >= 3 {
+		// e.g. [testflight, beta-testers, add] → context = "beta testers"
+		context = humanizeToken(tokens[len(tokens)-2])
+	} else if len(tokens) == 2 {
+		// e.g. [builds, list] → context = "builds"
+		context = humanizeToken(tokens[0])
 	}
 
-	// 1-level commands (asc <command>)
-	switch tokens[0] {
-	case "status":
-		return "Checking app status"
-	case "doctor":
-		return "Running diagnostics"
+	verb := humanizeVerb(action)
+	if context != "" {
+		return truncateActivity(verb + " " + context)
+	}
+	return truncateActivity(verb)
+}
+
+// humanizeVerb converts an asc action token into a present-participle label.
+func humanizeVerb(action string) string {
+	action = strings.ToLower(action)
+	switch action {
+	case "list":
+		return "Listing"
+	case "get", "info", "status":
+		return "Checking"
+	case "create", "register":
+		return "Creating"
+	case "add", "assign":
+		return "Adding"
+	case "remove", "delete":
+		return "Removing"
+	case "update", "set", "push", "upload":
+		return "Updating"
 	case "submit":
-		return "Submitting for review"
+		return "Submitting"
 	case "publish":
 		return "Publishing"
-	case "builds":
-		return "Checking builds"
-	case "apps":
-		return "Checking apps"
-	case "metadata":
-		return "Managing metadata"
-	case "localizations":
-		return "Managing localizations"
-	case "screenshots":
-		return "Managing screenshots"
-	case "certificates":
-		return "Checking certificates"
-	case "profiles":
-		return "Checking provisioning profiles"
-	case "devices":
-		return "Listing devices"
-	case "testflight":
-		return "Managing TestFlight"
-	case "--help", "help":
-		return "Checking asc CLI help"
+	case "invite":
+		return "Inviting"
+	case "pull", "download":
+		return "Downloading"
+	case "cancel":
+		return "Cancelling"
+	case "attach-build":
+		return "Attaching build"
+	case "add-groups":
+		return "Assigning to group"
+	case "latest":
+		return "Checking latest"
+	case "login":
+		return "Authenticating"
+	case "doctor":
+		return "Running diagnostics"
+	case "help", "--help":
+		return "Checking help"
+	default:
+		// For unknown verbs, use "Running <action>" with title case.
+		return "Running " + humanizeToken(action)
 	}
+}
 
-	// Fallback: show "Running asc <first-token>"
-	return truncateActivity("Running asc " + tokens[0])
+// humanizeToken converts a kebab-case CLI token into a readable label.
+// e.g. "beta-testers" → "beta testers", "bundle-ids" → "bundle IDs"
+func humanizeToken(token string) string {
+	s := strings.ReplaceAll(token, "-", " ")
+	// Common abbreviations that should be uppercased
+	s = strings.ReplaceAll(s, " ids", " IDs")
+	s = strings.ReplaceAll(s, " id", " ID")
+	return s
 }
 
 // truncateActivity truncates an activity label to fit the display.

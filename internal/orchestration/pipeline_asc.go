@@ -9,12 +9,11 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"sync"
-	"time"
 
 	"github.com/moasq/nanowave/internal/appleauth"
 	"github.com/moasq/nanowave/internal/asc"
 	"github.com/moasq/nanowave/internal/claude"
+	"github.com/moasq/nanowave/internal/screenshots"
 	"github.com/moasq/nanowave/internal/terminal"
 	"golang.org/x/term"
 )
@@ -92,7 +91,89 @@ func (p *Pipeline) ASCFull(ctx context.Context, prompt, projectDir, sessionID st
 		return nil, fmt.Errorf("no App Store Connect app found for %s. Create the app in App Store Connect first, then try again", preflight.BundleID)
 	}
 
-	// 6. Icon
+	// 4. Agreements
+	cl.StartItem("Checking developer agreements")
+	agreementsOK, agreements := p.checkAgreements(ctx)
+	preflight.AgreementsOK = agreementsOK
+	preflight.Agreements = agreements
+	if agreements == nil {
+		cl.CompleteItem(terminal.ChecklistSkipped, "Agreements check unavailable")
+	} else if agreementsOK {
+		cl.CompleteItem(terminal.ChecklistSuccess, "Developer agreements active")
+	} else {
+		cl.CompleteItem(terminal.ChecklistWarning, "Agreements need attention")
+		for _, a := range agreements {
+			if a.Status != "ACTIVE" {
+				terminal.Detail(a.Type, a.Status)
+			}
+		}
+		terminal.Info("Review agreements: https://appstoreconnect.apple.com/agreements")
+		picked := terminal.Pick("", []terminal.PickerOption{
+			{Label: "I've accepted", Desc: "Re-check agreements"},
+			{Label: "Continue anyway", Desc: "Proceed without resolving"},
+			{Label: "Cancel", Desc: "Stop and fix agreements first"},
+		}, "")
+		switch picked {
+		case "I've accepted":
+			cl.StartItem("Re-checking agreements")
+			agreementsOK, agreements = p.checkAgreements(ctx)
+			preflight.AgreementsOK = agreementsOK
+			preflight.Agreements = agreements
+			if agreementsOK {
+				cl.CompleteItem(terminal.ChecklistSuccess, "Developer agreements active")
+			} else {
+				cl.CompleteItem(terminal.ChecklistWarning, "Agreements still need attention")
+			}
+		case "Cancel":
+			return nil, fmt.Errorf("cancelled — resolve agreements at https://appstoreconnect.apple.com/agreements")
+		default:
+			// Continue anyway
+		}
+	}
+
+	// 5. Version state
+	cl.StartItem("Checking App Store version")
+	preflight.VersionID, preflight.VersionString, preflight.VersionState, preflight.AllVersions = p.checkVersionState(ctx, preflight.AppID)
+	if preflight.VersionID != "" {
+		switch preflight.VersionState {
+		case asc.VersionPrepareForSubmission:
+			cl.CompleteItem(terminal.ChecklistSuccess, fmt.Sprintf("Version %s ready for submission", preflight.VersionString))
+		case asc.VersionDeveloperRejected:
+			cl.CompleteItem(terminal.ChecklistWarning, fmt.Sprintf("Version %s rejected by developer — editable", preflight.VersionString))
+		case asc.VersionWaitingForReview:
+			cl.CompleteItem(terminal.ChecklistWarning, fmt.Sprintf("Version %s waiting for review", preflight.VersionString))
+		case asc.VersionInReview:
+			cl.CompleteItem(terminal.ChecklistWarning, fmt.Sprintf("Version %s in review", preflight.VersionString))
+		default:
+			cl.CompleteItem(terminal.ChecklistSuccess, fmt.Sprintf("Version %s (%s)", preflight.VersionString, preflight.VersionState))
+		}
+	} else if len(preflight.AllVersions) > 0 {
+		// Has versions but none editable — show the live version
+		live := preflight.AllVersions[0]
+		cl.CompleteItem(terminal.ChecklistWarning, fmt.Sprintf("No editable version (%s is %s)", live.VersionString, live.State))
+	} else {
+		cl.CompleteItem(terminal.ChecklistSkipped, "No versions found")
+	}
+
+	// 6. Build readiness
+	cl.StartItem("Checking latest build")
+	preflight.LatestBuildID, preflight.LatestBuildVersion, preflight.BuildState = p.checkLatestBuild(ctx, preflight.AppID)
+	if preflight.LatestBuildID != "" {
+		switch preflight.BuildState {
+		case "VALID":
+			cl.CompleteItem(terminal.ChecklistSuccess, fmt.Sprintf("Build %s processed and ready", preflight.LatestBuildVersion))
+		case "PROCESSING":
+			cl.CompleteItem(terminal.ChecklistWarning, fmt.Sprintf("Build %s still processing", preflight.LatestBuildVersion))
+		case "INVALID", "FAILED":
+			cl.CompleteItem(terminal.ChecklistWarning, fmt.Sprintf("Build %s %s", preflight.LatestBuildVersion, preflight.BuildState))
+		default:
+			cl.CompleteItem(terminal.ChecklistSuccess, fmt.Sprintf("Build %s (%s)", preflight.LatestBuildVersion, preflight.BuildState))
+		}
+	} else {
+		cl.CompleteItem(terminal.ChecklistSkipped, "No builds uploaded")
+	}
+
+	// 7. Icon
 	platform := "ios"
 	if configData, err := os.ReadFile(filepath.Join(projectDir, "project_config.json")); err == nil {
 		var cfg struct {
@@ -105,6 +186,7 @@ func (p *Pipeline) ASCFull(ctx context.Context, prompt, projectDir, sessionID st
 
 	cl.StartItem("Checking app icon")
 	iconFound, iconCount := p.checkAppIcon(projectDir, platform)
+	preflight.IconReady = iconFound
 	if iconFound {
 		cl.CompleteItem(terminal.ChecklistSuccess, fmt.Sprintf("App icon ready (%d sizes)", iconCount))
 	} else {
@@ -112,7 +194,39 @@ func (p *Pipeline) ASCFull(ctx context.Context, prompt, projectDir, sessionID st
 		p.offerIconUpload(ctx, projectDir, platform)
 	}
 
-	// 7. Xcode project
+	// 8. Screenshots
+	cl.StartItem("Checking screenshots")
+	deviceFamily := readDeviceFamily(projectDir)
+	ssFound, ssCount, ssDir, ssFulfilled, ssMissing := p.checkScreenshots(projectDir, deviceFamily)
+	var captureResult *screenshots.CaptureResult
+
+	if ssFound && len(ssMissing) == 0 {
+		preflight.ScreenshotDir = ssDir
+		preflight.DeviceTypes = ssFulfilled
+		cl.CompleteItem(terminal.ChecklistSuccess, fmt.Sprintf("Screenshots ready (%d images, %s)", ssCount, strings.Join(ssFulfilled, ", ")))
+	} else if ssFound && len(ssMissing) > 0 {
+		preflight.ScreenshotDir = ssDir
+		preflight.DeviceTypes = ssFulfilled
+		cl.CompleteItem(terminal.ChecklistWarning, fmt.Sprintf("Screenshots incomplete — missing: %s", strings.Join(ssMissing, ", ")))
+		dir, cr := p.offerScreenshotOptions(ctx, projectDir, deviceFamily)
+		if dir != "" {
+			preflight.ScreenshotDir = dir
+			captureResult = cr
+			reqs := screenshots.RequirementsForFamily(deviceFamily)
+			preflight.DeviceTypes, _ = screenshots.ValidateScreenshots(dir, reqs)
+		}
+	} else {
+		cl.CompleteItem(terminal.ChecklistWarning, "No screenshots")
+		dir, cr := p.offerScreenshotOptions(ctx, projectDir, deviceFamily)
+		if dir != "" {
+			preflight.ScreenshotDir = dir
+			captureResult = cr
+			reqs := screenshots.RequirementsForFamily(deviceFamily)
+			preflight.DeviceTypes, _ = screenshots.ValidateScreenshots(dir, reqs)
+		}
+	}
+
+	// 9. Xcode project
 	cl.StartItem("Regenerating Xcode project")
 	if err := p.regenerateXcodeProject(ctx, projectDir); err != nil {
 		cl.CompleteItem(terminal.ChecklistWarning, "Xcode project regeneration skipped")
@@ -120,12 +234,28 @@ func (p *Pipeline) ASCFull(ctx context.Context, prompt, projectDir, sessionID st
 		cl.CompleteItem(terminal.ChecklistSuccess, "Xcode project regenerated")
 	}
 
+	// 10. Project pattern detection
+	cl.StartItem("Analyzing project patterns")
+	preflight.HasSignIn, preflight.CollectsData = detectProjectPatterns(projectDir)
+	switch {
+	case preflight.HasSignIn && preflight.CollectsData:
+		cl.CompleteItem(terminal.ChecklistWarning, "Sign-in and data collection detected")
+	case preflight.HasSignIn:
+		cl.CompleteItem(terminal.ChecklistWarning, "Sign-in detected — review credentials needed")
+	case preflight.CollectsData:
+		cl.CompleteItem(terminal.ChecklistWarning, "Data collection detected — privacy declaration needed")
+	default:
+		cl.CompleteItem(terminal.ChecklistSuccess, "No sign-in or data collection detected")
+	}
+
 	// Load API credentials silently (no checklist item — not a meaningful gate)
 	var apiKeySection string
+	preflight.HasAPIKey = false
 	if cred, credErr := asc.LoadCredential(); credErr == nil {
 		log.Printf("[asc] credential loaded: keyID=%s issuerID=%s", cred.KeyID, cred.IssuerID)
 		if keyPath, writeErr := asc.WriteKeyFile(cred, projectDir); writeErr == nil {
 			defer os.Remove(keyPath)
+			preflight.HasAPIKey = true
 			apiKeySection = fmt.Sprintf(`
 ## API Key Authentication
 An API key is available for xcodebuild authentication (no keychain prompts):
@@ -144,304 +274,184 @@ Use these flags with xcodebuild: -authenticationKeyPath %s -authenticationKeyID 
 
 	cl.Finish()
 
-	// --- Publishing phase (ProgressDisplay for Claude streaming) ---
+	// --- Publishing phase ---
 	systemPrompt := p.ComposeASCSystemPrompt(projectDir, preflight)
 	if apiKeySection != "" {
 		systemPrompt += apiKeySection
 	}
 
+	// Add simulator info for multi-screen capture if automatic capture was used
+	if captureResult != nil && len(captureResult.SimUDIDs) > 0 {
+		systemPrompt += "\n## Simulator Screenshots\n\n"
+		systemPrompt += "Simulators are already booted with the app installed and launched. "
+		systemPrompt += "You can capture additional screenshots on different app screens using AXe.\n"
+		systemPrompt += "Only the initial launch screen has been captured so far. "
+		systemPrompt += "Before submitting, analyze the app's source code to identify key screens "
+		systemPrompt += "(ignore settings/preferences), navigate to them with AXe, and capture more screenshots.\n\n"
+		for dt, udid := range captureResult.SimUDIDs {
+			systemPrompt += fmt.Sprintf("- %s simulator UDID: %s\n", dt, udid)
+		}
+		systemPrompt += fmt.Sprintf("\nScreenshot output dir: %s\n", preflight.ScreenshotDir)
+		systemPrompt += "Use: `axe describe-ui --udid <UDID>` to see current screen elements.\n"
+		systemPrompt += "Use: `axe tap --id <element_id> --udid <UDID>` to navigate.\n"
+		systemPrompt += "Use: `xcrun simctl io <UDID> screenshot <path>.png` to capture.\n"
+	}
+
 	allowedTools := asc.AgentTools()
-	log.Printf("[asc] starting Claude streaming with %d allowed tools, maxTurns=30", len(allowedTools))
+	log.Printf("[asc] starting Claude interactive session with %d allowed tools, maxTurns=200", len(allowedTools))
+
+	wrappedPrompt := prompt + "\n\nReminder: Before submitting for Beta App Review, ask me for confirmation first."
 
 	fmt.Printf("\n  %sRunning%s\n", terminal.Bold, terminal.Reset)
 
-	// progressRouter provides thread-safe access to the current progress display
-	// and its callback. Both may be replaced during HITL interactions.
-	var progressMu sync.Mutex
 	progress := terminal.NewProgressDisplay("asc", 0)
 	progress.Start()
-	terminalCallback := newProgressCallback(progress)
+	progressCb := newProgressCallback(progress)
 
-	toolsUsed := map[string]bool{}
+	// textRendered tracks whether assistant text was already streamed to the terminal.
+	// When true, the HITL callback skips re-rendering the question text.
+	textRendered := false
 
-	// HITL (human-in-the-loop) state: detect when Claude asks a question
-	// and is waiting for user input. We track the last assistant message
-	// and use a timer to detect idle periods.
-	var (
-		hitlMu          sync.Mutex
-		hitlTimer       *time.Timer
-		lastAssistant   string
-		pendingQuestion = make(chan string, 1)
-	)
-
-	const hitlIdleTimeout = 3 * time.Second
-
-	resetHITLTimer := func() {
-		hitlMu.Lock()
-		defer hitlMu.Unlock()
-		if hitlTimer != nil {
-			hitlTimer.Stop()
-		}
-		hitlTimer = nil
-		lastAssistant = ""
-	}
-
-	eventCount := 0
-	streamCallback := func(ev claude.StreamEvent) {
-		eventCount++
-		progressMu.Lock()
-		cb := terminalCallback
-		progressMu.Unlock()
-		cb(ev)
-
-		// Log events for debugging
-		switch ev.Type {
-		case "tool_use_start":
-			log.Printf("[asc] tool starting: %s", ev.ToolName)
-		case "tool_use":
-			if !toolsUsed[ev.ToolName] {
-				log.Printf("[asc] tool first use: %s", ev.ToolName)
-			}
-			toolsUsed[ev.ToolName] = true
-		case "assistant":
-			if ev.Text != "" {
-				truncated := ev.Text
-				if len(truncated) > 200 {
-					truncated = truncated[:200] + "..."
-				}
-				log.Printf("[asc] assistant: %s", truncated)
-			}
-		case "result":
-			log.Printf("[asc] result event received")
-		case "system":
-			log.Printf("[asc] system event: subtype=%s sessionID=%s", ev.Subtype, ev.SessionID)
-		}
-
-		if ev.Type == "tool_use" && ev.ToolName != "" {
-			resetHITLTimer()
-		}
-
-		if ev.Type == "result" {
-			resetHITLTimer()
-		}
-
-		// When we get a full assistant message, start the idle timer.
-		// If no tool_use or result follows within the timeout, Claude is
-		// likely waiting for user input.
-		if ev.Type == "assistant" && ev.Text != "" {
-			hitlMu.Lock()
-			lastAssistant = ev.Text
-			if hitlTimer != nil {
-				hitlTimer.Stop()
-			}
-			msg := ev.Text
-			hitlTimer = time.AfterFunc(hitlIdleTimeout, func() {
-				hitlMu.Lock()
-				stillPending := lastAssistant == msg
-				hitlMu.Unlock()
-				if stillPending {
-					select {
-					case pendingQuestion <- msg:
-					default:
-					}
-				}
-			})
-			hitlMu.Unlock()
-		}
-	}
-
-	// Wrap user prompt with a reminder about confirmation requirements
-	wrappedPrompt := prompt + "\n\nReminder: Before submitting for Beta App Review, ask me for confirmation first."
-
-	session, err := p.claude.StartInteractiveStreaming(ctx, wrappedPrompt, claude.GenerateOpts{
-		AppendSystemPrompt: systemPrompt,
-		MaxTurns:           30,
-		Model:              p.buildModel(),
-		WorkDir:            projectDir,
-		AllowedTools:       allowedTools,
-	}, streamCallback)
-
-	if err != nil {
-		log.Printf("[asc] interactive session start failed: %v", err)
-		progress.StopWithError("ASC operation failed")
-		return nil, fmt.Errorf("asc operation failed: %w", err)
-	}
-
-	// HITL input loop: runs concurrently with stream processing.
-	// When an idle timeout fires, we pause the progress display,
-	// show Claude's question, collect user input, and send it back.
-	hitlDone := make(chan struct{})
-	go func() {
-		defer close(hitlDone)
-		for {
-			select {
-			case question, ok := <-pendingQuestion:
-				if !ok {
-					return
-				}
-				log.Printf("[asc] HITL: Claude is asking for input: %s", question)
-
-				// Pause progress display to show the question cleanly
-				progressMu.Lock()
-				progress.Stop()
-				progressMu.Unlock()
-
-				fmt.Println()
-				fmt.Printf("  %s%s%s\n\n", terminal.Dim, question, terminal.Reset)
-
-				// Read user input
-				userInput := terminal.ReadSimpleLine()
-				log.Printf("[asc] HITL: user responded: %s", userInput)
-
-				if userInput == "" {
-					userInput = "(no response)"
-				}
-
-				// Send the reply and resume progress
-				if sendErr := session.SendUserMessage(userInput); sendErr != nil {
-					log.Printf("[asc] HITL: failed to send user message: %v", sendErr)
-					return
-				}
-
-				fmt.Println()
-				fmt.Printf("  %sRunning%s\n", terminal.Bold, terminal.Reset)
-				newProgress := terminal.NewProgressDisplay("asc", 0)
-				newProgress.Start()
-				newCb := newProgressCallback(newProgress)
-
-				progressMu.Lock()
-				progress = newProgress
-				terminalCallback = newCb
-				progressMu.Unlock()
-
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
-
-	// Wait for the session to complete.
-	resp, err := session.Wait()
-
-	// Check if HITL is actively prompting the user (session ended while waiting for input).
-	// This happens when Claude asks a question and then the session completes.
-	// We need to wait for the user's response and resume the session.
-	hitlMu.Lock()
-	hitlActive := lastAssistant != ""
-	hitlMu.Unlock()
-
-	if hitlActive && err == nil && resp != nil && resp.SessionID != "" {
-		// Drain the pending question if it hasn't fired yet
-		select {
-		case <-pendingQuestion:
-		default:
-		}
-
-		// The session ended while Claude was asking the user. Wait for input
-		// and resume the session with the user's response.
-		log.Printf("[asc] session ended while HITL is active, waiting for user input to resume")
-
-		progressMu.Lock()
-		progress.Stop()
-		progressMu.Unlock()
-
-		// Show the question if not already shown
-		if resp.Result != "" {
-			fmt.Println()
-			fmt.Printf("  %s%s%s\n\n", terminal.Dim, resp.Result, terminal.Reset)
-		}
-
-		userInput := terminal.ReadSimpleLine()
-		log.Printf("[asc] HITL resume: user responded: %s", userInput)
-		if userInput == "" {
-			userInput = "(no response)"
-		}
-
-		fmt.Println()
-		fmt.Printf("  %sRunning%s\n", terminal.Bold, terminal.Reset)
-		newProgress := terminal.NewProgressDisplay("asc", 0)
-		newProgress.Start()
-		newCb := newProgressCallback(newProgress)
-
-		progressMu.Lock()
-		progress = newProgress
-		terminalCallback = newCb
-		progressMu.Unlock()
-
-		// Resume session with user's response
-		resumeSession, resumeErr := p.claude.StartInteractiveStreaming(ctx, userInput, claude.GenerateOpts{
+	resp, err := p.claude.RunInteractive(ctx, wrappedPrompt, claude.InteractiveOpts{
+		GenerateOpts: claude.GenerateOpts{
 			AppendSystemPrompt: systemPrompt,
-			MaxTurns:           30,
+			MaxTurns:           200,
 			Model:              p.buildModel(),
 			WorkDir:            projectDir,
 			AllowedTools:       allowedTools,
-			SessionID:          resp.SessionID,
-		}, func(ev claude.StreamEvent) {
-			progressMu.Lock()
-			cb := terminalCallback
-			progressMu.Unlock()
-			cb(ev)
-
-			switch ev.Type {
-			case "tool_use_start":
-				log.Printf("[asc] [resume] tool starting: %s", ev.ToolName)
-			case "tool_use":
-				toolsUsed[ev.ToolName] = true
-			case "assistant":
-				if ev.Text != "" {
-					truncated := ev.Text
-					if len(truncated) > 200 {
-						truncated = truncated[:200] + "..."
-					}
-					log.Printf("[asc] [resume] assistant: %s", truncated)
-				}
-			case "result":
-				log.Printf("[asc] [resume] result event received")
+		},
+	}, func(ev claude.StreamEvent) {
+		switch ev.Type {
+		case "assistant":
+			// Claude finished a text block — render the full text directly.
+			// Stop progress first so the text isn't mixed with spinner output.
+			if ev.Text != "" {
+				progress.Stop()
+				fmt.Print(terminal.RenderMarkdown(ev.Text))
+				textRendered = true
 			}
-		})
+		case "tool_use_start":
+			// Claude is using a tool — restart progress if it was stopped for text
+			if textRendered {
+				fmt.Printf("\n  %sRunning%s\n", terminal.Bold, terminal.Reset)
+				progress = terminal.NewProgressDisplay("asc", 0)
+				progress.Start()
+				progressCb = newProgressCallback(progress)
+				textRendered = false
+			}
+			progressCb(ev)
+		case "tool_use", "tool_input_delta":
+			progressCb(ev)
+		default:
+			// Ignore content_block_delta and other events — text is rendered
+			// via the "assistant" event which contains the complete message.
+		}
+	}, func(question string) string {
+		progress.Stop()
 
-		if resumeErr != nil {
-			log.Printf("[asc] resume session failed: %v", resumeErr)
-		} else {
-			resumeResp, resumeWaitErr := resumeSession.Wait()
-			resumeSession.CloseInput()
-			if resumeWaitErr == nil && resumeResp != nil {
-				resp = resumeResp
-				err = nil
-			} else if resumeWaitErr != nil {
-				log.Printf("[asc] resume wait failed: %v", resumeWaitErr)
+		// Parse [OPTIONS] block from question if present
+		_, options := parseQuestionOptions(question)
+
+		// Only render text if it wasn't already streamed
+		if !textRendered {
+			displayText, _ := parseQuestionOptions(question)
+			fmt.Print(terminal.RenderMarkdown(displayText))
+		}
+		textRendered = false
+
+		// Build lookup for text-entry options by label
+		textEntryOpts := make(map[string]bool, len(options))
+		for _, opt := range options {
+			if opt.IsTextEntry {
+				textEntryOpts[opt.Label] = true
 			}
 		}
-	}
 
-	session.CloseInput()
+		var userInput string
+		if len(options) > 0 {
+			// Options present — show as a picker with AI fallbacks
+			pickerOpts := make([]terminal.PickerOption, 0, len(options)+2)
+			for _, opt := range options {
+				pickerOpts = append(pickerOpts, opt)
+			}
+			pickerOpts = append(pickerOpts,
+				terminal.PickerOption{Label: "Let AI decide", Desc: "Use the recommended option"},
+				terminal.PickerOption{Label: "AI decides all", Desc: "Auto-fill this and all remaining fields"},
+			)
 
-	// Clean up HITL
-	resetHITLTimer()
-	close(pendingQuestion)
-	<-hitlDone
+			for {
+				picked := terminal.Pick("", pickerOpts, "")
+				switch picked {
+				case "Let AI decide":
+					userInput = "Use your recommended option."
+				case "AI decides all":
+					userInput = "Use your best judgment for this and all remaining fields. Don't ask me any more questions — auto-fill everything."
+				case "":
+					// Cancelled — re-show
+					continue
+				default:
+					if textEntryOpts[picked] {
+						fmt.Printf("\n  %sPress Enter to submit. Empty to go back.%s\n", terminal.Dim, terminal.Reset)
+						result := terminal.ReadInput()
+						if result.Text == "" {
+							continue
+						}
+						userInput = result.Text
+					} else {
+						userInput = picked
+					}
+				}
+				break
+			}
+		} else {
+			// No OPTIONS block (fallback) — show action picker with back support
+			for {
+				picked := terminal.Pick("", []terminal.PickerOption{
+					{Label: "Enter response", Desc: "Type your answer", IsTextEntry: true},
+					{Label: "Let AI decide", Desc: "Use the suggested value or generate one"},
+					{Label: "AI decides all", Desc: "Auto-fill this and all remaining fields"},
+				}, "")
 
-	// Log stderr for debugging
-	if stderr := session.Stderr(); stderr != "" {
-		log.Printf("[asc] stderr: %s", stderr)
-	}
-	log.Printf("[asc] total stream events received: %d", eventCount)
+				switch picked {
+				case "Let AI decide":
+					userInput = "Use your suggested value."
+				case "AI decides all":
+					userInput = "Use your best judgment for this and all remaining fields. Don't ask me any more questions — auto-fill everything."
+				default:
+					fmt.Printf("\n  %sPress Enter to submit. Empty to go back.%s\n", terminal.Dim, terminal.Reset)
+					result := terminal.ReadInput()
+					if result.Text == "" {
+						continue
+					}
+					userInput = result.Text
+				}
+				break
+			}
+		}
+
+		fmt.Printf("\n  %sRunning%s\n", terminal.Bold, terminal.Reset)
+		progress = terminal.NewProgressDisplay("asc", 0)
+		progress.Start()
+		progressCb = newProgressCallback(progress)
+		return userInput
+	})
+	progress.Stop()
 
 	if err != nil {
-		log.Printf("[asc] streaming failed: %v", err)
-		progress.StopWithError("ASC operation failed")
+		log.Printf("[asc] interactive session failed: %v", err)
+		fmt.Printf("  %s%s✗%s ASC operation failed\n", terminal.Bold, terminal.Red, terminal.Reset)
 		return nil, fmt.Errorf("asc operation failed: %w", err)
 	}
 
-	log.Printf("[asc] streaming complete: sessionID=%s cost=$%.4f input=%d output=%d cacheRead=%d cacheCreated=%d",
+	log.Printf("[asc] session complete: sessionID=%s cost=$%.4f input=%d output=%d cacheRead=%d cacheCreated=%d",
 		resp.SessionID, resp.TotalCostUSD, resp.Usage.InputTokens, resp.Usage.OutputTokens,
 		resp.Usage.CacheReadInputTokens, resp.Usage.CacheCreationInputTokens)
 
-	progress.StopWithSuccess("Done")
+	fmt.Printf("  %s%s✓%s Done\n", terminal.Bold, terminal.Green, terminal.Reset)
 
-	// Show Claude's summary of what was accomplished
 	if summary := extractASCSummary(resp.Result); summary != "" {
-		fmt.Printf("\n  %s%s%s\n", terminal.Dim, summary, terminal.Reset)
+		fmt.Println()
+		fmt.Print(terminal.RenderMarkdown(summary))
 	}
 
 	showCost(resp)
@@ -454,8 +464,69 @@ Use these flags with xcodebuild: -authenticationKeyPath %s -authenticationKeyID 
 		OutputTokens: resp.Usage.OutputTokens,
 		CacheRead:    resp.Usage.CacheReadInputTokens,
 		CacheCreated: resp.Usage.CacheCreationInputTokens,
-		ToolsUsed:    toolsUsed,
+		ToolsUsed:    map[string]bool{},
 	}, nil
+}
+
+// parseQuestionOptions extracts an [OPTIONS] block from Claude's question text.
+// Returns the display text (with the block removed) and parsed picker options.
+// If no [OPTIONS] block is found, returns the original text and nil options.
+//
+// Expected format:
+//
+//	Some question text.
+//
+//	[OPTIONS]
+//	- Label One | Description
+//	- Label Two | Description
+//	[/OPTIONS]
+func parseQuestionOptions(question string) (string, []terminal.PickerOption) {
+	startTag := "[OPTIONS]"
+	endTag := "[/OPTIONS]"
+
+	startIdx := strings.Index(question, startTag)
+	if startIdx == -1 {
+		return question, nil
+	}
+	endIdx := strings.Index(question, endTag)
+	if endIdx == -1 || endIdx <= startIdx {
+		return question, nil
+	}
+
+	// Extract the options block content
+	blockContent := question[startIdx+len(startTag) : endIdx]
+	// Remove the block from display text
+	displayText := strings.TrimSpace(question[:startIdx] + question[endIdx+len(endTag):])
+
+	var options []terminal.PickerOption
+	for _, line := range strings.Split(blockContent, "\n") {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, "- ") {
+			continue
+		}
+		line = strings.TrimPrefix(line, "- ")
+		parts := strings.SplitN(line, "|", 2)
+		label := strings.TrimSpace(parts[0])
+		if label == "" {
+			continue
+		}
+		desc := ""
+		isTextEntry := false
+		if len(parts) == 2 {
+			desc = strings.TrimSpace(parts[1])
+			// Check for [INPUT] tag — marks this option as a text-entry prompt
+			if strings.HasPrefix(desc, "[INPUT]") {
+				isTextEntry = true
+				desc = strings.TrimSpace(strings.TrimPrefix(desc, "[INPUT]"))
+			}
+		}
+		options = append(options, terminal.PickerOption{Label: label, Desc: desc, IsTextEntry: isTextEntry})
+	}
+
+	if len(options) == 0 {
+		return question, nil
+	}
+	return displayText, options
 }
 
 // extractASCSummary extracts a concise summary from Claude's response text.
@@ -906,6 +977,22 @@ func (p *Pipeline) setupASCAuthManual(ctx context.Context) bool {
 	return true
 }
 
+// readDeviceFamily reads the device_family field from project_config.json.
+// Defaults to "iphone" if missing.
+func readDeviceFamily(projectDir string) string {
+	data, err := os.ReadFile(filepath.Join(projectDir, "project_config.json"))
+	if err != nil {
+		return "iphone"
+	}
+	var cfg struct {
+		DeviceFamily string `json:"device_family"`
+	}
+	if err := json.Unmarshal(data, &cfg); err != nil || cfg.DeviceFamily == "" {
+		return "iphone"
+	}
+	return cfg.DeviceFamily
+}
+
 // gatherASCContext reads project config and matches against ASC apps.
 // If asc_app_id is stored in project_config.json, it's used directly (no matching needed).
 // Otherwise, matches by bundle ID, and persists the app ID for next time.
@@ -1197,6 +1284,100 @@ func (p *Pipeline) ensureBundleID(ctx context.Context, bundleID, appName string)
 	return ""
 }
 
+// checkAgreements checks whether all developer agreements are in ACTIVE state.
+func (p *Pipeline) checkAgreements(ctx context.Context) (bool, []asc.Agreement) {
+	cmd := exec.CommandContext(ctx, "asc", "agreements", "list", "--output", "json")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Printf("[asc] agreements check failed: %v", err)
+		return true, nil // skip gracefully
+	}
+	return asc.ParseAgreements(output)
+}
+
+// checkVersionState finds an editable App Store version for the given app.
+// Returns (versionID, versionString, state, allVersions) or empty strings if none found.
+func (p *Pipeline) checkVersionState(ctx context.Context, appID string) (string, string, string, []asc.VersionInfo) {
+	cmd := exec.CommandContext(ctx, "asc", "versions", "list", "--app", appID, "--limit", "5", "--output", "json")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Printf("[asc] versions list failed: %v", err)
+		return "", "", "", nil
+	}
+
+	var env asc.Envelope
+	if json.Unmarshal(output, &env) != nil || len(env.Data) == 0 {
+		return "", "", "", nil
+	}
+
+	type versionAttrs struct {
+		VersionString string `json:"versionString"`
+		AppStoreState string `json:"appStoreState"`
+	}
+
+	// Priority order for editable states
+	editablePriority := map[string]int{
+		asc.VersionPrepareForSubmission: 1,
+		asc.VersionDeveloperRejected:    2,
+	}
+
+	var bestID, bestVersion, bestState string
+	bestPriority := 999
+	var allVersions []asc.VersionInfo
+
+	for _, d := range env.Data {
+		var attrs versionAttrs
+		if json.Unmarshal(d.Attributes, &attrs) != nil {
+			continue
+		}
+
+		allVersions = append(allVersions, asc.VersionInfo{
+			ID:            d.ID,
+			VersionString: attrs.VersionString,
+			State:         attrs.AppStoreState,
+		})
+
+		if pri, ok := editablePriority[attrs.AppStoreState]; ok && pri < bestPriority {
+			bestID = d.ID
+			bestVersion = attrs.VersionString
+			bestState = attrs.AppStoreState
+			bestPriority = pri
+		}
+	}
+
+	log.Printf("[asc] version state: id=%s version=%s state=%s allVersions=%d", bestID, bestVersion, bestState, len(allVersions))
+	return bestID, bestVersion, bestState, allVersions
+}
+
+// checkLatestBuild finds the most recent build for the given app.
+// Returns (buildID, buildVersion, processingState) or empty strings if none found.
+func (p *Pipeline) checkLatestBuild(ctx context.Context, appID string) (string, string, string) {
+	cmd := exec.CommandContext(ctx, "asc", "builds", "list", "--app", appID, "--sort", "-uploadedDate", "--limit", "1", "--output", "json")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Printf("[asc] builds list failed: %v", err)
+		return "", "", ""
+	}
+
+	var env asc.Envelope
+	if json.Unmarshal(output, &env) != nil || len(env.Data) == 0 {
+		return "", "", ""
+	}
+
+	type buildAttrs struct {
+		Version         string `json:"version"`
+		ProcessingState string `json:"processingState"`
+	}
+
+	var attrs buildAttrs
+	if json.Unmarshal(env.Data[0].Attributes, &attrs) != nil {
+		return "", "", ""
+	}
+
+	log.Printf("[asc] latest build: id=%s version=%s state=%s", env.Data[0].ID, attrs.Version, attrs.ProcessingState)
+	return env.Data[0].ID, attrs.Version, attrs.ProcessingState
+}
+
 // ComposeASCSystemPrompt builds the system prompt for ASC operations
 // by composing from embedded skill files. Only the core role, safety rules,
 // and pre-flight context are inline — all workflow knowledge lives in skills.
@@ -1263,6 +1444,66 @@ When adding beta testers, **default to external testing** — it works for any e
 		if len(preflight.Localizations) > 0 {
 			sb.WriteString(fmt.Sprintf("- Localizations: %s\n", strings.Join(preflight.Localizations, ", ")))
 		}
+
+		// Agreement status
+		if !preflight.AgreementsOK && len(preflight.Agreements) > 0 {
+			sb.WriteString("- **WARNING: Developer agreements need attention** — user has been advised\n")
+		}
+
+		// Version state
+		if len(preflight.AllVersions) > 0 {
+			sb.WriteString("- App Store versions:\n")
+			for _, v := range preflight.AllVersions {
+				sb.WriteString(fmt.Sprintf("  - %s (ID: %s, state: %s)\n", v.VersionString, v.ID, v.State))
+			}
+			if preflight.VersionID != "" {
+				sb.WriteString(fmt.Sprintf("- Best editable version: %s (ID: %s)\n",
+					preflight.VersionString, preflight.VersionID))
+			} else {
+				sb.WriteString("- No editable version — a new version needs to be created\n")
+			}
+		} else {
+			sb.WriteString("- App Store versions: none — first version needs to be created\n")
+		}
+
+		// Build state
+		if preflight.LatestBuildID != "" {
+			sb.WriteString(fmt.Sprintf("- Latest build: %s (ID: %s, state: %s)\n",
+				preflight.LatestBuildVersion, preflight.LatestBuildID, preflight.BuildState))
+		} else {
+			sb.WriteString("- Latest build: none — build and upload required\n")
+		}
+
+		// Icon + Screenshots + API key
+		if preflight.IconReady {
+			sb.WriteString("- App icon: ready\n")
+		}
+		if preflight.ScreenshotDir != "" {
+			if len(preflight.DeviceTypes) > 0 {
+				sb.WriteString(fmt.Sprintf("- Screenshots: available at %s (device types: %s)\n",
+					preflight.ScreenshotDir, strings.Join(preflight.DeviceTypes, ", ")))
+			} else {
+				sb.WriteString(fmt.Sprintf("- Screenshots: available at %s (not yet validated)\n",
+					preflight.ScreenshotDir))
+			}
+		} else {
+			sb.WriteString("- Screenshots: NOT available — required before App Store submission\n")
+		}
+		if preflight.HasAPIKey {
+			sb.WriteString("- API key auth: available for xcodebuild\n")
+		}
+
+		// Sign-in and data collection
+		if preflight.HasSignIn {
+			sb.WriteString("- Project sign-in: detected — App Review Information must include demo credentials (username + password)\n")
+		} else {
+			sb.WriteString("- Project sign-in: not detected — App Review credentials likely not needed\n")
+		}
+		if preflight.CollectsData {
+			sb.WriteString("- Data collection: detected — App Privacy nutrition label must declare collected data types\n")
+		} else {
+			sb.WriteString("- Data collection: not detected — App Privacy should declare 'does not collect data'\n")
+		}
 	} else {
 		// Fallback: read project config directly
 		configPath := filepath.Join(projectDir, "project_config.json")
@@ -1312,6 +1553,11 @@ When adding beta testers, **default to external testing** — it works for any e
 		// Nanowave-specific skills
 		{"skills/features/asc-publish", "App Store Publishing"},
 		{"skills/features/asset-management", "Asset Management"},
+		{"skills/features/asc-hitl-interaction", "User Interaction Patterns"},
+		{"skills/features/asc-screenshot-upload", "Screenshot Upload"},
+		{"skills/features/asc-manual-actions", "Manual Actions and Dashboard Tasks"},
+		{"skills/features/asc-submission-prereqs", "Submission Prerequisites"},
+		{"skills/features/asc-version-routing", "Version State Routing"},
 	}
 	loadedCount := 0
 	for _, skill := range ascSkills {
@@ -1327,7 +1573,20 @@ When adding beta testers, **default to external testing** — it works for any e
 
 	// Final reminder — placed at end for recency bias (models attend most to start + end)
 	sb.WriteString(`
-## MANDATORY: Confirmation Before Beta App Review
+## MANDATORY: Pre-Submission Gates
+
+### Before App Store Submission
+
+You MUST resolve ALL of these BEFORE showing the submission preview. Do NOT just "remind" the user — actively resolve each one:
+
+1. **App Privacy Nutrition Label** — Ask the user if they have configured it. If not, show them the exact steps and wait for confirmation before proceeding. Use an OPTIONS block. Do NOT submit without confirmation.
+2. **Support URL** — Check the current support URL. If it is a placeholder (e.g. google.com, example.com) or missing, ask the user to provide a real URL using an OPTIONS block. Update it via ` + "`asc localizations update`" + ` before submitting.
+3. **Privacy Policy URL** — If the app collects data or has sign-in, verify a real privacy policy URL is set. Ask the user if missing.
+4. **Screenshots** — Must have at least the mandatory device types uploaded. Do NOT submit without screenshots.
+
+Only after ALL gates pass: show the submission preview and ask for final confirmation.
+
+### Before Beta App Review
 
 Before submitting a build for Beta App Review, you MUST:
 1. Explain to the user that Apple needs to review the build (typically < 24 hours).
@@ -1336,6 +1595,75 @@ Before submitting a build for Beta App Review, you MUST:
 `)
 
 	return sb.String()
+}
+
+// detectProjectPatterns scans Swift files in the project directory for known
+// sign-in and data collection patterns. These are finite sets of framework/API
+// identifiers in generated code — not user input string matching.
+func detectProjectPatterns(projectDir string) (hasSignIn bool, collectsData bool) {
+	// Known sign-in patterns (finite set of framework identifiers)
+	signInPatterns := []string{
+		"SignInView", "LoginView", "AuthView", "SignUpView",
+		"supabase.auth", ".signIn", ".signUp", ".signOut",
+		"FirebaseAuth", "Auth.auth()",
+		"ASAuthorizationAppleIDProvider",
+	}
+	// Known data collection patterns (finite set of SDK/framework names)
+	dataPatterns := []string{
+		"Analytics", "Firebase", "Amplitude", "Mixpanel",
+		"Sentry", "Crashlytics", "BugSnag",
+		"CLLocationManager", "CoreLocation",
+		"AVCaptureSession",
+		"CNContactStore",
+		"HealthKit", "HKHealthStore",
+	}
+
+	err := filepath.Walk(projectDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil // skip unreadable paths
+		}
+		if info.IsDir() {
+			// Skip hidden dirs, build dirs, and .nanowave
+			base := filepath.Base(path)
+			if strings.HasPrefix(base, ".") || base == "build" || base == "DerivedData" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !strings.HasSuffix(path, ".swift") {
+			return nil
+		}
+		data, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return nil
+		}
+		content := string(data)
+		if !hasSignIn {
+			for _, p := range signInPatterns {
+				if strings.Contains(content, p) {
+					hasSignIn = true
+					break
+				}
+			}
+		}
+		if !collectsData {
+			for _, p := range dataPatterns {
+				if strings.Contains(content, p) {
+					collectsData = true
+					break
+				}
+			}
+		}
+		// Stop walking early if both found
+		if hasSignIn && collectsData {
+			return filepath.SkipAll
+		}
+		return nil
+	})
+	if err != nil {
+		log.Printf("[asc] detectProjectPatterns walk error: %v", err)
+	}
+	return hasSignIn, collectsData
 }
 
 // lastLines returns the last n lines of a string.

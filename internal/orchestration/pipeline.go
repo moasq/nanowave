@@ -88,7 +88,7 @@ var coreAgenticTools = []string{
 
 // Pipeline orchestrates the multi-phase app generation process.
 type Pipeline struct {
-	claude          *claude.Client
+	claude          claude.ClaudeAgent
 	config          *config.Config
 	model           string                         // user-selected model for code generation (empty = "sonnet")
 	manager         *integrations.Manager          // provider-based integration manager (nil = no integrations)
@@ -123,7 +123,7 @@ func (p *Pipeline) makeStreamCallback(progress *terminal.ProgressDisplay) func(c
 
 // NewPipeline creates a new pipeline orchestrator.
 // model overrides the default "sonnet" model for build/edit/fix phases.
-func NewPipeline(claudeClient *claude.Client, cfg *config.Config, model string) *Pipeline {
+func NewPipeline(claudeClient claude.ClaudeAgent, cfg *config.Config, model string) *Pipeline {
 	reg := mcpregistry.New()
 	mcpregistry.RegisterAll(reg)
 	return &Pipeline{
