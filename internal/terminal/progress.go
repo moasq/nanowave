@@ -371,9 +371,20 @@ func (pd *ProgressDisplay) OnToolUse(toolName string, inputGetter func(key strin
 
 // UpdateToolActivity refines the most recent activity label for a tool
 // as more input becomes available (e.g., from streaming tool_input_delta).
-func (pd *ProgressDisplay) UpdateToolActivity(toolName string, inputGetter func(key string) string) {
+// If countFile is true and the tool is a Write with a file_path, the file
+// counter is incremented (used when the complete tool input arrives).
+func (pd *ProgressDisplay) UpdateToolActivity(toolName string, inputGetter func(key string) string, countFile bool) {
 	pd.mu.Lock()
 	defer pd.mu.Unlock()
+
+	if countFile && toolName == "Write" && pd.mode == "build" {
+		if inputGetter("file_path") != "" {
+			pd.filesWritten++
+			if pd.filesWritten > pd.totalFiles && pd.totalFiles > 0 {
+				pd.totalFiles = pd.filesWritten
+			}
+		}
+	}
 
 	label := pd.toolActivityLabel(toolName, inputGetter)
 	if label == "" {

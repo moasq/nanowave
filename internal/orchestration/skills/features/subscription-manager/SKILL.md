@@ -33,6 +33,7 @@ final class SubscriptionManager {
     var selectedPackage: Package?
     var isLoading = false
     var errorMessage: String?
+    var purchaseSuccess = false       // Signals successful purchase for UX feedback
 
     private init() {}
 
@@ -68,10 +69,15 @@ final class SubscriptionManager {
             let result = try await Purchases.shared.purchase(package: package)
             if !result.userCancelled {
                 isPremium = result.customerInfo.entitlements[AppConfig.entitlementID]?.isActive == true
+                if isPremium { purchaseSuccess = true }
             }
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    func resetPurchaseSuccess() {
+        purchaseSuccess = false
     }
 
     func restore() async {
@@ -133,5 +139,36 @@ BANNED:
 - `PaywallViewModel` or any ViewModel that wraps/duplicates SubscriptionManager
 - Any View or ViewModel calling `Purchases.shared.purchase()`, `Purchases.shared.offerings()`, or `Purchases.shared.restorePurchases()` directly
 - PaywallView must use `@State private var manager = SubscriptionManager.shared` — not its own ViewModel
+
+## Reactive Feature Gating in ViewModels
+
+ViewModels that gate features behind a subscription MUST observe `SubscriptionManager.shared.isPremium` reactively. Because SubscriptionManager is `@Observable`, any SwiftUI view or `@Observable` class that reads `isPremium` will automatically re-evaluate when subscription status changes (purchase, renewal, expiration, restore).
+
+```swift
+@Observable
+@MainActor
+final class SomeFeatureViewModel {
+    private let subscriptionManager = SubscriptionManager.shared
+
+    var canAccessFeature: Bool {
+        subscriptionManager.isPremium
+    }
+
+    var showUpgradePrompt: Bool {
+        !subscriptionManager.isPremium
+    }
+}
+```
+
+Key points:
+- Do NOT cache or duplicate `isPremium` into a local property — always read through `SubscriptionManager.shared`
+- `@Observable` tracking propagates automatically: when `isPremium` changes, any computed property reading it triggers view updates
+- `customerInfoStream` in SubscriptionManager handles all external changes (renewals, expirations, family sharing, App Store refunds) — ViewModels do NOT need their own listeners
+- Views using `@State private var manager = SubscriptionManager.shared` also react automatically
+
+BANNED:
+- `NotificationCenter` or `Combine` publishers for subscription state — use `@Observable` tracking
+- Local `var isPremium` copies in ViewModels — always read from `SubscriptionManager.shared`
+- Manual `Task` loops polling `Purchases.shared.customerInfo()` — the stream handles this
 
 See [Model Pattern](references/model-pattern.md) for why custom tier enums are banned.

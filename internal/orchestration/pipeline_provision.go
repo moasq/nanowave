@@ -17,19 +17,56 @@ type provisionState struct {
 
 // provisionIntegrations resolves and provisions integrations declared in the plan,
 // writes MCP configs and settings, and generates StoreKit configuration if needed.
-func (p *Pipeline) provisionIntegrations(ctx context.Context, projectDir, appName string, plan *PlannerResult, analysis *AnalysisResult) (*provisionState, error) {
+// For edits, it merges existing providers with newly planned integrations.
+func (p *Pipeline) provisionIntegrations(ctx context.Context, projectDir, appName string, plan *PlannerResult, analysis *AnalysisResult, ac ActionContext) (*provisionState, error) {
 	state := &provisionState{}
 
-	if p.manager == nil || len(plan.Integrations) == 0 {
+	// For edits, load existing integrations first
+	var existingProviders []integrations.ActiveProvider
+	if ac.IsEdit() && p.manager != nil {
+		existingProviders = p.manager.ResolveExisting(appName)
+		if len(existingProviders) > 0 {
+			var names []string
+			for _, ap := range existingProviders {
+				names = append(names, string(ap.Provider.ID()))
+			}
+			terminal.Detail("Existing integrations", strings.Join(names, ", "))
+		}
+	}
+
+	// Determine which planned integrations are truly new (not already existing)
+	newIntegrations := plan.Integrations
+	if len(existingProviders) > 0 && len(newIntegrations) > 0 {
+		existingIDs := make(map[string]bool, len(existingProviders))
+		for _, ap := range existingProviders {
+			existingIDs[string(ap.Provider.ID())] = true
+		}
+		var filtered []string
+		for _, id := range newIntegrations {
+			if !existingIDs[id] {
+				filtered = append(filtered, id)
+			}
+		}
+		newIntegrations = filtered
+	}
+
+	if p.manager == nil || (len(newIntegrations) == 0 && len(existingProviders) == 0) {
 		terminal.Detail("Integrations", "none in plan")
 		return state, nil
 	}
 
-	terminal.Info(fmt.Sprintf("Resolving %d integration(s): %s", len(plan.Integrations), strings.Join(plan.Integrations, ", ")))
-	ui := &pipelineSetupUI{}
-	activeProviders, err := p.manager.Resolve(ctx, appName, plan.Integrations, ui)
-	if err != nil {
-		terminal.Warning(fmt.Sprintf("Integration resolution failed: %v", err))
+	// Start with existing providers
+	activeProviders := existingProviders
+
+	// Resolve new integrations (triggers setup UI for new ones)
+	if len(newIntegrations) > 0 {
+		terminal.Info(fmt.Sprintf("Resolving %d new integration(s): %s", len(newIntegrations), strings.Join(newIntegrations, ", ")))
+		ui := &pipelineSetupUI{}
+		newProviders, err := p.manager.Resolve(ctx, appName, newIntegrations, ui)
+		if err != nil {
+			terminal.Warning(fmt.Sprintf("Integration resolution failed: %v", err))
+		}
+		activeProviders = append(activeProviders, newProviders...)
 	}
 	p.activeProviders = activeProviders
 

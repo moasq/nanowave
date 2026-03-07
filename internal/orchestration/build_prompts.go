@@ -33,15 +33,21 @@ func appendBuildPlanFileEntry(b *strings.Builder, f FilePlan) {
 }
 
 // buildPrompts constructs the system and user prompts for the build phase.
-func (p *Pipeline) buildPrompts(_ string, appName string, _ string, analysis *AnalysisResult, plan *PlannerResult, backendProvisioned bool) (string, string, error) {
+func (p *Pipeline) buildPrompts(_ string, appName string, _ string, analysis *AnalysisResult, plan *PlannerResult, backendProvisioned bool, ac ActionContext) (string, string, error) {
 	destination := canonicalBuildDestinationForShape(plan.GetPlatform(), plan.GetWatchProjectShape())
-	// Build the append system prompt with coder rules + plan context
-	basePrompt, err := composeCoderAppendPrompt("builder", plan.GetPlatform())
-	if err != nil {
-		return "", "", err
-	}
+
+	// Load all relevant coder skills — Claude picks the right approach
+	skillNames := []string{"builder", "editor", "fixer"}
 	var appendPrompt strings.Builder
-	appendPrompt.WriteString(basePrompt)
+	for _, name := range skillNames {
+		skill, skillErr := composeCoderAppendPrompt(name, plan.GetPlatform())
+		if skillErr == nil {
+			if appendPrompt.Len() > 0 {
+				appendPrompt.WriteString("\n\n")
+			}
+			appendPrompt.WriteString(skill)
+		}
+	}
 
 	// Add plan context
 	appendPrompt.WriteString("\n\n<build-plan>\n")

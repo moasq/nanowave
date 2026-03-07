@@ -27,7 +27,7 @@ func (p *Pipeline) ASCFull(ctx context.Context, prompt, projectDir, sessionID st
 
 	log.Printf("[asc] starting ASCFull prompt=%q projectDir=%s sessionID=%s", prompt, projectDir, sessionID)
 
-	appName := readProjectAppName(projectDir)
+	appName := ReadProjectAppName(projectDir)
 	fmt.Printf("\n%sNanowave Connect%s\n", terminal.Bold, terminal.Reset)
 	if appName != "" {
 		terminal.Detail("Project", appName)
@@ -59,7 +59,7 @@ func (p *Pipeline) ASCFull(ctx context.Context, prompt, projectDir, sessionID st
 	log.Printf("[asc] asc CLI available")
 	cl.CompleteItem(terminal.ChecklistSuccess, "asc CLI ready")
 
-	// 2. Authentication
+	// 2. Authentication (API key + Iris session)
 	cl.StartItem("Checking authentication")
 	if !p.checkASCAuth(ctx) {
 		log.Printf("[asc] not authenticated, starting guided setup")
@@ -74,19 +74,43 @@ func (p *Pipeline) ASCFull(ctx context.Context, prompt, projectDir, sessionID st
 	}
 	cl.CompleteItem(terminal.ChecklistSuccess, "Authenticated with App Store Connect")
 
+	// 2b. Verify Iris session (required for app creation, screenshots, etc.)
+	cl.StartItem("Verifying Apple ID session")
+	irisValid := false
+	if jar, err := appleauth.LoadIrisCookies(); err == nil {
+		irisValid = asc.VerifyIrisSession(ctx, jar)
+	}
+	if irisValid {
+		cl.CompleteItem(terminal.ChecklistSuccess, "Apple ID session active")
+	} else {
+		log.Printf("[asc] iris session expired or missing, clearing and re-authenticating")
+		appleauth.ClearIrisSessions()
+		cl.CompleteItem(terminal.ChecklistWarning, "Apple ID session expired — re-authenticating")
+		fmt.Println()
+		if !p.setupASCAuthAppleID(ctx) {
+			terminal.Warning("Apple ID session could not be restored. App creation won't be available.")
+		} else {
+			terminal.Success("Apple ID session restored")
+		}
+	}
+
 	// 3. App context
 	cl.StartItem("Verifying app in App Store Connect")
-	preflight := p.gatherASCContext(ctx, projectDir)
+	preflight := p.gatherASCContext(ctx, projectDir, cl)
 	log.Printf("[asc] preflight result: appID=%s appName=%q bundleID=%s localizations=%v",
 		preflight.AppID, preflight.AppName, preflight.BundleID, preflight.Localizations)
 	if preflight.AppID != "" {
-		detail := preflight.BundleID
-		if preflight.AppName != "" {
-			detail = fmt.Sprintf("%s (%s)", preflight.AppName, preflight.BundleID)
+		if cl.HasActive() {
+			detail := preflight.BundleID
+			if preflight.AppName != "" {
+				detail = fmt.Sprintf("%s (%s)", preflight.AppName, preflight.BundleID)
+			}
+			cl.CompleteItem(terminal.ChecklistSuccess, detail)
 		}
-		cl.CompleteItem(terminal.ChecklistSuccess, detail)
 	} else {
-		cl.CompleteItem(terminal.ChecklistError, "No app found")
+		if cl.HasActive() {
+			cl.CompleteItem(terminal.ChecklistError, "No app found")
+		}
 		log.Printf("[asc] GATE FAILED: no app ID — cannot proceed without an app in ASC")
 		return nil, fmt.Errorf("no App Store Connect app found for %s. Create the app in App Store Connect first, then try again", preflight.BundleID)
 	}
@@ -996,7 +1020,7 @@ func readDeviceFamily(projectDir string) string {
 // gatherASCContext reads project config and matches against ASC apps.
 // If asc_app_id is stored in project_config.json, it's used directly (no matching needed).
 // Otherwise, matches by bundle ID, and persists the app ID for next time.
-func (p *Pipeline) gatherASCContext(ctx context.Context, projectDir string) *asc.PreflightResult {
+func (p *Pipeline) gatherASCContext(ctx context.Context, projectDir string, cl *terminal.Checklist) *asc.PreflightResult {
 	log.Printf("[asc] gathering context from %s", projectDir)
 	result := &asc.PreflightResult{}
 
@@ -1022,9 +1046,9 @@ func (p *Pipeline) gatherASCContext(ctx context.Context, projectDir string) *asc
 		log.Printf("[asc] project_config.json not found: %v", err)
 	}
 
-	// Fall back to readProjectAppName if not found
+	// Fall back to ReadProjectAppName if not found
 	if result.AppName == "" {
-		result.AppName = readProjectAppName(projectDir)
+		result.AppName = ReadProjectAppName(projectDir)
 		log.Printf("[asc] app name from xcodeproj: %q", result.AppName)
 	}
 
@@ -1101,37 +1125,37 @@ func (p *Pipeline) gatherASCContext(ctx context.Context, projectDir string) *asc
 			log.Printf("[asc] no app matched bundleID=%s, offering picker with %d options", result.BundleID, len(apps))
 
 			if len(apps) > 0 {
-				options := make([]terminal.PickerOption, 0, len(apps)+2)
+				// Stop the checklist spinner before showing interactive picker
+				cl.CompleteItem(terminal.ChecklistSkipped, "App not found — select below")
 
-				createDesc := "Register a new app"
-				if result.BundleID != "" && result.AppName != "" {
-					createDesc = fmt.Sprintf("Create %s (%s)", result.AppName, result.BundleID)
-				} else if result.BundleID != "" {
-					createDesc = fmt.Sprintf("Create app with %s", result.BundleID)
-				}
-				options = append(options,
-					terminal.PickerOption{Label: "Create new", Desc: createDesc},
-				)
+				// Step 1: Ask create or use existing
+				picked := terminal.Pick("Select your app", []terminal.PickerOption{
+					{Label: "Create a new app", Desc: fmt.Sprintf("Register %s in App Store Connect", result.BundleID)},
+					{Label: "Use an existing app", Desc: fmt.Sprintf("Choose from %d apps in your account", len(apps))},
+				}, "")
 
-				for _, app := range apps {
-					options = append(options, terminal.PickerOption{
-						Label: app.Name,
-						Desc:  app.BundleID,
-					})
-				}
-				options = append(options,
-					terminal.PickerOption{Label: "Skip", Desc: "Let Claude handle app selection"},
-				)
-
-				picked := terminal.Pick("Select your app", options, "")
-				if picked == "Skip" || picked == "" {
+				if picked == "" {
 					return result
 				}
-				if picked == "Create new" {
+				if picked == "Create a new app" {
 					p.createASCApp(ctx, result, projectDir)
 					if result.AppID != "" {
 						asc.SaveAppID(projectDir, result.AppID)
 					}
+					return result
+				}
+
+				// Step 2: Show existing apps list
+				appOptions := make([]terminal.PickerOption, 0, len(apps))
+				for _, app := range apps {
+					appOptions = append(appOptions, terminal.PickerOption{
+						Label: app.Name,
+						Desc:  app.BundleID,
+					})
+				}
+
+				picked = terminal.Pick("Select an existing app", appOptions, "")
+				if picked == "" {
 					return result
 				}
 				for _, app := range apps {
@@ -1182,11 +1206,20 @@ func (p *Pipeline) createASCApp(ctx context.Context, preflight *asc.PreflightRes
 
 	// GATE 2: Ensure iris session is available (required for app creation)
 	jar, err := appleauth.LoadIrisCookies()
-	if err != nil {
-		log.Printf("[asc] no iris session for app creation: %v", err)
-		terminal.Error("App creation requires an Apple ID session.")
-		terminal.Info("Sign out and sign back in with Apple ID to create a session.")
-		return
+	if err != nil || !asc.VerifyIrisSession(ctx, jar) {
+		log.Printf("[asc] iris session missing or expired for app creation, re-authenticating")
+		appleauth.ClearIrisSessions()
+		terminal.Warning("Apple ID session expired — re-authenticating...")
+		fmt.Println()
+		if !p.setupASCAuthAppleID(ctx) {
+			terminal.Error("Could not restore Apple ID session. App creation requires a valid session.")
+			return
+		}
+		jar, err = appleauth.LoadIrisCookies()
+		if err != nil {
+			terminal.Error("Apple ID session could not be loaded after re-authentication.")
+			return
+		}
 	}
 
 	// GATE 3: Create the app (with retry on name collision)
@@ -1205,13 +1238,12 @@ func (p *Pipeline) createASCApp(ctx context.Context, preflight *asc.PreflightRes
 		}
 
 		log.Printf("[asc] app creation failed: %v", createErr)
-		errMsg := createErr.Error()
 
-		// Check if it's a name collision — offer rename
-		if strings.Contains(errMsg, "already being used") || strings.Contains(errMsg, "name") {
+		switch {
+		case asc.IsIrisNameCollision(createErr):
 			spinner.StopWithMessage(fmt.Sprintf("  %s%s✗%s App name %q is already taken", terminal.Bold, terminal.Red, terminal.Reset, appName))
 			fmt.Println()
-			terminal.Warning(errMsg)
+			terminal.Warning(createErr.Error())
 			fmt.Println()
 
 			newName := strings.TrimSpace(pipelineReadLineFn("Enter a different app name (or leave empty to cancel)"))
@@ -1221,19 +1253,29 @@ func (p *Pipeline) createASCApp(ctx context.Context, preflight *asc.PreflightRes
 			}
 			appName = newName
 			continue // retry with new name
-		}
 
-		// Check if session expired
-		if strings.Contains(errMsg, "session expired") || strings.Contains(errMsg, "401") || strings.Contains(errMsg, "403") {
+		case asc.IsIrisSessionExpired(createErr):
 			spinner.StopWithMessage(fmt.Sprintf("  %s%s✗%s Apple ID session expired", terminal.Bold, terminal.Red, terminal.Reset))
-			terminal.Error("Your Apple ID session has expired. Sign out and sign back in with Apple ID.")
+			appleauth.ClearIrisSessions()
+			terminal.Warning("Re-authenticating with Apple ID...")
+			fmt.Println()
+			if !p.setupASCAuthAppleID(ctx) {
+				terminal.Error("Could not restore Apple ID session.")
+				return
+			}
+			newJar, loadErr := appleauth.LoadIrisCookies()
+			if loadErr != nil {
+				terminal.Error("Apple ID session could not be loaded after re-authentication.")
+				return
+			}
+			jar = newJar
+			continue // retry with fresh session
+
+		default:
+			spinner.StopWithMessage(fmt.Sprintf("  %s%s✗%s App creation failed", terminal.Bold, terminal.Red, terminal.Reset))
+			terminal.Error(createErr.Error())
 			return
 		}
-
-		// Other error — non-recoverable
-		spinner.StopWithMessage(fmt.Sprintf("  %s%s✗%s App creation failed", terminal.Bold, terminal.Red, terminal.Reset))
-		terminal.Error(errMsg)
-		return
 	}
 }
 

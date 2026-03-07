@@ -11,29 +11,34 @@
 ```swift
 struct CreditPaywallView: View {
     @Environment(\.dismiss) private var dismiss
-    @State private var selectedPackage: Package?
-    @State private var packages: [Package] = []
-    @State private var isPurchasing = false
+    @State private var manager = SubscriptionManager.shared
+    @State private var purchaseSuccess = false
     let currentBalance: Int
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: AppTheme.Spacing.lg) {
-                    balanceSection
-                    creditPacks
-                    ctaButton
-                    footer
+            ZStack {
+                ScrollView {
+                    VStack(spacing: AppTheme.Spacing.lg) {
+                        balanceSection
+                        creditPacks
+                        ctaButton
+                        footer
+                    }
+                    .padding(AppTheme.Spacing.md)
                 }
-                .padding(AppTheme.Spacing.md)
-            }
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Close") { dismiss() }
+                    }
+                }
+
+                if purchaseSuccess {
+                    creditPurchaseSuccessOverlay
                 }
             }
         }
-        .task { await loadOfferings() }
+        .task { await manager.loadOfferings() }
     }
 }
 ```
@@ -58,11 +63,11 @@ private var balanceSection: some View {
 ```swift
 private var creditPacks: some View {
     VStack(spacing: AppTheme.Spacing.sm) {
-        ForEach(packages, id: \.identifier) { package in
+        ForEach(manager.packages, id: \.identifier) { package in
             CreditPackCard(
                 package: package,
-                isSelected: selectedPackage?.identifier == package.identifier,
-                onTap: { selectedPackage = package }
+                isSelected: manager.selectedPackage?.identifier == package.identifier,
+                onTap: { manager.selectedPackage = package }
             )
         }
     }
@@ -104,18 +109,51 @@ struct CreditPackCard: View {
 
 ```swift
 private func purchase() async {
-    guard let package = selectedPackage else { return }
-    isPurchasing = true
-    defer { isPurchasing = false }
+    guard let package = manager.selectedPackage else { return }
+    manager.isLoading = true
+    defer { manager.isLoading = false }
 
     do {
-        let (_, customerInfo, cancelled) = try await Purchases.shared.purchase(package: package)
-        if !cancelled {
+        let result = try await Purchases.shared.purchase(package: package)
+        if !result.userCancelled {
             // Grant credits based on the product purchased
-            dismiss()
+            purchaseSuccess = true
+            Task {
+                try? await Task.sleep(for: .seconds(1.5))
+                purchaseSuccess = false
+                dismiss()
+            }
         }
     } catch {
-        // Show error
+        manager.errorMessage = error.localizedDescription
     }
+}
+```
+
+## Credit Purchase Success Overlay
+
+```swift
+private var creditPurchaseSuccessOverlay: some View {
+    ZStack {
+        Color.black.opacity(0.6)
+            .ignoresSafeArea()
+
+        VStack(spacing: AppTheme.Spacing.md) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 64))
+                .foregroundStyle(AppTheme.Colors.success)
+                .symbolEffect(.bounce, value: purchaseSuccess)
+
+            Text("Credits Added!")
+                .font(AppTheme.Fonts.title2)
+                .foregroundStyle(.white)
+
+            Text("Your credits are ready to use")
+                .font(AppTheme.Fonts.body)
+                .foregroundStyle(.white.opacity(0.8))
+        }
+    }
+    .transition(.opacity)
+    .animation(.easeInOut(duration: 0.3), value: purchaseSuccess)
 }
 ```

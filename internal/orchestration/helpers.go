@@ -416,7 +416,7 @@ func newProgressCallback(progress *terminal.ProgressDisplay) func(claude.StreamE
 				}
 				// Only update if we can extract a meaningful field
 				if getter("command") != "" || getter("file_path") != "" || getter("query") != "" || getter("pattern") != "" {
-					progress.UpdateToolActivity(currentTool, getter)
+					progress.UpdateToolActivity(currentTool, getter, false)
 				}
 			}
 
@@ -428,7 +428,7 @@ func newProgressCallback(progress *terminal.ProgressDisplay) func(claude.StreamE
 					return extractToolInputString(ev.ToolInput, key)
 				}
 				if toolRegistered && ev.ToolName == currentTool {
-					progress.UpdateToolActivity(ev.ToolName, getter)
+					progress.UpdateToolActivity(ev.ToolName, getter, true)
 				} else {
 					progress.OnToolUse(ev.ToolName, getter)
 				}

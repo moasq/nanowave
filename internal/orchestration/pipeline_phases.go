@@ -11,16 +11,22 @@ import (
 )
 
 // analyze runs Phase 2: prompt → AnalysisResult.
-func (p *Pipeline) analyze(ctx context.Context, prompt string, intent *IntentDecision, progress *terminal.ProgressDisplay) (*AnalysisResult, error) {
+func (p *Pipeline) analyze(ctx context.Context, prompt string, intent *IntentDecision, ac ActionContext, progress *terminal.ProgressDisplay) (*AnalysisResult, error) {
 	systemPrompt, err := composeAnalyzerSystemPrompt(intent)
 	if err != nil {
 		return nil, err
 	}
 
+	// For edits, prepend existing project context so the analyzer focuses on NEW capabilities
+	userMsg := prompt
+	if ac.IsEdit() {
+		userMsg = fmt.Sprintf("Existing project: %s (platform: %s)\nEdit request: %s", ac.AppName, ac.Platform, prompt)
+	}
+
 	progress.AddActivity("Sending request to Claude")
 
 	gotFirstDelta := false
-	resp, err := p.claude.GenerateStreaming(ctx, prompt, claude.GenerateOpts{
+	resp, err := p.claude.GenerateStreaming(ctx, userMsg, claude.GenerateOpts{
 		SystemPrompt: systemPrompt,
 		MaxTurns:     3,
 		Model:        "sonnet",
@@ -65,7 +71,7 @@ func (p *Pipeline) analyze(ctx context.Context, prompt string, intent *IntentDec
 }
 
 // plan runs Phase 3: analysis → PlannerResult.
-func (p *Pipeline) plan(ctx context.Context, analysis *AnalysisResult, intent *IntentDecision, progress *terminal.ProgressDisplay) (*PlannerResult, error) {
+func (p *Pipeline) plan(ctx context.Context, analysis *AnalysisResult, intent *IntentDecision, ac ActionContext, progress *terminal.ProgressDisplay) (*PlannerResult, error) {
 	systemPrompt, err := composePlannerSystemPrompt(intent, intent.PlatformHint)
 	if err != nil {
 		return nil, err
@@ -77,7 +83,12 @@ func (p *Pipeline) plan(ctx context.Context, analysis *AnalysisResult, intent *I
 		return nil, fmt.Errorf("failed to marshal analysis: %w", err)
 	}
 
-	userMsg := fmt.Sprintf("Create a file-level build plan for this app spec:\n\n%s", string(analysisJSON))
+	var userMsg string
+	if ac.IsEdit() {
+		userMsg = fmt.Sprintf("Plan ONLY the new/modified files for this edit to an existing project:\n\n%s", string(analysisJSON))
+	} else {
+		userMsg = fmt.Sprintf("Create a file-level build plan for this app spec:\n\n%s", string(analysisJSON))
+	}
 
 	progress.AddActivity("Sending analysis to Claude")
 
@@ -123,8 +134,8 @@ func (p *Pipeline) plan(ctx context.Context, analysis *AnalysisResult, intent *I
 }
 
 // buildStreaming runs Phase 4 with real-time streaming output.
-func (p *Pipeline) buildStreaming(ctx context.Context, prompt, appName, projectDir string, analysis *AnalysisResult, plan *PlannerResult, sessionID string, progress *terminal.ProgressDisplay, images []string, backendProvisioned bool) (*claude.Response, error) {
-	appendPrompt, userMsg, err := p.buildPrompts(prompt, appName, projectDir, analysis, plan, backendProvisioned)
+func (p *Pipeline) buildStreaming(ctx context.Context, prompt, appName, projectDir string, analysis *AnalysisResult, plan *PlannerResult, sessionID string, progress *terminal.ProgressDisplay, images []string, backendProvisioned bool, ac ActionContext) (*claude.Response, error) {
+	appendPrompt, userMsg, err := p.buildPrompts(prompt, appName, projectDir, analysis, plan, backendProvisioned, ac)
 	if err != nil {
 		return nil, err
 	}

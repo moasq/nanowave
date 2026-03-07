@@ -136,6 +136,21 @@ func newShell() *readline.Shell {
 		return true
 	}
 
+	// Register clipboard image paste command (Ctrl+V).
+	// When Ctrl+V is pressed, check the macOS clipboard for image data.
+	// If found, save to temp file and insert a visual [imageN] indicator.
+	sh.Keymap.Register(map[string]func(){
+		"paste-clipboard-image": func() {
+			if pasteClipboardImage() {
+				count := clipboardImageCount()
+				indicator := []rune(fmt.Sprintf("[image%d] ", count))
+				sh.Cursor().InsertAt(indicator...)
+			}
+		},
+	})
+	// Bind Ctrl+V to the paste command in emacs mode (default)
+	sh.Config.Bind("emacs", "\x16", "paste-clipboard-image", false)
+
 	// Slash command completion: only activate for "/" prefix.
 	sh.Completer = func(line []rune, cursor int) readline.Completions {
 		text := string(line[:cursor])
@@ -158,7 +173,7 @@ func newShell() *readline.Shell {
 
 // ReadInput reads input from the terminal with slash command completion.
 // Enter submits. Ctrl+J adds a newline. Pasted multiline text is kept intact.
-// Image file paths (dragged/pasted) are detected and returned separately.
+// Image file paths (dragged/pasted) and clipboard images (Ctrl+V) are returned separately.
 func ReadInput() InputResult {
 	line, err := rl.Readline()
 	if err != nil {
@@ -175,12 +190,34 @@ func ReadInput() InputResult {
 	}
 
 	line = strings.TrimSpace(line)
-	if line == "" {
+
+	// Collect any clipboard images pasted via Ctrl+V during this input
+	clipImages := takeClipboardImages()
+
+	// Strip [imageN] indicators from the text (inserted for visual feedback)
+	line = stripImageIndicators(line)
+	line = strings.TrimSpace(line)
+
+	if line == "" && len(clipImages) == 0 {
 		return InputResult{}
 	}
 
-	text, imgs := extractImages(line)
-	return InputResult{Text: text, Images: imgs}
+	// Extract drag-and-drop file path images from text
+	text, dragImages := extractImages(line)
+
+	// Merge clipboard images + dragged images
+	allImages := append(clipImages, dragImages...)
+
+	return InputResult{Text: text, Images: allImages}
+}
+
+// stripImageIndicators removes [imageN] markers from the input text.
+func stripImageIndicators(s string) string {
+	for i := 1; i <= 20; i++ {
+		s = strings.ReplaceAll(s, fmt.Sprintf("[image%d] ", i), "")
+		s = strings.ReplaceAll(s, fmt.Sprintf("[image%d]", i), "")
+	}
+	return s
 }
 
 // filterCommands returns commands matching the given prefix.

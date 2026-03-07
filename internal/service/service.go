@@ -193,7 +193,7 @@ func (s *Service) build(ctx context.Context, prompt string, images []string) err
 
 	pipeline := orchestration.NewPipeline(s.claude, s.config, s.model)
 	pipeline.SetManager(s.manager)
-	result, err := pipeline.Build(ctx, prompt, images)
+	result, err := pipeline.Action(ctx, prompt, orchestration.ActionContext{}, images)
 	if err != nil {
 		terminal.Error(fmt.Sprintf("Build failed: %v", err))
 		return err
@@ -275,9 +275,19 @@ func (s *Service) edit(ctx context.Context, prompt string, images []string) erro
 	terminal.Header("Nanowave")
 	terminal.Detail("Project", projectName(project))
 
+	platform, platforms, watchProjectShape := orchestration.DetectProjectBuildHints(project.ProjectPath)
+
 	pipeline := orchestration.NewPipeline(s.claude, s.config, s.model)
 	pipeline.SetManager(s.manager)
-	result, err := pipeline.Edit(ctx, prompt, project.ProjectPath, project.SessionID, images)
+	ac := orchestration.ActionContext{
+		ProjectDir:        project.ProjectPath,
+		AppName:           orchestration.ReadProjectAppName(project.ProjectPath),
+		SessionID:         project.SessionID,
+		Platform:          platform,
+		Platforms:         platforms,
+		WatchProjectShape: watchProjectShape,
+	}
+	result, err := pipeline.Action(ctx, prompt, ac, images)
 	if err != nil {
 		terminal.Error(fmt.Sprintf("Edit failed: %v", err))
 		return err
@@ -292,14 +302,11 @@ func (s *Service) edit(ctx context.Context, prompt string, images []string) erro
 		s.projectStore.Save(project)
 	}
 
-	// Show summary of what was done
-	printSummary(result.Summary)
+	// Show summary
+	terminal.Success(fmt.Sprintf("Edit complete — %d files", result.CompletedFiles))
 
 	s.historyStore.Append(storage.HistoryMessage{Role: "user", Content: prompt})
-	summary := truncateStr(result.Summary, 200)
-	if summary == "" {
-		summary = fmt.Sprintf("Applied edit: %s", truncateStr(prompt, 50))
-	}
+	summary := fmt.Sprintf("Applied edit: %s (%d files)", truncateStr(prompt, 50), result.CompletedFiles)
 	s.historyStore.Append(storage.HistoryMessage{
 		Role:    "assistant",
 		Content: summary,
@@ -456,11 +463,20 @@ func (s *Service) Run(ctx context.Context) error {
 	} else {
 		spinner.StopWithMessage(fmt.Sprintf("%s%s!%s Build failed — auto-fixing...", terminal.Bold, terminal.Yellow, terminal.Reset))
 
-		// Auto-fix: use Claude to diagnose and repair via Edit
+		// Auto-fix: use Claude to diagnose and repair via Action
 		pipeline := orchestration.NewPipeline(s.claude, s.config, s.model)
 		pipeline.SetManager(s.manager)
 		fixPrompt := "Build the project, read any compilation errors, and fix all of them. Rebuild and repeat until the build succeeds."
-		fixResult, fixErr := pipeline.Edit(ctx, fixPrompt, project.ProjectPath, project.SessionID, nil)
+		fixPlatform, fixPlatforms, fixWatchShape := orchestration.DetectProjectBuildHints(project.ProjectPath)
+		fixAC := orchestration.ActionContext{
+			ProjectDir:        project.ProjectPath,
+			AppName:           orchestration.ReadProjectAppName(project.ProjectPath),
+			SessionID:         project.SessionID,
+			Platform:          fixPlatform,
+			Platforms:         fixPlatforms,
+			WatchProjectShape: fixWatchShape,
+		}
+		fixResult, fixErr := pipeline.Action(ctx, fixPrompt, fixAC, nil)
 		if fixErr != nil {
 			terminal.Error("Auto-fix failed")
 			return fmt.Errorf("xcodebuild failed: %w\n%s", err, string(buildOutput))

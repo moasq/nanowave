@@ -4,12 +4,67 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"time"
 )
+
+// IrisErrorKind classifies Iris API failures.
+type IrisErrorKind int
+
+const (
+	IrisErrorUnknown       IrisErrorKind = iota
+	IrisErrorSessionExpired              // 401/403 — Apple ID session is stale
+	IrisErrorNameCollision               // 409 — app name already taken
+)
+
+// IrisError is a typed error returned by Iris API calls.
+type IrisError struct {
+	Kind       IrisErrorKind
+	StatusCode int
+	Detail     string // human-readable detail from Apple's response
+}
+
+func (e *IrisError) Error() string { return e.Detail }
+
+// IsIrisSessionExpired checks whether an error is an Iris session expiry.
+func IsIrisSessionExpired(err error) bool {
+	var ie *IrisError
+	return errors.As(err, &ie) && ie.Kind == IrisErrorSessionExpired
+}
+
+// IsIrisNameCollision checks whether an error is an app name collision.
+func IsIrisNameCollision(err error) bool {
+	var ie *IrisError
+	return errors.As(err, &ie) && ie.Kind == IrisErrorNameCollision
+}
+
+// VerifyIrisSession checks whether the Iris session cookies are still valid
+// by making a lightweight request to the App Store Connect API.
+func VerifyIrisSession(ctx context.Context, jar http.CookieJar) bool {
+	httpClient := &http.Client{Jar: jar, Timeout: 15 * time.Second}
+
+	req, err := http.NewRequestWithContext(ctx, "GET", "https://appstoreconnect.apple.com/iris/v1/apps?limit=1", nil)
+	if err != nil {
+		return false
+	}
+	req.Header.Set("Accept", "application/vnd.api+json, application/json")
+	req.Header.Set("x-csrf-itc", "[asc-ui]")
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		log.Printf("[asc] VerifyIrisSession: request failed: %v", err)
+		return false
+	}
+	defer resp.Body.Close()
+
+	valid := resp.StatusCode == http.StatusOK
+	log.Printf("[asc] VerifyIrisSession: status=%d valid=%v", resp.StatusCode, valid)
+	return valid
+}
 
 // CreateAppViaIris creates an app in App Store Connect using the iris web API
 // with saved Apple ID session cookies. This bypasses the API key limitation
@@ -108,15 +163,25 @@ func CreateAppViaIris(ctx context.Context, jar http.CookieJar, appName, bundleID
 	log.Printf("[asc] CreateAppViaIris: status=%d", createResp.StatusCode)
 
 	if createResp.StatusCode != http.StatusCreated && createResp.StatusCode != http.StatusOK {
+		detail := fmt.Sprintf("app creation returned HTTP %d", createResp.StatusCode)
 		var errResp struct {
 			Errors []struct {
 				Detail string `json:"detail"`
 			} `json:"errors"`
 		}
 		if json.Unmarshal(respBody, &errResp) == nil && len(errResp.Errors) > 0 {
-			return "", fmt.Errorf("%s", errResp.Errors[0].Detail)
+			detail = errResp.Errors[0].Detail
 		}
-		return "", fmt.Errorf("app creation returned %d: %s", createResp.StatusCode, string(respBody))
+
+		kind := IrisErrorUnknown
+		switch {
+		case createResp.StatusCode == http.StatusUnauthorized || createResp.StatusCode == http.StatusForbidden:
+			kind = IrisErrorSessionExpired
+		case createResp.StatusCode == http.StatusConflict:
+			kind = IrisErrorNameCollision
+		}
+
+		return "", &IrisError{Kind: kind, StatusCode: createResp.StatusCode, Detail: detail}
 	}
 
 	var result struct {

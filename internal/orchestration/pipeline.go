@@ -41,9 +41,9 @@ func retryPhase[T any](ctx context.Context, maxRetries int, fn func() (T, error)
 	return zero, lastErr
 }
 
-// detectProjectBuildHints reads project_config.json and extracts build-relevant hints.
+// DetectProjectBuildHints reads project_config.json and extracts build-relevant hints.
 // Returns ("ios", nil, "") when missing or unreadable (backward compat).
-func detectProjectBuildHints(projectDir string) (platform string, platforms []string, watchProjectShape string) {
+func DetectProjectBuildHints(projectDir string) (platform string, platforms []string, watchProjectShape string) {
 	data, err := os.ReadFile(filepath.Join(projectDir, "project_config.json"))
 	if err != nil {
 		return PlatformIOS, nil, ""
@@ -62,10 +62,10 @@ func detectProjectBuildHints(projectDir string) (platform string, platforms []st
 	return cfg.Platform, cfg.Platforms, cfg.WatchProjectShape
 }
 
-// readProjectAppName returns the Xcode app name for an existing project.
+// ReadProjectAppName returns the Xcode app name for an existing project.
 // It reads app_name from project_config.json (the canonical source of truth written at build time).
 // Falls back to filepath.Base(projectDir) for projects predating the suffixed-dir feature.
-func readProjectAppName(projectDir string) string {
+func ReadProjectAppName(projectDir string) string {
 	data, err := os.ReadFile(filepath.Join(projectDir, "project_config.json"))
 	if err != nil {
 		return filepath.Base(projectDir)
@@ -84,6 +84,23 @@ func readProjectAppName(projectDir string) string {
 var coreAgenticTools = []string{
 	"Write", "Edit", "Read", "Bash", "Glob", "Grep",
 	"WebFetch", "WebSearch",
+}
+
+// ActionContext provides context for the unified pipeline.
+// For new builds, all fields are zero-valued.
+// For edits to existing projects, fields carry existing project info.
+type ActionContext struct {
+	ProjectDir        string   // empty for new builds
+	AppName           string   // empty for new builds (analyzer will name it)
+	SessionID         string   // for conversation continuity
+	Platform          string   // detected from existing project_config.json
+	Platforms         []string // detected from existing project_config.json
+	WatchProjectShape string   // detected from existing project_config.json
+}
+
+// IsEdit returns true when acting on an existing project.
+func (ac ActionContext) IsEdit() bool {
+	return ac.ProjectDir != ""
 }
 
 // Pipeline orchestrates the multi-phase app generation process.
@@ -159,9 +176,13 @@ func (p *Pipeline) QuickIntentCheck(ctx context.Context, prompt string) (*Intent
 	return p.decideBuildIntent(ctx, prompt, progress)
 }
 
-// Build runs the full pipeline: intent → setup → analyze → plan → build+fix → finalize.
+// Action runs the unified pipeline: intent → analyze → plan → integrations → code.
+// For new builds (ac.ProjectDir == ""), it creates a workspace and scaffolds the project.
+// For edits (ac.ProjectDir != ""), it runs in the existing workspace with session continuity.
 // images is an optional list of image file paths to include in the build prompt.
-func (p *Pipeline) Build(ctx context.Context, prompt string, images []string) (*BuildResult, error) {
+func (p *Pipeline) Action(ctx context.Context, prompt string, ac ActionContext, images []string) (*BuildResult, error) {
+	isEdit := ac.IsEdit()
+
 	// Phase 0: Intent decision (advisory hints for analyzer/planner)
 	intentProgress := terminal.NewProgressDisplay("intent", 0)
 	intentProgress.Start()
@@ -170,12 +191,16 @@ func (p *Pipeline) Build(ctx context.Context, prompt string, images []string) (*
 	if intentErr != nil {
 		intentProgress.StopWithSuccess("Intent hints unavailable — using defaults")
 		terminal.Detail("Intent", fmt.Sprintf("Router fallback failed (%v); continuing with defaults", intentErr))
+		op := "build"
+		if isEdit {
+			op = "edit"
+		}
 		intentDecision = &IntentDecision{
-			Operation:        "build",
+			Operation:        op,
 			PlatformHint:     PlatformIOS,
 			DeviceFamilyHint: "iphone",
 			Confidence:       0.1,
-			Reason:           "Router unavailable; using default iOS/iPhone build assumptions",
+			Reason:           "Router unavailable; using default iOS/iPhone assumptions",
 		}
 	} else {
 		intentProgress.StopWithSuccess("Intent decided")
@@ -184,34 +209,38 @@ func (p *Pipeline) Build(ctx context.Context, prompt string, images []string) (*
 		}
 	}
 
-	// Phase 1: Setup workspace
-	spinner := terminal.NewSpinner("Setting up workspace...")
-	spinner.Start()
+	// For edits, override platform hint from existing project config
+	if isEdit && ac.Platform != "" {
+		intentDecision.PlatformHint = ac.Platform
+	}
 
-	appName := "MyApp" // placeholder until analyzer names it
-	projectDir := filepath.Join(p.config.ProjectDir, appName)
-
-	// We'll rename after analysis — for now create a temp structure
-	// Phase 2 will give us the real name
-
-	spinner.StopWithMessage(fmt.Sprintf("%s%s✓%s Workspace ready", terminal.Bold, terminal.Green, terminal.Reset))
+	// Phase 1: Setup (new builds only)
+	if !isEdit {
+		spinner := terminal.NewSpinner("Setting up workspace...")
+		spinner.Start()
+		spinner.StopWithMessage(fmt.Sprintf("%s%s✓%s Workspace ready", terminal.Bold, terminal.Green, terminal.Reset))
+	}
 
 	// Phase 2: Analyze (with retry for transient failures)
 	analyzeProgress := terminal.NewProgressDisplay("analyze", 0)
 	analyzeProgress.Start()
 
 	analysis, err := retryPhase(ctx, maxPhaseRetries, func() (*AnalysisResult, error) {
-		return p.analyze(ctx, prompt, intentDecision, analyzeProgress)
+		return p.analyze(ctx, prompt, intentDecision, ac, analyzeProgress)
 	})
 	if err != nil {
 		analyzeProgress.StopWithError("Analysis failed")
 		return nil, fmt.Errorf("analysis failed: %w", err)
 	}
 
-	appName = sanitizeToPascalCase(analysis.AppName)
-	projectDir = uniqueProjectDir(p.config.ProjectDir, appName)
-	// appName stays clean (e.g. "Skies") for Xcode project name, bundle ID, scheme, source dirs.
-	// projectDir may have a numeric suffix (e.g. ".../Skies2") to avoid collisions on disk.
+	var appName, projectDir string
+	if isEdit {
+		appName = ac.AppName
+		projectDir = ac.ProjectDir
+	} else {
+		appName = sanitizeToPascalCase(analysis.AppName)
+		projectDir = uniqueProjectDir(p.config.ProjectDir, appName)
+	}
 
 	analyzeProgress.StopWithSuccess(fmt.Sprintf("Analyzed: %s", analysis.AppName))
 
@@ -231,7 +260,7 @@ func (p *Pipeline) Build(ctx context.Context, prompt string, images []string) (*
 	planProgress.Start()
 
 	plan, err := retryPhase(ctx, maxPhaseRetries, func() (*PlannerResult, error) {
-		return p.plan(ctx, analysis, intentDecision, planProgress)
+		return p.plan(ctx, analysis, intentDecision, ac, planProgress)
 	})
 	if err != nil {
 		planProgress.StopWithError("Planning failed")
@@ -250,27 +279,34 @@ func (p *Pipeline) Build(ctx context.Context, prompt string, images []string) (*
 		terminal.Detail("Permissions", strings.Join(permNames, ", "))
 	}
 
-	// Set up the actual workspace with the real app name
-	if err := p.setupBuildWorkspace(projectDir, appName, plan); err != nil {
-		return nil, err
+	if isEdit {
+		// For edits, ensure project configs are up to date
+		p.ensureProjectConfigs(projectDir)
+	} else {
+		// Set up the actual workspace with the real app name
+		if err := p.setupBuildWorkspace(projectDir, appName, plan); err != nil {
+			return nil, err
+		}
 	}
 
 	// Resolve and provision integrations
-	provState, err := p.provisionIntegrations(ctx, projectDir, appName, plan, analysis)
+	provState, err := p.provisionIntegrations(ctx, projectDir, appName, plan, analysis, ac)
 	if err != nil {
 		return nil, err
 	}
 
-	// Scaffold project files and run XcodeGen
-	if err := p.scaffoldProject(projectDir, appName, plan, provState.needsAppleSignIn); err != nil {
-		return nil, err
+	if !isEdit {
+		// Scaffold project files and run XcodeGen (new builds only)
+		if err := p.scaffoldProject(projectDir, appName, plan, provState.needsAppleSignIn); err != nil {
+			return nil, err
+		}
 	}
 	backendProvisioned := provState.backendProvisioned
 
-	// Phase 4: Build + deterministic completion gate
+	// Phase 4: Code + deterministic completion gate
 	var (
 		report            *FileCompletionReport
-		sessionID         string
+		sessionID         = ac.SessionID
 		completionPasses  int
 		totalCostUSD      float64
 		totalInputTokens  int
@@ -288,7 +324,7 @@ func (p *Pipeline) Build(ctx context.Context, prompt string, images []string) (*
 
 		var resp *claude.Response
 		if pass == 1 {
-			resp, err = p.buildStreaming(ctx, prompt, appName, projectDir, analysis, plan, sessionID, progress, images, backendProvisioned)
+			resp, err = p.buildStreaming(ctx, prompt, appName, projectDir, analysis, plan, sessionID, progress, images, backendProvisioned, ac)
 		} else {
 			resp, err = p.completeMissingFilesStreaming(ctx, appName, projectDir, plan, report, sessionID, progress)
 		}
@@ -306,9 +342,10 @@ func (p *Pipeline) Build(ctx context.Context, prompt string, images []string) (*
 			sessionID = resp.SessionID
 		}
 
-		// Clean up scaffold placeholders now that real code has been written.
-		// These trip the quality-gate hook and confuse the coding agent.
-		cleanupScaffoldPlaceholders(projectDir, appName, plan)
+		if !isEdit {
+			// Clean up scaffold placeholders now that real code has been written.
+			cleanupScaffoldPlaceholders(projectDir, appName, plan)
+		}
 
 		report, err = verifyPlannedFiles(projectDir, appName, plan)
 		if err != nil {
@@ -327,7 +364,6 @@ func (p *Pipeline) Build(ctx context.Context, prompt string, images []string) (*
 		}
 
 		// Plateau detection: if valid file count hasn't increased, fail early
-		// to avoid wasting turns on unresolvable files.
 		if pass > 1 && report.ValidCount <= prevValidCount {
 			progress.StopWithError(fmt.Sprintf("No progress after pass %d (%d/%d files valid)", pass, report.ValidCount, report.TotalPlanned))
 			return nil, fmt.Errorf("file completion stalled after %d passes — %d/%d files valid, no improvement:\n%s",
@@ -335,8 +371,6 @@ func (p *Pipeline) Build(ctx context.Context, prompt string, images []string) (*
 		}
 		prevValidCount = report.ValidCount
 
-		// Prepare progress display for next pass — keep cumulative file count,
-		// update total to include any newly discovered files, reset transient state.
 		remaining := len(report.Missing) + len(report.Invalid)
 		progress.SetTotalFiles(report.TotalPlanned)
 		progress.ResetForRetry()
@@ -351,8 +385,10 @@ func (p *Pipeline) Build(ctx context.Context, prompt string, images []string) (*
 	progress.StopWithSuccess(fmt.Sprintf("Build complete — %d files", report.ValidCount))
 	terminal.Detail("Cost", fmt.Sprintf("$%.4f (total across %d passes)", totalCostUSD, completionPasses))
 
-	// Phase 5: Finalize (git init + commit)
-	p.finalize(ctx, projectDir, appName)
+	// Phase 5: Finalize (git init + commit — new builds only)
+	if !isEdit {
+		p.finalize(ctx, projectDir, appName)
+	}
 
 	var resultPlatforms []string
 	if plan.IsMultiPlatform() {
