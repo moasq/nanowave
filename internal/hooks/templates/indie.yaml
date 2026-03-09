@@ -1,0 +1,35 @@
+# Nanowave - Hooks Configuration (Indie Developer)
+# See: nanowave hooks --help
+
+version: 1
+
+notifiers:
+  telegram:
+    enabled: true
+    bot_token_env: "TELEGRAM_BOT_TOKEN"
+    bot_token_keychain: "nanowave-telegram-bot"
+    chat_id: ""
+
+defaults:
+  timeout: "30s"
+  continue_on_error: false
+  log_dir: "~/.nanowave/hook-logs/"
+
+hooks:
+  build.done:
+    - name: "notify-build"
+      notify: telegram
+      template: "{{.STATUS}} Build completed for {{.APP_NAME}} in {{.DURATION_SEC}}s"
+      when: always
+
+  store.upload.done:
+    - name: "notify-upload"
+      notify: telegram
+      template: "Upload complete: {{.APP_NAME}} build {{.BUILD_NUMBER}}"
+      when: success
+
+  store.submit.done:
+    - name: "notify-submit"
+      notify: telegram
+      template: "Submitted for review: {{.APP_NAME}} v{{.VERSION}}"
+      when: success

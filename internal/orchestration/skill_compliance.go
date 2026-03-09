@@ -142,14 +142,18 @@ func validateSkillFrontmatter(frontmatter map[string]string, skillPath string, r
 		})
 	}
 
+	allowedFields := map[string]bool{
+		"name": true, "description": true,
+		"tags": true, "platforms": true, "category": true,
+	}
 	for key := range frontmatter {
-		if key == "name" || key == "description" {
+		if allowedFields[key] {
 			continue
 		}
 		report.Issues = append(report.Issues, SourceSkillComplianceIssue{
 			Path:    skillPath,
 			Code:    "unsupported_frontmatter_field",
-			Message: fmt.Sprintf("unsupported frontmatter field %q (Anthropic skills use only name + description)", key),
+			Message: fmt.Sprintf("unsupported frontmatter field %q (allowed: name, description, tags, platforms, category)", key),
 		})
 	}
 

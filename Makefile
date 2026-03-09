@@ -1,4 +1,4 @@
-.PHONY: build install clean test deps run release-snapshot skills-source-validate validate-app validate-lines e2e frontend-build frontend-dev
+.PHONY: build install clean test deps run release-snapshot skills-source-validate skills-manifest validate-app validate-lines e2e frontend-build frontend-dev
 
 BINARY_NAME=nanowave
 BUILD_DIR=./bin
@@ -20,6 +20,9 @@ test:
 
 skills-source-validate:
 	go test ./internal/orchestration -run '^TestSourceSkillsAnthropicComplianceStrict$$' -count=1 -v
+
+skills-manifest:
+	go test ./internal/orchestration -run '^TestGenerateSkillManifest$$' -count=1 -v
 
 deps:
 	go mod tidy

@@ -1,0 +1,78 @@
+{
+  "year": 2014,
+  "count": 6,
+  "videos": [
+    {
+      "id": "513",
+      "year": 2014,
+      "title": "Direct Access to Video Encoding and Decoding",
+      "duration": "52:43",
+      "durationSeconds": 3163,
+      "url": "https://developer.apple.com/videos/play/wwdc2014/513/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "602",
+      "year": 2014,
+      "title": "Ingredients of Great Games",
+      "duration": "56:33",
+      "durationSeconds": 3393,
+      "url": "https://developer.apple.com/videos/play/wwdc2014/602/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "223",
+      "year": 2014,
+      "title": "Prototyping: Fake It Till You Make It",
+      "duration": "57:50",
+      "durationSeconds": 3470,
+      "url": "https://developer.apple.com/videos/play/wwdc2014/223/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "605",
+      "year": 2014,
+      "title": "Working with Metal: Advanced",
+      "duration": "53:18",
+      "durationSeconds": 3198,
+      "url": "https://developer.apple.com/videos/play/wwdc2014/605/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "604",
+      "year": 2014,
+      "title": "Working with Metal: Fundamentals",
+      "duration": "53:43",
+      "durationSeconds": 3223,
+      "url": "https://developer.apple.com/videos/play/wwdc2014/604/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "603",
+      "year": 2014,
+      "title": "Working with Metal: Overview",
+      "duration": "46:23",
+      "durationSeconds": 2783,
+      "url": "https://developer.apple.com/videos/play/wwdc2014/603/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    }
+  ]
+}

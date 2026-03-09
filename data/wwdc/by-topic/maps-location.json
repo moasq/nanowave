@@ -1,0 +1,70 @@
+{
+  "name": "Maps & Location",
+  "slug": "maps-location",
+  "count": 9,
+  "videos": [
+    {
+      "id": "206",
+      "year": 2015,
+      "title": "What's New in MapKit",
+      "duration": "34:32",
+      "url": "https://developer.apple.com/videos/play/wwdc2015/206/"
+    },
+    {
+      "id": "241",
+      "year": 2016,
+      "title": "Public Transit in Apple Maps",
+      "duration": "11:19",
+      "url": "https://developer.apple.com/videos/play/wwdc2016/241/"
+    },
+    {
+      "id": "705",
+      "year": 2019,
+      "title": "What's New in Core Location",
+      "duration": "35:45",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/705/"
+    },
+    {
+      "id": "10162",
+      "year": 2020,
+      "title": "Design for location privacy",
+      "duration": "7:30",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10162/"
+    },
+    {
+      "id": "10668",
+      "year": 2020,
+      "title": "Meet Nearby Interaction",
+      "duration": "15:32",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10668/"
+    },
+    {
+      "id": "10165",
+      "year": 2021,
+      "title": "Explore Nearby Interaction with third-party accessories",
+      "duration": "23:01",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10165/"
+    },
+    {
+      "id": "10003",
+      "year": 2022,
+      "title": "Meet WeatherKit",
+      "duration": "12:09",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10003/"
+    },
+    {
+      "id": "10067",
+      "year": 2024,
+      "title": "Bring context to today’s weather",
+      "duration": "16:07",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10067/"
+    },
+    {
+      "id": "204",
+      "year": 2025,
+      "title": "Go further with MapKit",
+      "duration": "21:11",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/204/"
+    }
+  ]
+}

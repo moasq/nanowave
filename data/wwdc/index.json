@@ -1,0 +1,157 @@
+{
+  "builtAt": "2026-02-17T06:03:55.959Z",
+  "source": "developer.apple.com",
+  "totalVideos": 1267,
+  "years": [
+    {
+      "year": 2014,
+      "count": 6
+    },
+    {
+      "year": 2015,
+      "count": 11
+    },
+    {
+      "year": 2016,
+      "count": 16
+    },
+    {
+      "year": 2017,
+      "count": 36
+    },
+    {
+      "year": 2018,
+      "count": 18
+    },
+    {
+      "year": 2019,
+      "count": 153
+    },
+    {
+      "year": 2020,
+      "count": 209
+    },
+    {
+      "year": 2021,
+      "count": 207
+    },
+    {
+      "year": 2022,
+      "count": 185
+    },
+    {
+      "year": 2023,
+      "count": 181
+    },
+    {
+      "year": 2024,
+      "count": 123
+    },
+    {
+      "year": 2025,
+      "count": 122
+    }
+  ],
+  "topics": [
+    {
+      "name": "Accessibility",
+      "slug": "accessibility",
+      "count": 33
+    },
+    {
+      "name": "App Store & Distribution",
+      "slug": "app-store-distribution",
+      "count": 53
+    },
+    {
+      "name": "Audio & Video",
+      "slug": "audio-video",
+      "count": 83
+    },
+    {
+      "name": "Augmented Reality",
+      "slug": "augmented-reality",
+      "count": 0
+    },
+    {
+      "name": "Design",
+      "slug": "design",
+      "count": 66
+    },
+    {
+      "name": "Developer Tools",
+      "slug": "developer-tools",
+      "count": 143
+    },
+    {
+      "name": "Extensions",
+      "slug": "extensions",
+      "count": 0
+    },
+    {
+      "name": "Graphics & Games",
+      "slug": "graphics-games",
+      "count": 92
+    },
+    {
+      "name": "Health & Fitness",
+      "slug": "health-fitness",
+      "count": 21
+    },
+    {
+      "name": "Machine Learning & AI",
+      "slug": "machine-learning-ai",
+      "count": 57
+    },
+    {
+      "name": "Maps & Location",
+      "slug": "maps-location",
+      "count": 9
+    },
+    {
+      "name": "Networking",
+      "slug": "networking",
+      "count": 0
+    },
+    {
+      "name": "Privacy & Security",
+      "slug": "privacy-security",
+      "count": 36
+    },
+    {
+      "name": "Safari & Web",
+      "slug": "safari-web",
+      "count": 40
+    },
+    {
+      "name": "Swift",
+      "slug": "swift",
+      "count": 210
+    },
+    {
+      "name": "SwiftUI & UI Frameworks",
+      "slug": "swiftui-ui-frameworks",
+      "count": 142
+    },
+    {
+      "name": "System Services",
+      "slug": "system-services",
+      "count": 92
+    },
+    {
+      "name": "Testing",
+      "slug": "testing",
+      "count": 0
+    },
+    {
+      "name": "visionOS",
+      "slug": "visionos",
+      "count": 50
+    },
+    {
+      "name": "Widgets & App Intents",
+      "slug": "widgets-app-intents",
+      "count": 0
+    }
+  ]
+}

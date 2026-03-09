@@ -1,0 +1,651 @@
+{
+  "name": "Graphics & Games",
+  "slug": "graphics-games",
+  "count": 92,
+  "videos": [
+    {
+      "id": "605",
+      "year": 2014,
+      "title": "Working with Metal: Advanced",
+      "duration": "53:18",
+      "url": "https://developer.apple.com/videos/play/wwdc2014/605/"
+    },
+    {
+      "id": "604",
+      "year": 2014,
+      "title": "Working with Metal: Fundamentals",
+      "duration": "53:43",
+      "url": "https://developer.apple.com/videos/play/wwdc2014/604/"
+    },
+    {
+      "id": "603",
+      "year": 2014,
+      "title": "Working with Metal: Overview",
+      "duration": "46:23",
+      "url": "https://developer.apple.com/videos/play/wwdc2014/603/"
+    },
+    {
+      "id": "602",
+      "year": 2015,
+      "title": "Managing 3D Assets with Model I/O",
+      "duration": "42:46",
+      "url": "https://developer.apple.com/videos/play/wwdc2015/602/"
+    },
+    {
+      "id": "705",
+      "year": 2015,
+      "title": "What's New in Core Motion",
+      "duration": "39:48",
+      "url": "https://developer.apple.com/videos/play/wwdc2015/705/"
+    },
+    {
+      "id": "811",
+      "year": 2017,
+      "title": "Design Tips for Great Games",
+      "duration": "13:53",
+      "url": "https://developer.apple.com/videos/play/wwdc2017/811/"
+    },
+    {
+      "id": "609",
+      "year": 2017,
+      "title": "Going Beyond 2D with SpriteKit",
+      "duration": "32:17",
+      "url": "https://developer.apple.com/videos/play/wwdc2017/609/"
+    },
+    {
+      "id": "513",
+      "year": 2017,
+      "title": "High Efficiency Image File Format",
+      "duration": "29:05",
+      "url": "https://developer.apple.com/videos/play/wwdc2017/513/"
+    },
+    {
+      "id": "612",
+      "year": 2019,
+      "title": "Advances in AR Quick Look",
+      "duration": "43:57",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/612/"
+    },
+    {
+      "id": "611",
+      "year": 2019,
+      "title": "Bringing OpenGL Apps to Metal",
+      "duration": "57:13",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/611/"
+    },
+    {
+      "id": "607",
+      "year": 2019,
+      "title": "Bringing People into AR",
+      "duration": "39:26",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/607/"
+    },
+    {
+      "id": "609",
+      "year": 2019,
+      "title": "Building AR Experiences with Reality Composer",
+      "duration": "59:05",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/609/"
+    },
+    {
+      "id": "605",
+      "year": 2019,
+      "title": "Building Apps with RealityKit",
+      "duration": "39:47",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/605/"
+    },
+    {
+      "id": "610",
+      "year": 2019,
+      "title": "Building Collaborative AR Experiences",
+      "duration": "35:17",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/610/"
+    },
+    {
+      "id": "412",
+      "year": 2019,
+      "title": "Debugging in Xcode 11",
+      "duration": "37:09",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/412/"
+    },
+    {
+      "id": "802",
+      "year": 2019,
+      "title": "Designing Award Winning Apps and Games",
+      "duration": "46:43",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/802/"
+    },
+    {
+      "id": "615",
+      "year": 2019,
+      "title": "Game Center Player Identifiers",
+      "duration": "10:18",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/615/"
+    },
+    {
+      "id": "418",
+      "year": 2019,
+      "title": "Getting the Most Out of Simulator",
+      "duration": "43:06",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/418/"
+    },
+    {
+      "id": "604",
+      "year": 2019,
+      "title": "Introducing ARKit 3",
+      "duration": "51:27",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/604/"
+    },
+    {
+      "id": "603",
+      "year": 2019,
+      "title": "Introducing RealityKit and Reality Composer",
+      "duration": "37:13",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/603/"
+    },
+    {
+      "id": "614",
+      "year": 2019,
+      "title": "Metal for Machine Learning",
+      "duration": "41:25",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/614/"
+    },
+    {
+      "id": "608",
+      "year": 2019,
+      "title": "Metal for Pro Apps",
+      "duration": "58:56",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/608/"
+    },
+    {
+      "id": "601",
+      "year": 2019,
+      "title": "Modern Rendering with Metal",
+      "duration": "55:28",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/601/"
+    },
+    {
+      "id": "613",
+      "year": 2019,
+      "title": "Ray Tracing with Metal",
+      "duration": "58:38",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/613/"
+    },
+    {
+      "id": "10631",
+      "year": 2020,
+      "title": "Bring your Metal app to Apple silicon Macs",
+      "duration": "33:52",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10631/"
+    },
+    {
+      "id": "10677",
+      "year": 2020,
+      "title": "Build customized ML models with the Metal Performance Shaders Graph",
+      "duration": "39:35",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10677/"
+    },
+    {
+      "id": "10633",
+      "year": 2020,
+      "title": "Capture and stream apps on the Mac with ReplayKit",
+      "duration": "23:58",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10633/"
+    },
+    {
+      "id": "10145",
+      "year": 2020,
+      "title": "Design for Game Center",
+      "duration": "18:07",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10145/"
+    },
+    {
+      "id": "10012",
+      "year": 2020,
+      "title": "Discover ray tracing with Metal",
+      "duration": "21:05",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10012/"
+    },
+    {
+      "id": "10611",
+      "year": 2020,
+      "title": "Explore ARKit 4",
+      "duration": "27:38",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10611/"
+    },
+    {
+      "id": "10013",
+      "year": 2020,
+      "title": "Get to know Metal function pointers",
+      "duration": "20:31",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10013/"
+    },
+    {
+      "id": "10602",
+      "year": 2020,
+      "title": "Harness Apple GPUs with Metal",
+      "duration": "24:23",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10602/"
+    },
+    {
+      "id": "10632",
+      "year": 2020,
+      "title": "Optimize Metal Performance for Apple silicon Macs",
+      "duration": "45:22",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10632/"
+    },
+    {
+      "id": "10603",
+      "year": 2020,
+      "title": "Optimize Metal apps and games with GPU counters",
+      "duration": "32:50",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10603/"
+    },
+    {
+      "id": "10618",
+      "year": 2020,
+      "title": "Tap into Game Center: Dashboard, Access Point, and Profile",
+      "duration": "23:32",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10618/"
+    },
+    {
+      "id": "10619",
+      "year": 2020,
+      "title": "Tap into Game Center: Leaderboards, Achievements, and Multiplayer",
+      "duration": "24:54",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10619/"
+    },
+    {
+      "id": "10601",
+      "year": 2020,
+      "title": "The artist’s AR toolkit",
+      "duration": "28:18",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10601/"
+    },
+    {
+      "id": "10612",
+      "year": 2020,
+      "title": "What's new in RealityKit",
+      "duration": "25:15",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10612/"
+    },
+    {
+      "id": "10613",
+      "year": 2020,
+      "title": "What's new in USD",
+      "duration": "24:41",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10613/"
+    },
+    {
+      "id": "10021",
+      "year": 2021,
+      "title": "Add rich graphics to your SwiftUI app",
+      "duration": "23:56",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10021/"
+    },
+    {
+      "id": "10067",
+      "year": 2021,
+      "title": "Bring Recurring Leaderboards to your game",
+      "duration": "25:55",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10067/"
+    },
+    {
+      "id": "10160",
+      "year": 2021,
+      "title": "Capture and process ProRAW images",
+      "duration": "26:31",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10160/"
+    },
+    {
+      "id": "10076",
+      "year": 2021,
+      "title": "Create 3D models with Object Capture",
+      "duration": "27:56",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10076/"
+    },
+    {
+      "id": "10077",
+      "year": 2021,
+      "title": "Create 3D workflows with USD",
+      "duration": "14:51",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10077/"
+    },
+    {
+      "id": "10153",
+      "year": 2021,
+      "title": "Create image processing apps powered by Apple silicon",
+      "duration": "29:34",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10153/"
+    },
+    {
+      "id": "10157",
+      "year": 2021,
+      "title": "Discover Metal debugging, profiling, and asset creation tools",
+      "duration": "39:53",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10157/"
+    },
+    {
+      "id": "10229",
+      "year": 2021,
+      "title": "Discover compilation workflows in Metal",
+      "duration": "24:52",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10229/"
+    },
+    {
+      "id": "10079",
+      "year": 2021,
+      "title": "Discover geometry-aware audio with the Physical Audio Spatialization Engine (PHASE)",
+      "duration": "37:28",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10079/"
+    },
+    {
+      "id": "10101",
+      "year": 2021,
+      "title": "Discover rolling clips with ReplayKit",
+      "duration": "8:40",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10101/"
+    },
+    {
+      "id": "10074",
+      "year": 2021,
+      "title": "Dive into RealityKit 2",
+      "duration": "25:07",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10074/"
+    },
+    {
+      "id": "10149",
+      "year": 2021,
+      "title": "Enhance your app with Metal ray tracing",
+      "duration": "29:50",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10149/"
+    },
+    {
+      "id": "10073",
+      "year": 2021,
+      "title": "Explore ARKit 5",
+      "duration": "20:28",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10073/"
+    },
+    {
+      "id": "10075",
+      "year": 2021,
+      "title": "Explore advanced rendering with RealityKit 2",
+      "duration": "29:53",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10075/"
+    },
+    {
+      "id": "10286",
+      "year": 2021,
+      "title": "Explore bindless rendering in Metal",
+      "duration": "21:12",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10286/"
+    },
+    {
+      "id": "10150",
+      "year": 2021,
+      "title": "Explore hybrid rendering with Metal ray tracing",
+      "duration": "29:48",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10150/"
+    },
+    {
+      "id": "10147",
+      "year": 2021,
+      "title": "Optimize for variable refresh rate displays",
+      "duration": "23:20",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10147/"
+    },
+    {
+      "id": "10063",
+      "year": 2022,
+      "title": "Accelerate machine learning with Metal",
+      "duration": "29:51",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10063/"
+    },
+    {
+      "id": "10151",
+      "year": 2022,
+      "title": "Add accessibility to your Unity games",
+      "duration": "16:08",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10151/"
+    },
+    {
+      "id": "10103",
+      "year": 2022,
+      "title": "Boost performance with MetalFX Upscaling",
+      "duration": "22:11",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10103/"
+    },
+    {
+      "id": "10128",
+      "year": 2022,
+      "title": "Bring your world into augmented reality",
+      "duration": "26:00",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10128/"
+    },
+    {
+      "id": "10066",
+      "year": 2022,
+      "title": "Discover Metal 3",
+      "duration": "15:44",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10066/"
+    },
+    {
+      "id": "10101",
+      "year": 2022,
+      "title": "Go bindless with Metal 3",
+      "duration": "34:14",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10101/"
+    },
+    {
+      "id": "10104",
+      "year": 2022,
+      "title": "Load resources faster with Metal 3",
+      "duration": "22:24",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10104/"
+    },
+    {
+      "id": "10105",
+      "year": 2022,
+      "title": "Maximize your Metal ray tracing performance",
+      "duration": "31:23",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10105/"
+    },
+    {
+      "id": "10106",
+      "year": 2022,
+      "title": "Profile and optimize your game's memory",
+      "duration": "38:26",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10106/"
+    },
+    {
+      "id": "10160",
+      "year": 2022,
+      "title": "Program Metal in C++ with metal-cpp",
+      "duration": "26:58",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10160/"
+    },
+    {
+      "id": "10064",
+      "year": 2022,
+      "title": "Reach new players with Game Center dashboard",
+      "duration": "10:07",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10064/"
+    },
+    {
+      "id": "10159",
+      "year": 2022,
+      "title": "Scale compute workloads across Apple GPUs",
+      "duration": "24:57",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10159/"
+    },
+    {
+      "id": "10102",
+      "year": 2022,
+      "title": "Target and optimize GPU binaries with Metal 3",
+      "duration": "13:48",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10102/"
+    },
+    {
+      "id": "10162",
+      "year": 2022,
+      "title": "Transform your geometry with Metal mesh shaders",
+      "duration": "17:44",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10162/"
+    },
+    {
+      "id": "10081",
+      "year": 2023,
+      "title": "Enhance your spatial computing app with RealityKit",
+      "duration": "20:41",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10081/"
+    },
+    {
+      "id": "10202",
+      "year": 2023,
+      "title": "Explore materials in Reality Composer Pro",
+      "duration": "20:14",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10202/"
+    },
+    {
+      "id": "10108",
+      "year": 2023,
+      "title": "What’s new in Background Assets",
+      "duration": "33:59",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10108/"
+    },
+    {
+      "id": "10128",
+      "year": 2023,
+      "title": "Your guide to Metal ray tracing",
+      "duration": "31:58",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10128/"
+    },
+    {
+      "id": "10218",
+      "year": 2024,
+      "title": "Accelerate machine learning with Metal",
+      "duration": "25:06",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10218/"
+    },
+    {
+      "id": "10172",
+      "year": 2024,
+      "title": "Break into the RealityKit debugger",
+      "duration": "24:10",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10172/"
+    },
+    {
+      "id": "10088",
+      "year": 2024,
+      "title": "Capture HDR content with ScreenCaptureKit",
+      "duration": "11:29",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10088/"
+    },
+    {
+      "id": "10085",
+      "year": 2024,
+      "title": "Design advanced games for Apple platforms",
+      "duration": "23:54",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10085/"
+    },
+    {
+      "id": "10086",
+      "year": 2024,
+      "title": "Design great visionOS apps",
+      "duration": "19:03",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10086/"
+    },
+    {
+      "id": "10186",
+      "year": 2024,
+      "title": "Optimize your 3D assets for spatial computing",
+      "duration": "22:13",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10186/"
+    },
+    {
+      "id": "10105",
+      "year": 2024,
+      "title": "What’s new in Quick Look for visionOS",
+      "duration": "14:24",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10105/"
+    },
+    {
+      "id": "288",
+      "year": 2025,
+      "title": "Bring your SceneKit project to RealityKit",
+      "duration": "27:41",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/288/"
+    },
+    {
+      "id": "262",
+      "year": 2025,
+      "title": "Combine Metal 4 machine learning and graphics",
+      "duration": "29:40",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/262/"
+    },
+    {
+      "id": "205",
+      "year": 2025,
+      "title": "Discover Metal 4",
+      "duration": "24:06",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/205/"
+    },
+    {
+      "id": "215",
+      "year": 2025,
+      "title": "Engage players with the Apple Games app",
+      "duration": "21:15",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/215/"
+    },
+    {
+      "id": "254",
+      "year": 2025,
+      "title": "Explore Metal 4 games",
+      "duration": "32:21",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/254/"
+    },
+    {
+      "id": "289",
+      "year": 2025,
+      "title": "Explore spatial accessory input on visionOS",
+      "duration": "17:44",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/289/"
+    },
+    {
+      "id": "211",
+      "year": 2025,
+      "title": "Go further with Metal 4 games",
+      "duration": "26:47",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/211/"
+    },
+    {
+      "id": "209",
+      "year": 2025,
+      "title": "Level up your games",
+      "duration": "23:10",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/209/"
+    },
+    {
+      "id": "308",
+      "year": 2025,
+      "title": "Optimize CPU performance with Instruments",
+      "duration": "32:59",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/308/"
+    },
+    {
+      "id": "294",
+      "year": 2025,
+      "title": "What’s new in Metal rendering for immersive apps",
+      "duration": "24:40",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/294/"
+    },
+    {
+      "id": "287",
+      "year": 2025,
+      "title": "What’s new in RealityKit",
+      "duration": "26:08",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/287/"
+    }
+  ]
+}

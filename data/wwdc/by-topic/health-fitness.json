@@ -1,0 +1,154 @@
+{
+  "name": "Health & Fitness",
+  "slug": "health-fitness",
+  "count": 21,
+  "videos": [
+    {
+      "id": "218",
+      "year": 2019,
+      "title": "Exploring New Data Representations in HealthKit",
+      "duration": "34:07",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/218/"
+    },
+    {
+      "id": "10656",
+      "year": 2020,
+      "title": "Beyond counting steps",
+      "duration": "21:05",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10656/"
+    },
+    {
+      "id": "10664",
+      "year": 2020,
+      "title": "Getting started with HealthKit",
+      "duration": "32:12",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10664/"
+    },
+    {
+      "id": "10669",
+      "year": 2020,
+      "title": "Handling FHIR without getting burned",
+      "duration": "8:07",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10669/"
+    },
+    {
+      "id": "10083",
+      "year": 2020,
+      "title": "Integrate your app with Wind Down",
+      "duration": "10:59",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10083/"
+    },
+    {
+      "id": "10184",
+      "year": 2020,
+      "title": "Synchronize health data with HealthKit",
+      "duration": "22:22",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10184/"
+    },
+    {
+      "id": "10151",
+      "year": 2020,
+      "title": "What's new in CareKit",
+      "duration": "35:37",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10151/"
+    },
+    {
+      "id": "10182",
+      "year": 2020,
+      "title": "What's new in HealthKit",
+      "duration": "6:09",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10182/"
+    },
+    {
+      "id": "10216",
+      "year": 2020,
+      "title": "What's new in ResearchKit",
+      "duration": "30:49",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10216/"
+    },
+    {
+      "id": "10005",
+      "year": 2021,
+      "title": "Connect Bluetooth devices to Apple Watch",
+      "duration": "10:31",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10005/"
+    },
+    {
+      "id": "10287",
+      "year": 2021,
+      "title": "Measure health with motion",
+      "duration": "20:49",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10287/"
+    },
+    {
+      "id": "10316",
+      "year": 2021,
+      "title": "Meditation for fidgety skeptics",
+      "duration": "29:26",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10316/"
+    },
+    {
+      "id": "10147",
+      "year": 2022,
+      "title": "Create a great video playback experience",
+      "duration": "24:07",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10147/"
+    },
+    {
+      "id": "110342",
+      "year": 2022,
+      "title": "Design app experiences with charts",
+      "duration": "15:43",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/110342/"
+    },
+    {
+      "id": "10135",
+      "year": 2022,
+      "title": "Get timely alerts from Bluetooth devices on watchOS",
+      "duration": "13:53",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10135/"
+    },
+    {
+      "id": "10137",
+      "year": 2022,
+      "title": "Swift Charts: Raise the bar",
+      "duration": "21:47",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10137/"
+    },
+    {
+      "id": "10005",
+      "year": 2022,
+      "title": "What's new in HealthKit",
+      "duration": "24:25",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10005/"
+    },
+    {
+      "id": "10023",
+      "year": 2023,
+      "title": "Build a multi-device workout app",
+      "duration": "12:43",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10023/"
+    },
+    {
+      "id": "10179",
+      "year": 2023,
+      "title": "What’s new in Core Motion",
+      "duration": "23:17",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10179/"
+    },
+    {
+      "id": "10209",
+      "year": 2024,
+      "title": "Enhanced suggestions for your journaling app",
+      "duration": "15:55",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10209/"
+    },
+    {
+      "id": "334",
+      "year": 2025,
+      "title": "What’s new in watchOS 26",
+      "duration": "20:56",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/334/"
+    }
+  ]
+}

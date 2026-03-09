@@ -1,0 +1,259 @@
+{
+  "name": "Privacy & Security",
+  "slug": "privacy-security",
+  "count": 36,
+  "videos": [
+    {
+      "id": "703",
+      "year": 2015,
+      "title": "Privacy and Your App",
+      "duration": "41:20",
+      "url": "https://developer.apple.com/videos/play/wwdc2015/703/"
+    },
+    {
+      "id": "249",
+      "year": 2017,
+      "title": "Filtering Unwanted Messages with Identity Lookup",
+      "duration": "17:34",
+      "url": "https://developer.apple.com/videos/play/wwdc2017/249/"
+    },
+    {
+      "id": "701",
+      "year": 2019,
+      "title": "Advances in macOS Security",
+      "duration": "40:46",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/701/"
+    },
+    {
+      "id": "709",
+      "year": 2019,
+      "title": "Cryptography and Your Apps",
+      "duration": "38:52",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/709/"
+    },
+    {
+      "id": "708",
+      "year": 2019,
+      "title": "Designing for Privacy",
+      "duration": "38:19",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/708/"
+    },
+    {
+      "id": "706",
+      "year": 2019,
+      "title": "Introducing Sign In with Apple",
+      "duration": "35:19",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/706/"
+    },
+    {
+      "id": "10159",
+      "year": 2020,
+      "title": "Build an Endpoint Security app",
+      "duration": "41:35",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10159/"
+    },
+    {
+      "id": "10676",
+      "year": 2020,
+      "title": "Build trust through better privacy",
+      "duration": "36:04",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10676/"
+    },
+    {
+      "id": "10168",
+      "year": 2020,
+      "title": "Explore logging in Swift",
+      "duration": "17:23",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10168/"
+    },
+    {
+      "id": "10641",
+      "year": 2020,
+      "title": "Handle the Limited Photos Library in your app",
+      "duration": "14:17",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10641/"
+    },
+    {
+      "id": "10006",
+      "year": 2020,
+      "title": "Introducing Car Keys",
+      "duration": "21:32",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10006/"
+    },
+    {
+      "id": "10652",
+      "year": 2020,
+      "title": "Meet the new Photos picker",
+      "duration": "14:33",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10652/"
+    },
+    {
+      "id": "10189",
+      "year": 2020,
+      "title": "Secure your app: threat modeling and anti-patterns",
+      "duration": "38:09",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10189/"
+    },
+    {
+      "id": "10005",
+      "year": 2020,
+      "title": "What's new in assessment",
+      "duration": "12:47",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10005/"
+    },
+    {
+      "id": "10660",
+      "year": 2020,
+      "title": "What's new in location",
+      "duration": "26:34",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10660/"
+    },
+    {
+      "id": "10212",
+      "year": 2021,
+      "title": "Analyze HTTP traffic in Instruments",
+      "duration": "33:57",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10212/"
+    },
+    {
+      "id": "10168",
+      "year": 2021,
+      "title": "Build Mail app extensions",
+      "duration": "18:21",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10168/"
+    },
+    {
+      "id": "10089",
+      "year": 2021,
+      "title": "Explore Verifiable Health Records",
+      "duration": "18:24",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10089/"
+    },
+    {
+      "id": "10244",
+      "year": 2021,
+      "title": "Mitigate fraud with App Attest and DeviceCheck",
+      "duration": "19:15",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10244/"
+    },
+    {
+      "id": "10110",
+      "year": 2021,
+      "title": "Safeguard your accounts, promotions, and content",
+      "duration": "11:56",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10110/"
+    },
+    {
+      "id": "10279",
+      "year": 2021,
+      "title": "Simplify sign in for your tvOS apps",
+      "duration": "7:56",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10279/"
+    },
+    {
+      "id": "10143",
+      "year": 2022,
+      "title": "Discover Managed Device Attestation",
+      "duration": "23:55",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10143/"
+    },
+    {
+      "id": "110344",
+      "year": 2022,
+      "title": "Get to know Developer Mode",
+      "duration": "5:43",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/110344/"
+    },
+    {
+      "id": "10079",
+      "year": 2022,
+      "title": "Improve DNS security for apps and servers",
+      "duration": "18:23",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10079/"
+    },
+    {
+      "id": "10077",
+      "year": 2022,
+      "title": "Replace CAPTCHAs with Private Access Tokens",
+      "duration": "12:38",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10077/"
+    },
+    {
+      "id": "10108",
+      "year": 2022,
+      "title": "Streamline local authorization flows",
+      "duration": "15:56",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10108/"
+    },
+    {
+      "id": "10109",
+      "year": 2022,
+      "title": "What’s new in notarization for Mac apps",
+      "duration": "8:34",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10109/"
+    },
+    {
+      "id": "10096",
+      "year": 2022,
+      "title": "What’s new in privacy",
+      "duration": "20:23",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10096/"
+    },
+    {
+      "id": "10263",
+      "year": 2023,
+      "title": "Deploy passkeys at work",
+      "duration": "16:23",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10263/"
+    },
+    {
+      "id": "10266",
+      "year": 2023,
+      "title": "Protect your Mac app with environment constraints",
+      "duration": "16:40",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10266/"
+    },
+    {
+      "id": "10212",
+      "year": 2024,
+      "title": "What’s new in location authorization",
+      "duration": "18:16",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10212/"
+    },
+    {
+      "id": "10123",
+      "year": 2024,
+      "title": "What’s new in privacy",
+      "duration": "23:46",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10123/"
+    },
+    {
+      "id": "246",
+      "year": 2025,
+      "title": "Integrate privacy into your development process",
+      "duration": "25:42",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/246/"
+    },
+    {
+      "id": "228",
+      "year": 2025,
+      "title": "Supercharge device connectivity with Wi-Fi Aware",
+      "duration": "23:44",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/228/"
+    },
+    {
+      "id": "243",
+      "year": 2025,
+      "title": "What’s new in UIKit",
+      "duration": "26:02",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/243/"
+    },
+    {
+      "id": "279",
+      "year": 2025,
+      "title": "What’s new in passkeys",
+      "duration": "22:02",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/279/"
+    }
+  ]
+}

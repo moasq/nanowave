@@ -1,0 +1,2193 @@
+{
+  "year": 2023,
+  "count": 181,
+  "videos": [
+    {
+      "id": "10036",
+      "year": 2023,
+      "title": "Build accessible apps with SwiftUI and UIKit",
+      "duration": "15:39",
+      "durationSeconds": 939,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10036/",
+      "topics": [
+        "Accessibility"
+      ],
+      "category": "accessibility-&-inclusion"
+    },
+    {
+      "id": "10078",
+      "year": 2023,
+      "title": "Design considerations for vision and motion",
+      "duration": "15:10",
+      "durationSeconds": 910,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10078/",
+      "topics": [
+        "Accessibility"
+      ],
+      "category": "accessibility-&-inclusion"
+    },
+    {
+      "id": "10033",
+      "year": 2023,
+      "title": "Extend Speech Synthesis with personal and custom voices",
+      "duration": "12:49",
+      "durationSeconds": 769,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10033/",
+      "topics": [
+        "Accessibility"
+      ],
+      "category": "accessibility-&-inclusion"
+    },
+    {
+      "id": "10032",
+      "year": 2023,
+      "title": "Meet Assistive Access",
+      "duration": "8:09",
+      "durationSeconds": 489,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10032/",
+      "topics": [
+        "Accessibility"
+      ],
+      "category": "accessibility-&-inclusion"
+    },
+    {
+      "id": "10153",
+      "year": 2023,
+      "title": "Unlock the power of grammatical agreement",
+      "duration": "18:21",
+      "durationSeconds": 1101,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10153/",
+      "topics": [
+        "Accessibility"
+      ],
+      "category": "accessibility-&-inclusion"
+    },
+    {
+      "id": "10258",
+      "year": 2023,
+      "title": "Animate symbols in your app",
+      "duration": "17:07",
+      "durationSeconds": 1027,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10258/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10056",
+      "year": 2023,
+      "title": "Build better document-based apps",
+      "duration": "13:56",
+      "durationSeconds": 836,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10056/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10105",
+      "year": 2023,
+      "title": "Create a more responsive camera experience",
+      "duration": "34:57",
+      "durationSeconds": 2097,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10105/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10257",
+      "year": 2023,
+      "title": "Create animated symbols",
+      "duration": "18:04",
+      "durationSeconds": 1084,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10257/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10052",
+      "year": 2023,
+      "title": "Discover Calendar and EventKit",
+      "duration": "22:16",
+      "durationSeconds": 1336,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10052/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10180",
+      "year": 2023,
+      "title": "Discover streamlined location updates",
+      "duration": "15:23",
+      "durationSeconds": 923,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10180/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10103",
+      "year": 2023,
+      "title": "Explore enhancements to App Intents",
+      "duration": "29:43",
+      "durationSeconds": 1783,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10103/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10060",
+      "year": 2023,
+      "title": "Get started with privacy manifests",
+      "duration": "12:49",
+      "durationSeconds": 769,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10060/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10104",
+      "year": 2023,
+      "title": "Integrate your media app with HomePod",
+      "duration": "13:17",
+      "durationSeconds": 797,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10104/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10281",
+      "year": 2023,
+      "title": "Keep up with the keyboard",
+      "duration": "15:37",
+      "durationSeconds": 937,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10281/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10176",
+      "year": 2023,
+      "title": "Lift subjects from images in your app",
+      "duration": "18:38",
+      "durationSeconds": 1118,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10176/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10147",
+      "year": 2023,
+      "title": "Meet Core Location Monitor",
+      "duration": "16:04",
+      "durationSeconds": 964,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10147/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10146",
+      "year": 2023,
+      "title": "Meet Core Location for spatial computing",
+      "duration": "10:41",
+      "durationSeconds": 641,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10146/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10102",
+      "year": 2023,
+      "title": "Spotlight your app with App Shortcuts",
+      "duration": "25:02",
+      "durationSeconds": 1502,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10102/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10057",
+      "year": 2023,
+      "title": "Unleash the UIKit trait system",
+      "duration": "29:50",
+      "durationSeconds": 1790,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10057/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10185",
+      "year": 2023,
+      "title": "Update Live Activities with push notifications",
+      "duration": "18:20",
+      "durationSeconds": 1100,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10185/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10061",
+      "year": 2023,
+      "title": "Verify app dependencies with digital signatures",
+      "duration": "17:05",
+      "durationSeconds": 1025,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10061/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10178",
+      "year": 2023,
+      "title": "What’s new in App Clips",
+      "duration": "6:21",
+      "durationSeconds": 381,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10178/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10054",
+      "year": 2023,
+      "title": "What’s new in AppKit",
+      "duration": "27:18",
+      "durationSeconds": 1638,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10054/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10055",
+      "year": 2023,
+      "title": "What’s new in UIKit",
+      "duration": "31:18",
+      "durationSeconds": 1878,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10055/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10114",
+      "year": 2023,
+      "title": "What’s new in Wallet and Apple Pay",
+      "duration": "33:31",
+      "durationSeconds": 2011,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10114/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10058",
+      "year": 2023,
+      "title": "What’s new with text and text interactions",
+      "duration": "15:45",
+      "durationSeconds": 945,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10058/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10142",
+      "year": 2023,
+      "title": "Explore testing in-app purchases",
+      "duration": "19:37",
+      "durationSeconds": 1177,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10142/",
+      "topics": [
+        "App Store & Distribution"
+      ],
+      "category": "app-store,-distribution-&-marketing"
+    },
+    {
+      "id": "10013",
+      "year": 2023,
+      "title": "Meet StoreKit for SwiftUI",
+      "duration": "36:59",
+      "durationSeconds": 2219,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10013/",
+      "topics": [
+        "App Store & Distribution"
+      ],
+      "category": "app-store,-distribution-&-marketing"
+    },
+    {
+      "id": "10143",
+      "year": 2023,
+      "title": "Meet the App Store Server Library",
+      "duration": "22:40",
+      "durationSeconds": 1360,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10143/",
+      "topics": [
+        "App Store & Distribution"
+      ],
+      "category": "app-store,-distribution-&-marketing"
+    },
+    {
+      "id": "10015",
+      "year": 2023,
+      "title": "What’s new in App Store pre-orders",
+      "duration": "7:38",
+      "durationSeconds": 458,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10015/",
+      "topics": [
+        "App Store & Distribution"
+      ],
+      "category": "app-store,-distribution-&-marketing"
+    },
+    {
+      "id": "10014",
+      "year": 2023,
+      "title": "What’s new in App Store pricing",
+      "duration": "26:41",
+      "durationSeconds": 1601,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10014/",
+      "topics": [
+        "App Store & Distribution"
+      ],
+      "category": "app-store,-distribution-&-marketing"
+    },
+    {
+      "id": "10141",
+      "year": 2023,
+      "title": "What’s new in App Store server APIs",
+      "duration": "21:06",
+      "durationSeconds": 1266,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10141/",
+      "topics": [
+        "App Store & Distribution"
+      ],
+      "category": "app-store,-distribution-&-marketing"
+    },
+    {
+      "id": "10140",
+      "year": 2023,
+      "title": "What’s new in StoreKit 2 and StoreKit Testing in Xcode",
+      "duration": "24:25",
+      "durationSeconds": 1465,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10140/",
+      "topics": [
+        "App Store & Distribution"
+      ],
+      "category": "app-store,-distribution-&-marketing"
+    },
+    {
+      "id": "10239",
+      "year": 2023,
+      "title": "Add SharePlay to your app",
+      "duration": "13:37",
+      "durationSeconds": 817,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10239/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "10051",
+      "year": 2023,
+      "title": "Create a great ShazamKit experience",
+      "duration": "21:58",
+      "durationSeconds": 1318,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10051/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "10256",
+      "year": 2023,
+      "title": "Discover Continuity Camera for tvOS",
+      "duration": "29:12",
+      "durationSeconds": 1752,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10256/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "10275",
+      "year": 2023,
+      "title": "Explore AirPlay with interstitials",
+      "duration": "19:51",
+      "durationSeconds": 1191,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10275/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "10271",
+      "year": 2023,
+      "title": "Explore immersive sound design",
+      "duration": "14:33",
+      "durationSeconds": 873,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10271/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "10241",
+      "year": 2023,
+      "title": "Share files with SharePlay",
+      "duration": "9:39",
+      "durationSeconds": 579,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10241/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "10137",
+      "year": 2023,
+      "title": "Support Cinematic mode videos in your app",
+      "duration": "24:53",
+      "durationSeconds": 1493,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10137/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "10238",
+      "year": 2023,
+      "title": "Tune up your AirPlay audio experience",
+      "duration": "10:33",
+      "durationSeconds": 633,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10238/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "10136",
+      "year": 2023,
+      "title": "What’s new in ScreenCaptureKit",
+      "duration": "13:43",
+      "durationSeconds": 823,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10136/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "10235",
+      "year": 2023,
+      "title": "What’s new in voice processing",
+      "duration": "15:54",
+      "durationSeconds": 954,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10235/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "10254",
+      "year": 2023,
+      "title": "Do more with Managed Apple IDs",
+      "duration": "19:42",
+      "durationSeconds": 1182,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10254/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "business-&-education"
+    },
+    {
+      "id": "10041",
+      "year": 2023,
+      "title": "Explore advances in declarative device management",
+      "duration": "36:36",
+      "durationSeconds": 2196,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10041/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "business-&-education"
+    },
+    {
+      "id": "10039",
+      "year": 2023,
+      "title": "Meet device management for Apple Watch",
+      "duration": "17:32",
+      "durationSeconds": 1052,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10039/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "business-&-education"
+    },
+    {
+      "id": "10040",
+      "year": 2023,
+      "title": "What’s new in managing Apple devices",
+      "duration": "28:46",
+      "durationSeconds": 1726,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10040/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "business-&-education"
+    },
+    {
+      "id": "10193",
+      "year": 2023,
+      "title": "Design Shortcuts for Spotlight",
+      "duration": "9:39",
+      "durationSeconds": 579,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10193/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "10194",
+      "year": 2023,
+      "title": "Design dynamic Live Activities",
+      "duration": "15:00",
+      "durationSeconds": 900,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10194/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "10229",
+      "year": 2023,
+      "title": "Make features discoverable with TipKit",
+      "duration": "14:45",
+      "durationSeconds": 885,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10229/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "10248",
+      "year": 2023,
+      "title": "Analyze hangs with Instruments",
+      "duration": "42:52",
+      "durationSeconds": 2572,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10248/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10170",
+      "year": 2023,
+      "title": "Beyond the basics of structured concurrency",
+      "duration": "24:22",
+      "durationSeconds": 1462,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10170/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10123",
+      "year": 2023,
+      "title": "Bring your game to Mac, Part 1: Make a game plan",
+      "duration": "15:06",
+      "durationSeconds": 906,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10123/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10124",
+      "year": 2023,
+      "title": "Bring your game to Mac, Part 2: Compile your shaders",
+      "duration": "18:57",
+      "durationSeconds": 1137,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10124/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10125",
+      "year": 2023,
+      "title": "Bring your game to Mac, Part 3: Render with Metal",
+      "duration": "26:45",
+      "durationSeconds": 1605,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10125/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10278",
+      "year": 2023,
+      "title": "Create practical workflows in Xcode Cloud",
+      "duration": "28:36",
+      "durationSeconds": 1716,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10278/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10226",
+      "year": 2023,
+      "title": "Debug with structured logging",
+      "duration": "13:42",
+      "durationSeconds": 822,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10226/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10094",
+      "year": 2023,
+      "title": "Enhance your iPad and iPhone apps for the Shared Space",
+      "duration": "12:03",
+      "durationSeconds": 723,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10094/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10167",
+      "year": 2023,
+      "title": "Expand on Swift macros",
+      "duration": "39:43",
+      "durationSeconds": 2383,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10167/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10175",
+      "year": 2023,
+      "title": "Fix failures faster with Xcode test reports",
+      "duration": "13:01",
+      "durationSeconds": 781,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10175/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10168",
+      "year": 2023,
+      "title": "Generalize APIs with parameter packs",
+      "duration": "18:24",
+      "durationSeconds": 1104,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10168/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10279",
+      "year": 2023,
+      "title": "Meet Safari for spatial computing",
+      "duration": "16:19",
+      "durationSeconds": 979,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10279/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10171",
+      "year": 2023,
+      "title": "Meet Swift OpenAPI Generator",
+      "duration": "21:56",
+      "durationSeconds": 1316,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10171/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "111215",
+      "year": 2023,
+      "title": "Meet UIKit for spatial computing",
+      "duration": "25:39",
+      "durationSeconds": 1539,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/111215/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10172",
+      "year": 2023,
+      "title": "Mix Swift and C++",
+      "duration": "17:45",
+      "durationSeconds": 1065,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10172/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10127",
+      "year": 2023,
+      "title": "Optimize GPU renderers with Metal",
+      "duration": "16:57",
+      "durationSeconds": 1017,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10127/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10035",
+      "year": 2023,
+      "title": "Perform accessibility audits for your app",
+      "duration": "15:55",
+      "durationSeconds": 955,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10035/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10262",
+      "year": 2023,
+      "title": "Rediscover Safari developer features",
+      "duration": "21:21",
+      "durationSeconds": 1281,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10262/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10090",
+      "year": 2023,
+      "title": "Run your iPad and iPhone apps in the Shared Space",
+      "duration": "14:17",
+      "durationSeconds": 857,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10090/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10117",
+      "year": 2023,
+      "title": "What’s new in App Store Connect",
+      "duration": "13:02",
+      "durationSeconds": 782,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10117/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10164",
+      "year": 2023,
+      "title": "What’s new in Swift",
+      "duration": "43:07",
+      "durationSeconds": 2587,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10164/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10118",
+      "year": 2023,
+      "title": "What’s new in Web Inspector",
+      "duration": "28:15",
+      "durationSeconds": 1695,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10118/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10166",
+      "year": 2023,
+      "title": "Write Swift macros",
+      "duration": "33:58",
+      "durationSeconds": 2038,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10166/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "111486",
+      "year": 2023,
+      "title": "17 big & little things at WWDC23",
+      "duration": "2:15",
+      "durationSeconds": 135,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/111486/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "10028",
+      "year": 2023,
+      "title": "Bring widgets to life",
+      "duration": "18:47",
+      "durationSeconds": 1127,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10028/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "10154",
+      "year": 2023,
+      "title": "Build an app with SwiftData",
+      "duration": "18:54",
+      "durationSeconds": 1134,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10154/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "10016",
+      "year": 2023,
+      "title": "Build custom workouts with WorkoutKit",
+      "duration": "21:22",
+      "durationSeconds": 1282,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10016/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "10252",
+      "year": 2023,
+      "title": "Build programmatic UI with Xcode Previews",
+      "duration": "27:02",
+      "durationSeconds": 1622,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10252/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "10080",
+      "year": 2023,
+      "title": "Build spatial experiences with RealityKit",
+      "duration": "27:32",
+      "durationSeconds": 1652,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10080/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "10203",
+      "year": 2023,
+      "title": "Develop your first immersive app",
+      "duration": "31:08",
+      "durationSeconds": 1868,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10203/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "10155",
+      "year": 2023,
+      "title": "Discover String Catalogs",
+      "duration": "31:34",
+      "durationSeconds": 1894,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10155/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "10161",
+      "year": 2023,
+      "title": "Inspectors in SwiftUI: Discover the details",
+      "duration": "13:03",
+      "durationSeconds": 783,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10161/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "101",
+      "year": 2023,
+      "title": "Keynote",
+      "duration": "126:10",
+      "durationSeconds": 7570,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/101/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "111",
+      "year": 2023,
+      "title": "Keynote (ASL)",
+      "duration": "126:10",
+      "durationSeconds": 7570,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/111/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "10184",
+      "year": 2023,
+      "title": "Meet ActivityKit",
+      "duration": "17:15",
+      "durationSeconds": 1035,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10184/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "10043",
+      "year": 2023,
+      "title": "Meet MapKit for SwiftUI",
+      "duration": "27:21",
+      "durationSeconds": 1641,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10043/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "10083",
+      "year": 2023,
+      "title": "Meet Reality Composer Pro",
+      "duration": "21:12",
+      "durationSeconds": 1272,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10083/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "10187",
+      "year": 2023,
+      "title": "Meet SwiftData",
+      "duration": "8:52",
+      "durationSeconds": 532,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10187/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "10109",
+      "year": 2023,
+      "title": "Meet SwiftUI for spatial computing",
+      "duration": "25:59",
+      "durationSeconds": 1559,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10109/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "10026",
+      "year": 2023,
+      "title": "Meet watchOS 10",
+      "duration": "9:55",
+      "durationSeconds": 595,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10026/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "102",
+      "year": 2023,
+      "title": "Platforms State of the Union",
+      "duration": "89:34",
+      "durationSeconds": 5374,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/102/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "112",
+      "year": 2023,
+      "title": "Platforms State of the Union (ASL)",
+      "duration": "89:34",
+      "durationSeconds": 5374,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/112/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "10250",
+      "year": 2023,
+      "title": "Prototype with Xcode Playgrounds",
+      "duration": "24:26",
+      "durationSeconds": 1466,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10250/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "10224",
+      "year": 2023,
+      "title": "Simplify distribution in Xcode and Xcode Cloud",
+      "duration": "16:26",
+      "durationSeconds": 986,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10224/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "111488",
+      "year": 2023,
+      "title": "What Apple developers need to know at WWDC23",
+      "duration": "1:11",
+      "durationSeconds": 71,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/111488/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "10148",
+      "year": 2023,
+      "title": "What’s new in SwiftUI",
+      "duration": "34:02",
+      "durationSeconds": 2042,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10148/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "10165",
+      "year": 2023,
+      "title": "What’s new in Xcode 15",
+      "duration": "22:32",
+      "durationSeconds": 1352,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10165/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "10081",
+      "year": 2023,
+      "title": "Enhance your spatial computing app with RealityKit",
+      "duration": "20:41",
+      "durationSeconds": 1241,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10081/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "10202",
+      "year": 2023,
+      "title": "Explore materials in Reality Composer Pro",
+      "duration": "20:14",
+      "durationSeconds": 1214,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10202/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "10108",
+      "year": 2023,
+      "title": "What’s new in Background Assets",
+      "duration": "33:59",
+      "durationSeconds": 2039,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10108/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "10128",
+      "year": 2023,
+      "title": "Your guide to Metal ray tracing",
+      "duration": "31:58",
+      "durationSeconds": 1918,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10128/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "10023",
+      "year": 2023,
+      "title": "Build a multi-device workout app",
+      "duration": "12:43",
+      "durationSeconds": 763,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10023/",
+      "topics": [
+        "Health & Fitness"
+      ],
+      "category": "health-&-fitness"
+    },
+    {
+      "id": "10179",
+      "year": 2023,
+      "title": "What’s new in Core Motion",
+      "duration": "23:17",
+      "durationSeconds": 1397,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10179/",
+      "topics": [
+        "Health & Fitness"
+      ],
+      "category": "health-&-fitness"
+    },
+    {
+      "id": "10101",
+      "year": 2023,
+      "title": "Customize on-device speech recognition",
+      "duration": "7:52",
+      "durationSeconds": 472,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10101/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "10045",
+      "year": 2023,
+      "title": "Detect animal poses in Vision",
+      "duration": "13:47",
+      "durationSeconds": 827,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10045/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "10044",
+      "year": 2023,
+      "title": "Discover machine learning enhancements in Create ML",
+      "duration": "16:50",
+      "durationSeconds": 1010,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10044/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "111241",
+      "year": 2023,
+      "title": "Explore 3D body pose and person segmentation in Vision",
+      "duration": "14:38",
+      "durationSeconds": 878,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/111241/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "10042",
+      "year": 2023,
+      "title": "Explore Natural Language multilingual models",
+      "duration": "14:25",
+      "durationSeconds": 865,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10042/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "10049",
+      "year": 2023,
+      "title": "Improve Core ML integration with async prediction",
+      "duration": "23:21",
+      "durationSeconds": 1401,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10049/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "10304",
+      "year": 2023,
+      "title": "Integrate with motorized iPhone stands using DockKit",
+      "duration": "17:35",
+      "durationSeconds": 1055,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10304/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "10050",
+      "year": 2023,
+      "title": "Optimize machine learning for Metal apps",
+      "duration": "21:15",
+      "durationSeconds": 1275,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10050/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "10047",
+      "year": 2023,
+      "title": "Use Core ML Tools for machine learning model compression",
+      "duration": "25:18",
+      "durationSeconds": 1518,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10047/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "10048",
+      "year": 2023,
+      "title": "What’s new in VisionKit",
+      "duration": "19:56",
+      "durationSeconds": 1196,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10048/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "10107",
+      "year": 2023,
+      "title": "Embed the Photos Picker in your app",
+      "duration": "14:16",
+      "durationSeconds": 856,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10107/",
+      "topics": [
+        "General"
+      ],
+      "category": "photos-&-camera"
+    },
+    {
+      "id": "10181",
+      "year": 2023,
+      "title": "Support HDR images in your app",
+      "duration": "28:58",
+      "durationSeconds": 1738,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10181/",
+      "topics": [
+        "General"
+      ],
+      "category": "photos-&-camera"
+    },
+    {
+      "id": "10106",
+      "year": 2023,
+      "title": "Support external cameras in your iPadOS app",
+      "duration": "32:41",
+      "durationSeconds": 1961,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10106/",
+      "topics": [
+        "General"
+      ],
+      "category": "photos-&-camera"
+    },
+    {
+      "id": "10263",
+      "year": 2023,
+      "title": "Deploy passkeys at work",
+      "duration": "16:23",
+      "durationSeconds": 983,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10263/",
+      "topics": [
+        "Privacy & Security"
+      ],
+      "category": "privacy-&-security"
+    },
+    {
+      "id": "10266",
+      "year": 2023,
+      "title": "Protect your Mac app with environment constraints",
+      "duration": "16:40",
+      "durationSeconds": 1000,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10266/",
+      "topics": [
+        "Privacy & Security"
+      ],
+      "category": "privacy-&-security"
+    },
+    {
+      "id": "10122",
+      "year": 2023,
+      "title": "Explore media formats for the web",
+      "duration": "21:58",
+      "durationSeconds": 1318,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10122/",
+      "topics": [
+        "Safari & Web"
+      ],
+      "category": "safari-&-web"
+    },
+    {
+      "id": "10121",
+      "year": 2023,
+      "title": "What’s new in CSS",
+      "duration": "35:06",
+      "durationSeconds": 2106,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10121/",
+      "topics": [
+        "Safari & Web"
+      ],
+      "category": "safari-&-web"
+    },
+    {
+      "id": "10119",
+      "year": 2023,
+      "title": "What’s new in Safari extensions",
+      "duration": "12:12",
+      "durationSeconds": 732,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10119/",
+      "topics": [
+        "Safari & Web"
+      ],
+      "category": "safari-&-web"
+    },
+    {
+      "id": "10120",
+      "year": 2023,
+      "title": "What’s new in web apps",
+      "duration": "15:55",
+      "durationSeconds": 955,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10120/",
+      "topics": [
+        "Safari & Web"
+      ],
+      "category": "safari-&-web"
+    },
+    {
+      "id": "10093",
+      "year": 2023,
+      "title": "Bring your Unity VR app to a fully immersive space",
+      "duration": "15:10",
+      "durationSeconds": 910,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10093/",
+      "topics": [
+        "visionOS"
+      ],
+      "category": "spatial-computing"
+    },
+    {
+      "id": "10096",
+      "year": 2023,
+      "title": "Build great games for spatial computing",
+      "duration": "18:26",
+      "durationSeconds": 1106,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10096/",
+      "topics": [
+        "visionOS"
+      ],
+      "category": "spatial-computing"
+    },
+    {
+      "id": "10087",
+      "year": 2023,
+      "title": "Build spatial SharePlay experiences",
+      "duration": "24:31",
+      "durationSeconds": 1471,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10087/",
+      "topics": [
+        "visionOS"
+      ],
+      "category": "spatial-computing"
+    },
+    {
+      "id": "10274",
+      "year": 2023,
+      "title": "Create 3D models for Quick Look spatial experiences",
+      "duration": "22:05",
+      "durationSeconds": 1325,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10274/",
+      "topics": [
+        "visionOS"
+      ],
+      "category": "spatial-computing"
+    },
+    {
+      "id": "10070",
+      "year": 2023,
+      "title": "Create a great spatial playback experience",
+      "duration": "13:57",
+      "durationSeconds": 837,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10070/",
+      "topics": [
+        "visionOS"
+      ],
+      "category": "spatial-computing"
+    },
+    {
+      "id": "10034",
+      "year": 2023,
+      "title": "Create accessible spatial experiences",
+      "duration": "25:51",
+      "durationSeconds": 1551,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10034/",
+      "topics": [
+        "visionOS"
+      ],
+      "category": "spatial-computing"
+    },
+    {
+      "id": "10088",
+      "year": 2023,
+      "title": "Create immersive Unity apps",
+      "duration": "15:46",
+      "durationSeconds": 946,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10088/",
+      "topics": [
+        "visionOS"
+      ],
+      "category": "spatial-computing"
+    },
+    {
+      "id": "10071",
+      "year": 2023,
+      "title": "Deliver video content for spatial experiences",
+      "duration": "16:30",
+      "durationSeconds": 990,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10071/",
+      "topics": [
+        "visionOS"
+      ],
+      "category": "spatial-computing"
+    },
+    {
+      "id": "10073",
+      "year": 2023,
+      "title": "Design for spatial input",
+      "duration": "20:04",
+      "durationSeconds": 1204,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10073/",
+      "topics": [
+        "visionOS"
+      ],
+      "category": "spatial-computing"
+    },
+    {
+      "id": "10076",
+      "year": 2023,
+      "title": "Design for spatial user interfaces",
+      "duration": "22:41",
+      "durationSeconds": 1361,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10076/",
+      "topics": [
+        "visionOS"
+      ],
+      "category": "spatial-computing"
+    },
+    {
+      "id": "10075",
+      "year": 2023,
+      "title": "Design spatial SharePlay experiences",
+      "duration": "16:26",
+      "durationSeconds": 986,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10075/",
+      "topics": [
+        "visionOS"
+      ],
+      "category": "spatial-computing"
+    },
+    {
+      "id": "10089",
+      "year": 2023,
+      "title": "Discover Metal for immersive apps",
+      "duration": "20:51",
+      "durationSeconds": 1251,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10089/",
+      "topics": [
+        "visionOS"
+      ],
+      "category": "spatial-computing"
+    },
+    {
+      "id": "10085",
+      "year": 2023,
+      "title": "Discover Quick Look for spatial computing",
+      "duration": "11:24",
+      "durationSeconds": 684,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10085/",
+      "topics": [
+        "visionOS"
+      ],
+      "category": "spatial-computing"
+    },
+    {
+      "id": "10110",
+      "year": 2023,
+      "title": "Elevate your windowed app for spatial computing",
+      "duration": "15:56",
+      "durationSeconds": 956,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10110/",
+      "topics": [
+        "visionOS"
+      ],
+      "category": "spatial-computing"
+    },
+    {
+      "id": "10233",
+      "year": 2023,
+      "title": "Enhance your app’s audio experience with AirPods",
+      "duration": "14:59",
+      "durationSeconds": 899,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10233/",
+      "topics": [
+        "visionOS"
+      ],
+      "category": "spatial-computing"
+    },
+    {
+      "id": "10012",
+      "year": 2023,
+      "title": "Explore App Store Connect for spatial computing",
+      "duration": "12:22",
+      "durationSeconds": 742,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10012/",
+      "topics": [
+        "visionOS"
+      ],
+      "category": "spatial-computing"
+    },
+    {
+      "id": "10192",
+      "year": 2023,
+      "title": "Explore enhancements to RoomPlan",
+      "duration": "22:30",
+      "durationSeconds": 1350,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10192/",
+      "topics": [
+        "visionOS"
+      ],
+      "category": "spatial-computing"
+    },
+    {
+      "id": "10095",
+      "year": 2023,
+      "title": "Explore rendering for spatial computing",
+      "duration": "16:59",
+      "durationSeconds": 1019,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10095/",
+      "topics": [
+        "visionOS"
+      ],
+      "category": "spatial-computing"
+    },
+    {
+      "id": "10086",
+      "year": 2023,
+      "title": "Explore the USD ecosystem",
+      "duration": "14:26",
+      "durationSeconds": 866,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10086/",
+      "topics": [
+        "visionOS"
+      ],
+      "category": "spatial-computing"
+    },
+    {
+      "id": "10260",
+      "year": 2023,
+      "title": "Get started with building apps for spatial computing",
+      "duration": "31:55",
+      "durationSeconds": 1915,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10260/",
+      "topics": [
+        "visionOS"
+      ],
+      "category": "spatial-computing"
+    },
+    {
+      "id": "10111",
+      "year": 2023,
+      "title": "Go beyond the window with SwiftUI",
+      "duration": "23:53",
+      "durationSeconds": 1433,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10111/",
+      "topics": [
+        "visionOS"
+      ],
+      "category": "spatial-computing"
+    },
+    {
+      "id": "10082",
+      "year": 2023,
+      "title": "Meet ARKit for spatial computing",
+      "duration": "24:11",
+      "durationSeconds": 1451,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10082/",
+      "topics": [
+        "visionOS"
+      ],
+      "category": "spatial-computing"
+    },
+    {
+      "id": "10191",
+      "year": 2023,
+      "title": "Meet Object Capture for iOS",
+      "duration": "20:05",
+      "durationSeconds": 1205,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10191/",
+      "topics": [
+        "visionOS"
+      ],
+      "category": "spatial-computing"
+    },
+    {
+      "id": "10099",
+      "year": 2023,
+      "title": "Meet RealityKit Trace",
+      "duration": "20:57",
+      "durationSeconds": 1257,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10099/",
+      "topics": [
+        "visionOS"
+      ],
+      "category": "spatial-computing"
+    },
+    {
+      "id": "10100",
+      "year": 2023,
+      "title": "Optimize app power and performance for spatial computing",
+      "duration": "29:16",
+      "durationSeconds": 1756,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10100/",
+      "topics": [
+        "visionOS"
+      ],
+      "category": "spatial-computing"
+    },
+    {
+      "id": "10072",
+      "year": 2023,
+      "title": "Principles of spatial design",
+      "duration": "21:35",
+      "durationSeconds": 1295,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10072/",
+      "topics": [
+        "visionOS"
+      ],
+      "category": "spatial-computing"
+    },
+    {
+      "id": "10113",
+      "year": 2023,
+      "title": "Take SwiftUI to the next dimension",
+      "duration": "19:30",
+      "durationSeconds": 1170,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10113/",
+      "topics": [
+        "visionOS"
+      ],
+      "category": "spatial-computing"
+    },
+    {
+      "id": "10053",
+      "year": 2023,
+      "title": "What’s new in privacy",
+      "duration": "32:49",
+      "durationSeconds": 1969,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10053/",
+      "topics": [
+        "visionOS"
+      ],
+      "category": "spatial-computing"
+    },
+    {
+      "id": "10273",
+      "year": 2023,
+      "title": "Work with Reality Composer Pro content in Xcode",
+      "duration": "34:15",
+      "durationSeconds": 2055,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10273/",
+      "topics": [
+        "visionOS"
+      ],
+      "category": "spatial-computing"
+    },
+    {
+      "id": "10244",
+      "year": 2023,
+      "title": "Create rich documentation with Swift-DocC",
+      "duration": "33:53",
+      "durationSeconds": 2033,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10244/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "10115",
+      "year": 2023,
+      "title": "Design with SwiftUI",
+      "duration": "18:34",
+      "durationSeconds": 1114,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10115/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "10196",
+      "year": 2023,
+      "title": "Dive deeper into SwiftData",
+      "duration": "15:35",
+      "durationSeconds": 935,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10196/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "10268",
+      "year": 2023,
+      "title": "Meet mergeable libraries",
+      "duration": "26:15",
+      "durationSeconds": 1575,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10268/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "10189",
+      "year": 2023,
+      "title": "Migrate to SwiftData",
+      "duration": "11:13",
+      "durationSeconds": 673,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10189/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "10195",
+      "year": 2023,
+      "title": "Model your schema with SwiftData",
+      "duration": "9:25",
+      "durationSeconds": 565,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10195/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "10158",
+      "year": 2023,
+      "title": "Animate with springs",
+      "duration": "22:52",
+      "durationSeconds": 1372,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10158/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10159",
+      "year": 2023,
+      "title": "Beyond scroll views",
+      "duration": "14:46",
+      "durationSeconds": 886,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10159/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10027",
+      "year": 2023,
+      "title": "Bring widgets to new places",
+      "duration": "7:18",
+      "durationSeconds": 438,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10027/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10029",
+      "year": 2023,
+      "title": "Build widgets for the Smart Stack on Apple Watch",
+      "duration": "24:08",
+      "durationSeconds": 1448,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10029/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10160",
+      "year": 2023,
+      "title": "Demystify SwiftUI performance",
+      "duration": "21:48",
+      "durationSeconds": 1308,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10160/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10138",
+      "year": 2023,
+      "title": "Design and build apps for watchOS 10",
+      "duration": "19:20",
+      "durationSeconds": 1160,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10138/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10309",
+      "year": 2023,
+      "title": "Design widgets for the Smart Stack on Apple Watch",
+      "duration": "12:26",
+      "durationSeconds": 746,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10309/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10149",
+      "year": 2023,
+      "title": "Discover Observation in SwiftUI",
+      "duration": "12:51",
+      "durationSeconds": 771,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10149/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10091",
+      "year": 2023,
+      "title": "Evolve your ARKit app for spatial experiences",
+      "duration": "27:41",
+      "durationSeconds": 1661,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10091/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10156",
+      "year": 2023,
+      "title": "Explore SwiftUI animation",
+      "duration": "30:01",
+      "durationSeconds": 1801,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10156/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10037",
+      "year": 2023,
+      "title": "Explore pie charts and interactivity in Swift Charts",
+      "duration": "10:14",
+      "durationSeconds": 614,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10037/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10162",
+      "year": 2023,
+      "title": "The SwiftUI cookbook for focus",
+      "duration": "23:17",
+      "durationSeconds": 1397,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10162/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10031",
+      "year": 2023,
+      "title": "Update your app for watchOS 10",
+      "duration": "13:35",
+      "durationSeconds": 815,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10031/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10197",
+      "year": 2023,
+      "title": "What’s new in SF Symbols 5",
+      "duration": "18:53",
+      "durationSeconds": 1133,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10197/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10157",
+      "year": 2023,
+      "title": "Wind your way through advanced animations in SwiftUI",
+      "duration": "18:11",
+      "durationSeconds": 1091,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10157/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10006",
+      "year": 2023,
+      "title": "Build robust and resumable file transfers",
+      "duration": "20:39",
+      "durationSeconds": 1239,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10006/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "system-services"
+    },
+    {
+      "id": "10007",
+      "year": 2023,
+      "title": "Create seamless experiences with Virtualization",
+      "duration": "15:58",
+      "durationSeconds": 958,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10007/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "system-services"
+    },
+    {
+      "id": "10025",
+      "year": 2023,
+      "title": "Meet Push Notifications Console",
+      "duration": "11:32",
+      "durationSeconds": 692,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10025/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "system-services"
+    },
+    {
+      "id": "10150",
+      "year": 2023,
+      "title": "Optimize CarPlay for vehicle systems",
+      "duration": "18:24",
+      "durationSeconds": 1104,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10150/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "system-services"
+    },
+    {
+      "id": "10002",
+      "year": 2023,
+      "title": "Ready, set, relay: Protect app traffic with network relays",
+      "duration": "12:19",
+      "durationSeconds": 739,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10002/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "system-services"
+    },
+    {
+      "id": "10004",
+      "year": 2023,
+      "title": "Reduce network delays with L4S",
+      "duration": "17:05",
+      "durationSeconds": 1025,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10004/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "system-services"
+    },
+    {
+      "id": "10188",
+      "year": 2023,
+      "title": "Sync to iCloud with CKSyncEngine",
+      "duration": "23:02",
+      "durationSeconds": 1382,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10188/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "system-services"
+    },
+    {
+      "id": "10186",
+      "year": 2023,
+      "title": "What’s new in Core Data",
+      "duration": "23:23",
+      "durationSeconds": 1403,
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10186/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "system-services"
+    }
+  ]
+}

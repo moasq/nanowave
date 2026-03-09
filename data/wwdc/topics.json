@@ -1,0 +1,82 @@
+[
+  {
+    "name": "Accessibility",
+    "slug": "accessibility"
+  },
+  {
+    "name": "App Store & Distribution",
+    "slug": "app-store-distribution"
+  },
+  {
+    "name": "Audio & Video",
+    "slug": "audio-video"
+  },
+  {
+    "name": "Augmented Reality",
+    "slug": "augmented-reality"
+  },
+  {
+    "name": "Design",
+    "slug": "design"
+  },
+  {
+    "name": "Developer Tools",
+    "slug": "developer-tools"
+  },
+  {
+    "name": "Extensions",
+    "slug": "extensions"
+  },
+  {
+    "name": "Graphics & Games",
+    "slug": "graphics-games"
+  },
+  {
+    "name": "Health & Fitness",
+    "slug": "health-fitness"
+  },
+  {
+    "name": "Machine Learning & AI",
+    "slug": "machine-learning-ai"
+  },
+  {
+    "name": "Maps & Location",
+    "slug": "maps-location"
+  },
+  {
+    "name": "Networking",
+    "slug": "networking"
+  },
+  {
+    "name": "Privacy & Security",
+    "slug": "privacy-security"
+  },
+  {
+    "name": "Safari & Web",
+    "slug": "safari-web"
+  },
+  {
+    "name": "Swift",
+    "slug": "swift"
+  },
+  {
+    "name": "SwiftUI & UI Frameworks",
+    "slug": "swiftui-ui-frameworks"
+  },
+  {
+    "name": "System Services",
+    "slug": "system-services"
+  },
+  {
+    "name": "Testing",
+    "slug": "testing"
+  },
+  {
+    "name": "visionOS",
+    "slug": "visionos"
+  },
+  {
+    "name": "Widgets & App Intents",
+    "slug": "widgets-app-intents"
+  }
+]

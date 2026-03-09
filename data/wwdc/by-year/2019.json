@@ -1,0 +1,1874 @@
+{
+  "year": 2019,
+  "count": 153,
+  "videos": [
+    {
+      "id": "403",
+      "year": 2019,
+      "title": "Creating Great Localized Experiences with Xcode 11",
+      "duration": "34:58",
+      "durationSeconds": 2098,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/403/",
+      "topics": [
+        "Accessibility"
+      ],
+      "category": "accessibility-&-inclusion"
+    },
+    {
+      "id": "252",
+      "year": 2019,
+      "title": "Advances in CarPlay Systems",
+      "duration": "16:00",
+      "durationSeconds": 960,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/252/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "256",
+      "year": 2019,
+      "title": "Advances in Speech Recognition",
+      "duration": "6:10",
+      "durationSeconds": 370,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/256/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "806",
+      "year": 2019,
+      "title": "Designing Great Shortcuts",
+      "duration": "20:41",
+      "durationSeconds": 1241,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/806/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "243",
+      "year": 2019,
+      "title": "Integrating with Siri Event Suggestions",
+      "duration": "28:39",
+      "durationSeconds": 1719,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/243/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "213",
+      "year": 2019,
+      "title": "Introducing Parameters for Shortcuts",
+      "duration": "31:59",
+      "durationSeconds": 1919,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/213/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "207",
+      "year": 2019,
+      "title": "Introducing SiriKit Media Intents",
+      "duration": "28:17",
+      "durationSeconds": 1697,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/207/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "211",
+      "year": 2019,
+      "title": "Mastering the Living Room With tvOS",
+      "duration": "48:34",
+      "durationSeconds": 2914,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/211/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "304",
+      "year": 2019,
+      "title": "App Distribution – From Ad-hoc to Enterprise",
+      "duration": "34:51",
+      "durationSeconds": 2091,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/304/",
+      "topics": [
+        "App Store & Distribution"
+      ],
+      "category": "app-store,-distribution-&-marketing"
+    },
+    {
+      "id": "302",
+      "year": 2019,
+      "title": "In-App Purchases and Using Server-to-Server Notifications",
+      "duration": "50:17",
+      "durationSeconds": 3017,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/302/",
+      "topics": [
+        "App Store & Distribution"
+      ],
+      "category": "app-store,-distribution-&-marketing"
+    },
+    {
+      "id": "305",
+      "year": 2019,
+      "title": "Subscription Offers Best Practices",
+      "duration": "45:03",
+      "durationSeconds": 2703,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/305/",
+      "topics": [
+        "App Store & Distribution"
+      ],
+      "category": "app-store,-distribution-&-marketing"
+    },
+    {
+      "id": "303",
+      "year": 2019,
+      "title": "What’s New in Managing Apple Devices",
+      "duration": "58:49",
+      "durationSeconds": 3529,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/303/",
+      "topics": [
+        "App Store & Distribution"
+      ],
+      "category": "app-store,-distribution-&-marketing"
+    },
+    {
+      "id": "509",
+      "year": 2019,
+      "title": "AUv3 Extensions User Presets",
+      "duration": "5:32",
+      "durationSeconds": 332,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/509/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "503",
+      "year": 2019,
+      "title": "Delivering Intuitive Media Playback with AVKit",
+      "duration": "40:05",
+      "durationSeconds": 2405,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/503/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "223",
+      "year": 2019,
+      "title": "Expanding the Sensory Experience with Core Haptics",
+      "duration": "56:04",
+      "durationSeconds": 3364,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/223/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "506",
+      "year": 2019,
+      "title": "HEVC Video with Alpha",
+      "duration": "14:50",
+      "durationSeconds": 890,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/506/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "507",
+      "year": 2019,
+      "title": "HLS Authoring for AirPlay 2 Video",
+      "duration": "6:56",
+      "durationSeconds": 416,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/507/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "502",
+      "year": 2019,
+      "title": "Introducing Low-Latency HLS",
+      "duration": "42:06",
+      "durationSeconds": 2526,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/502/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "508",
+      "year": 2019,
+      "title": "Modernizing Your Audio App",
+      "duration": "1:46",
+      "durationSeconds": 106,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/508/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "501",
+      "year": 2019,
+      "title": "Reaching the Big Screen with AirPlay 2",
+      "duration": "35:49",
+      "durationSeconds": 2149,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/501/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "510",
+      "year": 2019,
+      "title": "What's New in AVAudioEngine",
+      "duration": "8:53",
+      "durationSeconds": 533,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/510/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "241",
+      "year": 2019,
+      "title": "Adding Indoor Maps to your App and Website",
+      "duration": "52:46",
+      "durationSeconds": 3166,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/241/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "business-&-education"
+    },
+    {
+      "id": "245",
+      "year": 2019,
+      "title": "Introducing the Indoor Maps Program",
+      "duration": "26:17",
+      "durationSeconds": 1577,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/245/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "business-&-education"
+    },
+    {
+      "id": "247",
+      "year": 2019,
+      "title": "What’s New in ClassKit",
+      "duration": "28:02",
+      "durationSeconds": 1682,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/247/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "business-&-education"
+    },
+    {
+      "id": "236",
+      "year": 2019,
+      "title": "What’s New in MapKit and MapKit JS",
+      "duration": "51:08",
+      "durationSeconds": 3068,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/236/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "business-&-education"
+    },
+    {
+      "id": "104",
+      "year": 2019,
+      "title": "Apple Design Awards",
+      "duration": "49:15",
+      "durationSeconds": 2955,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/104/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "805",
+      "year": 2019,
+      "title": "Building Great Shortcuts",
+      "duration": "11:51",
+      "durationSeconds": 711,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/805/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "810",
+      "year": 2019,
+      "title": "Designing Audio-Haptic Experiences",
+      "duration": "26:02",
+      "durationSeconds": 1562,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/810/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "809",
+      "year": 2019,
+      "title": "Designing iPad Apps for Mac",
+      "duration": "30:18",
+      "durationSeconds": 1818,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/809/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "239",
+      "year": 2019,
+      "title": "Great Developer Habits",
+      "duration": "34:34",
+      "durationSeconds": 2074,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/239/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "520",
+      "year": 2019,
+      "title": "Introducing Core Haptics",
+      "duration": "29:03",
+      "durationSeconds": 1743,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/520/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "206",
+      "year": 2019,
+      "title": "Introducing SF Symbols",
+      "duration": "39:32",
+      "durationSeconds": 2372,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/206/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "244",
+      "year": 2019,
+      "title": "Visual Design and Accessibility",
+      "duration": "10:13",
+      "durationSeconds": 613,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/244/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "808",
+      "year": 2019,
+      "title": "What's New in iOS Design",
+      "duration": "27:28",
+      "durationSeconds": 1648,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/808/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "257",
+      "year": 2019,
+      "title": "Accessibility Inspector",
+      "duration": "10:14",
+      "durationSeconds": 614,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/257/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "408",
+      "year": 2019,
+      "title": "Adopting Swift Packages in Xcode",
+      "duration": "33:24",
+      "durationSeconds": 2004,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/408/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "707",
+      "year": 2019,
+      "title": "Advances in App Background Execution",
+      "duration": "39:07",
+      "durationSeconds": 2347,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/707/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "703",
+      "year": 2019,
+      "title": "All About Notarization",
+      "duration": "33:40",
+      "durationSeconds": 2020,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/703/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "416",
+      "year": 2019,
+      "title": "Binary Frameworks in Swift",
+      "duration": "40:32",
+      "durationSeconds": 2432,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/416/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "704",
+      "year": 2019,
+      "title": "Core ML 3 Framework",
+      "duration": "40:38",
+      "durationSeconds": 2438,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/704/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "606",
+      "year": 2019,
+      "title": "Delivering Optimized Metal Apps and Games",
+      "duration": "49:24",
+      "durationSeconds": 2964,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/606/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "422",
+      "year": 2019,
+      "title": "Designing for Adverse Network and Temperature Conditions",
+      "duration": "36:09",
+      "durationSeconds": 2169,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/422/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "414",
+      "year": 2019,
+      "title": "Developing a Great Profiling Experience",
+      "duration": "39:04",
+      "durationSeconds": 2344,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/414/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "411",
+      "year": 2019,
+      "title": "Getting Started with Instruments",
+      "duration": "34:54",
+      "durationSeconds": 2094,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/411/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "404",
+      "year": 2019,
+      "title": "Getting Started with Xcode",
+      "duration": "54:25",
+      "durationSeconds": 3265,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/404/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "417",
+      "year": 2019,
+      "title": "Improving Battery Life and Performance",
+      "duration": "39:33",
+      "durationSeconds": 2373,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/417/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "430",
+      "year": 2019,
+      "title": "Introducing the Create ML App",
+      "duration": "14:34",
+      "durationSeconds": 874,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/430/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "429",
+      "year": 2019,
+      "title": "LLDB: Beyond \"po\"",
+      "duration": "20:44",
+      "durationSeconds": 1244,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/429/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "233",
+      "year": 2019,
+      "title": "Mastering Xcode Previews",
+      "duration": "44:09",
+      "durationSeconds": 2649,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/233/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "421",
+      "year": 2019,
+      "title": "Modeling in Custom Instruments",
+      "duration": "37:42",
+      "durationSeconds": 2262,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/421/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "415",
+      "year": 2019,
+      "title": "Modern Swift API Design",
+      "duration": "41:06",
+      "durationSeconds": 2466,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/415/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "423",
+      "year": 2019,
+      "title": "Optimizing App Launch",
+      "duration": "43:18",
+      "durationSeconds": 2598,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/423/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "419",
+      "year": 2019,
+      "title": "Optimizing Storage in Your App",
+      "duration": "37:49",
+      "durationSeconds": 2269,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/419/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "413",
+      "year": 2019,
+      "title": "Testing in Xcode",
+      "duration": "53:30",
+      "durationSeconds": 3210,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/413/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "301",
+      "year": 2019,
+      "title": "What's New in App Store Connect",
+      "duration": "30:34",
+      "durationSeconds": 1834,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/301/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "409",
+      "year": 2019,
+      "title": "What's New in Clang and LLVM",
+      "duration": "41:03",
+      "durationSeconds": 2463,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/409/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "209",
+      "year": 2019,
+      "title": "What's New in Machine Learning",
+      "duration": "14:49",
+      "durationSeconds": 889,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/209/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "401",
+      "year": 2019,
+      "title": "What's New in Xcode 11",
+      "duration": "33:02",
+      "durationSeconds": 1982,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/401/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "101",
+      "year": 2019,
+      "title": "Keynote",
+      "duration": "137:33",
+      "durationSeconds": 8253,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/101/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "103",
+      "year": 2019,
+      "title": "Platforms State of the Union",
+      "duration": "117:19",
+      "durationSeconds": 7039,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/103/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "612",
+      "year": 2019,
+      "title": "Advances in AR Quick Look",
+      "duration": "43:57",
+      "durationSeconds": 2637,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/612/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "611",
+      "year": 2019,
+      "title": "Bringing OpenGL Apps to Metal",
+      "duration": "57:13",
+      "durationSeconds": 3433,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/611/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "607",
+      "year": 2019,
+      "title": "Bringing People into AR",
+      "duration": "39:26",
+      "durationSeconds": 2366,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/607/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "609",
+      "year": 2019,
+      "title": "Building AR Experiences with Reality Composer",
+      "duration": "59:05",
+      "durationSeconds": 3545,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/609/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "605",
+      "year": 2019,
+      "title": "Building Apps with RealityKit",
+      "duration": "39:47",
+      "durationSeconds": 2387,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/605/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "610",
+      "year": 2019,
+      "title": "Building Collaborative AR Experiences",
+      "duration": "35:17",
+      "durationSeconds": 2117,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/610/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "412",
+      "year": 2019,
+      "title": "Debugging in Xcode 11",
+      "duration": "37:09",
+      "durationSeconds": 2229,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/412/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "802",
+      "year": 2019,
+      "title": "Designing Award Winning Apps and Games",
+      "duration": "46:43",
+      "durationSeconds": 2803,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/802/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "615",
+      "year": 2019,
+      "title": "Game Center Player Identifiers",
+      "duration": "10:18",
+      "durationSeconds": 618,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/615/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "418",
+      "year": 2019,
+      "title": "Getting the Most Out of Simulator",
+      "duration": "43:06",
+      "durationSeconds": 2586,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/418/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "604",
+      "year": 2019,
+      "title": "Introducing ARKit 3",
+      "duration": "51:27",
+      "durationSeconds": 3087,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/604/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "603",
+      "year": 2019,
+      "title": "Introducing RealityKit and Reality Composer",
+      "duration": "37:13",
+      "durationSeconds": 2233,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/603/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "614",
+      "year": 2019,
+      "title": "Metal for Machine Learning",
+      "duration": "41:25",
+      "durationSeconds": 2485,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/614/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "608",
+      "year": 2019,
+      "title": "Metal for Pro Apps",
+      "duration": "58:56",
+      "durationSeconds": 3536,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/608/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "601",
+      "year": 2019,
+      "title": "Modern Rendering with Metal",
+      "duration": "55:28",
+      "durationSeconds": 3328,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/601/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "613",
+      "year": 2019,
+      "title": "Ray Tracing with Metal",
+      "duration": "58:38",
+      "durationSeconds": 3518,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/613/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "218",
+      "year": 2019,
+      "title": "Exploring New Data Representations in HealthKit",
+      "duration": "34:07",
+      "durationSeconds": 2047,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/218/",
+      "topics": [
+        "Health & Fitness"
+      ],
+      "category": "health-&-fitness"
+    },
+    {
+      "id": "232",
+      "year": 2019,
+      "title": "Advances in Natural Language Framework",
+      "duration": "39:19",
+      "durationSeconds": 2359,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/232/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "426",
+      "year": 2019,
+      "title": "Building Activity Classification Models in Create ML",
+      "duration": "15:01",
+      "durationSeconds": 901,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/426/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "803",
+      "year": 2019,
+      "title": "Designing Great ML Experiences",
+      "duration": "57:45",
+      "durationSeconds": 3465,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/803/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "234",
+      "year": 2019,
+      "title": "Text Recognition in Vision Framework",
+      "duration": "38:15",
+      "durationSeconds": 2295,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/234/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "424",
+      "year": 2019,
+      "title": "Training Object Detection Models in Create ML",
+      "duration": "15:41",
+      "durationSeconds": 941,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/424/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "427",
+      "year": 2019,
+      "title": "Training Recommendation Models in Create ML",
+      "duration": "10:31",
+      "durationSeconds": 631,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/427/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "425",
+      "year": 2019,
+      "title": "Training Sound Classification Models in Create ML",
+      "duration": "20:11",
+      "durationSeconds": 1211,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/425/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "428",
+      "year": 2019,
+      "title": "Training Text Classifiers in Create ML",
+      "duration": "12:05",
+      "durationSeconds": 725,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/428/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "705",
+      "year": 2019,
+      "title": "What's New in Core Location",
+      "duration": "35:45",
+      "durationSeconds": 2145,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/705/",
+      "topics": [
+        "Maps & Location"
+      ],
+      "category": "maps-&-location"
+    },
+    {
+      "id": "225",
+      "year": 2019,
+      "title": "Advances in Camera Capture & Photo Segmentation",
+      "duration": "60:34",
+      "durationSeconds": 3634,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/225/",
+      "topics": [
+        "General"
+      ],
+      "category": "photos-&-camera"
+    },
+    {
+      "id": "249",
+      "year": 2019,
+      "title": "Introducing Multi-Camera Capture for iOS",
+      "duration": "44:40",
+      "durationSeconds": 2680,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/249/",
+      "topics": [
+        "General"
+      ],
+      "category": "photos-&-camera"
+    },
+    {
+      "id": "260",
+      "year": 2019,
+      "title": "Introducing Photo Segmentation Mattes",
+      "duration": "15:33",
+      "durationSeconds": 933,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/260/",
+      "topics": [
+        "General"
+      ],
+      "category": "photos-&-camera"
+    },
+    {
+      "id": "222",
+      "year": 2019,
+      "title": "Understanding Images in Vision Framework",
+      "duration": "39:50",
+      "durationSeconds": 2390,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/222/",
+      "topics": [
+        "General"
+      ],
+      "category": "photos-&-camera"
+    },
+    {
+      "id": "701",
+      "year": 2019,
+      "title": "Advances in macOS Security",
+      "duration": "40:46",
+      "durationSeconds": 2446,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/701/",
+      "topics": [
+        "Privacy & Security"
+      ],
+      "category": "privacy-&-security"
+    },
+    {
+      "id": "709",
+      "year": 2019,
+      "title": "Cryptography and Your Apps",
+      "duration": "38:52",
+      "durationSeconds": 2332,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/709/",
+      "topics": [
+        "Privacy & Security"
+      ],
+      "category": "privacy-&-security"
+    },
+    {
+      "id": "708",
+      "year": 2019,
+      "title": "Designing for Privacy",
+      "duration": "38:19",
+      "durationSeconds": 2299,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/708/",
+      "topics": [
+        "Privacy & Security"
+      ],
+      "category": "privacy-&-security"
+    },
+    {
+      "id": "706",
+      "year": 2019,
+      "title": "Introducing Sign In with Apple",
+      "duration": "35:19",
+      "durationSeconds": 2119,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/706/",
+      "topics": [
+        "Privacy & Security"
+      ],
+      "category": "privacy-&-security"
+    },
+    {
+      "id": "514",
+      "year": 2019,
+      "title": "Auditing Web Content with Web Inspector",
+      "duration": "8:15",
+      "durationSeconds": 495,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/514/",
+      "topics": [
+        "Safari & Web"
+      ],
+      "category": "safari-&-web"
+    },
+    {
+      "id": "262",
+      "year": 2019,
+      "title": "Embedding and Sharing Visually Rich Links",
+      "duration": "6:43",
+      "durationSeconds": 403,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/262/",
+      "topics": [
+        "Safari & Web"
+      ],
+      "category": "safari-&-web"
+    },
+    {
+      "id": "511",
+      "year": 2019,
+      "title": "Supporting Dark Mode in Your Web Content",
+      "duration": "10:39",
+      "durationSeconds": 639,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/511/",
+      "topics": [
+        "Safari & Web"
+      ],
+      "category": "safari-&-web"
+    },
+    {
+      "id": "513",
+      "year": 2019,
+      "title": "Understanding CPU Usage with Web Inspector",
+      "duration": "13:23",
+      "durationSeconds": 803,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/513/",
+      "topics": [
+        "Safari & Web"
+      ],
+      "category": "safari-&-web"
+    },
+    {
+      "id": "518",
+      "year": 2019,
+      "title": "What's New for Web Developers",
+      "duration": "12:28",
+      "durationSeconds": 748,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/518/",
+      "topics": [
+        "Safari & Web"
+      ],
+      "category": "safari-&-web"
+    },
+    {
+      "id": "516",
+      "year": 2019,
+      "title": "What's New in Authentication",
+      "duration": "19:12",
+      "durationSeconds": 1152,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/516/",
+      "topics": [
+        "Safari & Web"
+      ],
+      "category": "safari-&-web"
+    },
+    {
+      "id": "515",
+      "year": 2019,
+      "title": "What's New in Safari",
+      "duration": "8:34",
+      "durationSeconds": 514,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/515/",
+      "topics": [
+        "Safari & Web"
+      ],
+      "category": "safari-&-web"
+    },
+    {
+      "id": "720",
+      "year": 2019,
+      "title": "What's New in Safari Extensions",
+      "duration": "19:53",
+      "durationSeconds": 1193,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/720/",
+      "topics": [
+        "Safari & Web"
+      ],
+      "category": "safari-&-web"
+    },
+    {
+      "id": "717",
+      "year": 2019,
+      "title": "What's New in Universal Links",
+      "duration": "17:09",
+      "durationSeconds": 1029,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/717/",
+      "topics": [
+        "Safari & Web"
+      ],
+      "category": "safari-&-web"
+    },
+    {
+      "id": "228",
+      "year": 2019,
+      "title": "Creating Great Apps Using Core ML and ARKit",
+      "duration": "29:43",
+      "durationSeconds": 1783,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/228/",
+      "topics": [
+        "visionOS"
+      ],
+      "category": "spatial-computing"
+    },
+    {
+      "id": "602",
+      "year": 2019,
+      "title": "Working with USD",
+      "duration": "31:55",
+      "durationSeconds": 1915,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/602/",
+      "topics": [
+        "visionOS"
+      ],
+      "category": "spatial-computing"
+    },
+    {
+      "id": "410",
+      "year": 2019,
+      "title": "Creating Swift Packages",
+      "duration": "31:05",
+      "durationSeconds": 1865,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/410/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "405",
+      "year": 2019,
+      "title": "Swift Playgrounds 3",
+      "duration": "41:19",
+      "durationSeconds": 2479,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/405/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "402",
+      "year": 2019,
+      "title": "What's New in Swift",
+      "duration": "36:44",
+      "durationSeconds": 2204,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/402/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "238",
+      "year": 2019,
+      "title": "Accessibility in SwiftUI",
+      "duration": "38:06",
+      "durationSeconds": 2286,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/238/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "215",
+      "year": 2019,
+      "title": "Advances in Collection View Layout",
+      "duration": "50:13",
+      "durationSeconds": 3013,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/215/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "258",
+      "year": 2019,
+      "title": "Architecting Your App for Multiple Windows",
+      "duration": "15:29",
+      "durationSeconds": 929,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/258/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "237",
+      "year": 2019,
+      "title": "Building Custom Views with SwiftUI",
+      "duration": "40:11",
+      "durationSeconds": 2411,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/237/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "715",
+      "year": 2019,
+      "title": "Core NFC Enhancements",
+      "duration": "30:43",
+      "durationSeconds": 1843,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/715/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "208",
+      "year": 2019,
+      "title": "Creating Independent Watch Apps",
+      "duration": "28:03",
+      "durationSeconds": 1683,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/208/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "248",
+      "year": 2019,
+      "title": "Creating an Accessible Reading Experience",
+      "duration": "8:47",
+      "durationSeconds": 527,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/248/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "226",
+      "year": 2019,
+      "title": "Data Flow Through SwiftUI",
+      "duration": "37:20",
+      "durationSeconds": 2240,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/226/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "253",
+      "year": 2019,
+      "title": "Exploring Tinted Graphic Complications",
+      "duration": "7:08",
+      "durationSeconds": 428,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/253/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "227",
+      "year": 2019,
+      "title": "Font Management and Text Scaling",
+      "duration": "39:45",
+      "durationSeconds": 2385,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/227/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "214",
+      "year": 2019,
+      "title": "Implementing Dark Mode on iOS",
+      "duration": "38:58",
+      "durationSeconds": 2338,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/214/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "231",
+      "year": 2019,
+      "title": "Integrating SwiftUI",
+      "duration": "38:22",
+      "durationSeconds": 2302,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/231/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "203",
+      "year": 2019,
+      "title": "Introducing Desktop-class Browsing on iPad",
+      "duration": "49:44",
+      "durationSeconds": 2984,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/203/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "212",
+      "year": 2019,
+      "title": "Introducing Multiple Windows on iPad",
+      "duration": "42:12",
+      "durationSeconds": 2532,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/212/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "221",
+      "year": 2019,
+      "title": "Introducing PencilKit",
+      "duration": "34:51",
+      "durationSeconds": 2091,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/221/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "204",
+      "year": 2019,
+      "title": "Introducing SwiftUI: Building Your First App",
+      "duration": "54:16",
+      "durationSeconds": 3256,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/204/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "205",
+      "year": 2019,
+      "title": "Introducing iPad Apps for Mac",
+      "duration": "41:27",
+      "durationSeconds": 2487,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/205/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "261",
+      "year": 2019,
+      "title": "Large Content Viewer - Ensuring Readability for Everyone",
+      "duration": "13:08",
+      "durationSeconds": 788,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/261/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "250",
+      "year": 2019,
+      "title": "Making Apps More Accessible With Custom Actions",
+      "duration": "9:25",
+      "durationSeconds": 565,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/250/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "230",
+      "year": 2019,
+      "title": "Making Apps with Core Data",
+      "duration": "33:11",
+      "durationSeconds": 1991,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/230/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "224",
+      "year": 2019,
+      "title": "Modernizing Your UI for iOS 13",
+      "duration": "50:21",
+      "durationSeconds": 3021,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/224/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "217",
+      "year": 2019,
+      "title": "ResearchKit and CareKit Reimagined",
+      "duration": "50:39",
+      "durationSeconds": 3039,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/217/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "216",
+      "year": 2019,
+      "title": "SwiftUI Essentials",
+      "duration": "58:28",
+      "durationSeconds": 3508,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/216/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "240",
+      "year": 2019,
+      "title": "SwiftUI On All Devices",
+      "duration": "45:05",
+      "durationSeconds": 2705,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/240/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "219",
+      "year": 2019,
+      "title": "SwiftUI on watchOS",
+      "duration": "30:53",
+      "durationSeconds": 1853,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/219/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "235",
+      "year": 2019,
+      "title": "Taking iPad Apps for Mac to the Next Level",
+      "duration": "54:08",
+      "durationSeconds": 3248,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/235/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "259",
+      "year": 2019,
+      "title": "Targeting Content with Multiple Windows",
+      "duration": "11:11",
+      "durationSeconds": 671,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/259/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "202",
+      "year": 2019,
+      "title": "Using Core Data With CloudKit",
+      "duration": "31:49",
+      "durationSeconds": 1909,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/202/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "210",
+      "year": 2019,
+      "title": "What’s New in AppKit for macOS",
+      "duration": "37:02",
+      "durationSeconds": 2222,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/210/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "719",
+      "year": 2019,
+      "title": "What’s New in File Management and Quick Look",
+      "duration": "23:55",
+      "durationSeconds": 1435,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/719/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "246",
+      "year": 2019,
+      "title": "Window Management in Your Multitasking App",
+      "duration": "13:38",
+      "durationSeconds": 818,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/246/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "254",
+      "year": 2019,
+      "title": "Writing Great Accessibility Labels",
+      "duration": "10:23",
+      "durationSeconds": 623,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/254/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "723",
+      "year": 2019,
+      "title": "Advances in Foundation",
+      "duration": "15:54",
+      "durationSeconds": 954,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/723/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "system-services"
+    },
+    {
+      "id": "712",
+      "year": 2019,
+      "title": "Advances in Networking, Part 1",
+      "duration": "56:58",
+      "durationSeconds": 3418,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/712/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "system-services"
+    },
+    {
+      "id": "713",
+      "year": 2019,
+      "title": "Advances in Networking, Part 2",
+      "duration": "61:25",
+      "durationSeconds": 3685,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/713/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "system-services"
+    },
+    {
+      "id": "220",
+      "year": 2019,
+      "title": "Advances in UI Data Sources",
+      "duration": "36:15",
+      "durationSeconds": 2175,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/220/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "system-services"
+    },
+    {
+      "id": "721",
+      "year": 2019,
+      "title": "Combine in Practice",
+      "duration": "34:41",
+      "durationSeconds": 2081,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/721/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "system-services"
+    },
+    {
+      "id": "718",
+      "year": 2019,
+      "title": "Introducing Accelerate for Swift",
+      "duration": "20:59",
+      "durationSeconds": 1259,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/718/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "system-services"
+    },
+    {
+      "id": "722",
+      "year": 2019,
+      "title": "Introducing Combine",
+      "duration": "18:52",
+      "durationSeconds": 1132,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/722/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "system-services"
+    },
+    {
+      "id": "714",
+      "year": 2019,
+      "title": "Network Extensions for the Modern Mac",
+      "duration": "39:19",
+      "durationSeconds": 2359,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/714/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "system-services"
+    },
+    {
+      "id": "716",
+      "year": 2019,
+      "title": "Streaming Audio on watchOS 6",
+      "duration": "8:54",
+      "durationSeconds": 534,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/716/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "system-services"
+    },
+    {
+      "id": "616",
+      "year": 2019,
+      "title": "Supporting New Game Controllers",
+      "duration": "17:00",
+      "durationSeconds": 1020,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/616/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "system-services"
+    },
+    {
+      "id": "702",
+      "year": 2019,
+      "title": "System Extensions and DriverKit",
+      "duration": "37:01",
+      "durationSeconds": 2221,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/702/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "system-services"
+    },
+    {
+      "id": "710",
+      "year": 2019,
+      "title": "What's New in Apple File Systems",
+      "duration": "34:07",
+      "durationSeconds": 2047,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/710/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "system-services"
+    },
+    {
+      "id": "901",
+      "year": 2019,
+      "title": "What's New in Core Bluetooth",
+      "duration": "31:15",
+      "durationSeconds": 1875,
+      "url": "https://developer.apple.com/videos/play/wwdc2019/901/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "system-services"
+    }
+  ]
+}
