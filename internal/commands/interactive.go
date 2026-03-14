@@ -256,7 +256,7 @@ func runInteractive(cmd *cobra.Command) error {
 		fmt.Println()
 	}
 
-	fmt.Printf("  %sPress Enter to submit. Esc+Enter for newline. Ctrl+V to paste image. Drag images to attach.%s\n\n", terminal.Dim, terminal.Reset)
+	fmt.Printf("  %sPress Enter to submit. Pasted multiline text stays intact. Ctrl+V attaches clipboard images on macOS. Drag images or paste Finder image files to attach.%s\n\n", terminal.Dim, terminal.Reset)
 
 	// Set up signal handling for Ctrl+C
 	sigChan := make(chan os.Signal, 1)
@@ -290,17 +290,18 @@ func runInteractive(cmd *cobra.Command) error {
 	for {
 		result := terminal.ReadInput()
 		input := result.Text
-		if input == "" && len(result.Images) == 0 {
+		trimmedInput := strings.TrimSpace(input)
+		if trimmedInput == "" && len(result.Images) == 0 {
 			continue
 		}
 
 		// Handle slash commands
-		if strings.HasPrefix(input, "/") && len(result.Images) == 0 {
-			if input == "/clear" && imgCache != nil {
+		if !strings.Contains(input, "\n") && strings.HasPrefix(trimmedInput, "/") && len(result.Images) == 0 {
+			if trimmedInput == "/clear" && imgCache != nil {
 				imgCache.clear()
 			}
 			// Handle /projects specially since it needs to modify cfg/svc
-			if input == "/projects" {
+			if trimmedInput == "/projects" {
 				projects := cfg.ListProjects()
 				if len(projects) == 0 {
 					terminal.Info("No projects yet. Describe the app you want to build.")
@@ -329,25 +330,16 @@ func runInteractive(cmd *cobra.Command) error {
 				}
 				continue
 			}
-			handled := handleSlashCommand(input, cfg, svc, cmd, authStatus)
+			handled := handleSlashCommand(trimmedInput, cfg, svc, cmd, authStatus)
 			if handled {
 				continue
 			}
 		}
 
 		// Handle quit/exit text
-		if input == "quit" || input == "exit" {
+		if !strings.Contains(input, "\n") && (trimmedInput == "quit" || trimmedInput == "exit") {
 			terminal.Info("Goodbye!")
 			break
-		}
-
-		// Handle image-only input (no text)
-		if input == "" && len(result.Images) > 0 {
-			for _, img := range result.Images {
-				terminal.Detail("Image attached", filepath.Base(img))
-			}
-			terminal.Info("Attached image(s). Type your prompt and press Enter.")
-			continue
 		}
 
 		// Check auth before sending
@@ -362,7 +354,7 @@ func runInteractive(cmd *cobra.Command) error {
 		if imgCache != nil && len(result.Images) > 0 {
 			cachedImages = imgCache.addAll(result.Images)
 			for _, img := range result.Images {
-				terminal.Detail("Image", filepath.Base(img))
+				terminal.Detail("Attached", filepath.Base(img))
 			}
 		}
 
@@ -485,8 +477,7 @@ func handleSlashCommand(input string, cfg *config.Config, svc *service.Service, 
 		if !requireProjectForSlashCommand(cfg) {
 			return true
 		}
-		fixPrompt := "Build the project, read any compilation errors, and fix all of them. Rebuild and repeat until the build succeeds."
-		if err := svc.Send(cmd.Context(), fixPrompt, nil); err != nil {
+		if err := runWithSlashCommandContext(cmd, svc.Fix); err != nil {
 			terminal.Error(fmt.Sprintf("Fix failed: %v", err))
 		}
 		fmt.Println()

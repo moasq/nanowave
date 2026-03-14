@@ -186,8 +186,11 @@ func TestBuildPromptsMultiPlatform(t *testing.T) {
 	if !strings.Contains(userMsg, "MULTI-PLATFORM SOURCE DIRECTORIES") {
 		t.Error("user message missing multi-platform section")
 	}
-	if !strings.Contains(userMsg, "all builds succeed") {
-		t.Error("user message missing multi-build instruction")
+	if !strings.Contains(userMsg, "all device builds succeed") {
+		t.Error("user message missing device build instruction")
+	}
+	if !strings.Contains(userMsg, "simulator build") {
+		t.Error("user message missing simulator build validation instruction")
 	}
 }
 

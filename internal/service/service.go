@@ -218,7 +218,7 @@ func (s *Service) build(ctx context.Context, prompt string, images []string) err
 			ProjectPath:  result.ProjectDir,
 			BundleID:     result.BundleID,
 			Platform:     result.Platform,
-			Platforms:     result.Platforms,
+			Platforms:    result.Platforms,
 			DeviceFamily: result.DeviceFamily,
 			SessionID:    result.SessionID,
 		}
@@ -312,7 +312,9 @@ func (s *Service) edit(ctx context.Context, prompt string, images []string) erro
 		Content: summary,
 	})
 
-	return nil
+	// Validate: build for device after edits (no simulator launch needed)
+	fmt.Println()
+	return s.Fix(ctx)
 }
 
 // ASC runs the App Store Connect flow directly in the terminal.
@@ -344,6 +346,111 @@ func (s *Service) ASC(ctx context.Context, prompt string) error {
 	// Print summary
 	printSummary(result.Summary)
 	return nil
+}
+
+// Fix builds for device (arm64), auto-fixes compilation errors, and stops.
+// Unlike Run(), it does not launch on simulator — just validates the build.
+// For multi-platform projects, builds all schemes.
+func (s *Service) Fix(ctx context.Context) error {
+	project, err := s.projectStore.Load()
+	if err != nil || project == nil {
+		return fmt.Errorf("no active project found. Run `nanowave` first")
+	}
+
+	terminal.Header("Nanowave Fix")
+	terminal.Detail("Project", projectName(project))
+
+	// Find the .xcodeproj
+	entries, err := os.ReadDir(project.ProjectPath)
+	if err != nil {
+		return fmt.Errorf("failed to read project directory: %w", err)
+	}
+
+	var xcodeprojName string
+	for _, entry := range entries {
+		if strings.HasSuffix(entry.Name(), ".xcodeproj") {
+			xcodeprojName = entry.Name()
+			break
+		}
+	}
+	if xcodeprojName == "" {
+		return fmt.Errorf("no .xcodeproj found in %s", project.ProjectPath)
+	}
+
+	appName := strings.TrimSuffix(xcodeprojName, ".xcodeproj")
+	platform, platforms, _ := orchestration.DetectProjectBuildHints(project.ProjectPath)
+
+	// Collect all build commands: device for each platform
+	var specs []xcodeBuildSpec
+
+	if len(platforms) > 1 {
+		// Multi-platform: build each scheme for device
+		for _, plat := range platforms {
+			var scheme string
+			switch plat {
+			case "tvos":
+				scheme = appName + "TV"
+			case "visionos":
+				scheme = appName + "Vision"
+			case "macos":
+				scheme = appName + "Mac"
+			case "watchos":
+				continue // watchOS is built via iOS scheme
+			default:
+				scheme = appName
+			}
+			destination := orchestration.PlatformBuildDestination(plat)
+			args := []string{
+				"-project", xcodeprojName,
+				"-scheme", scheme,
+				"-destination", destination,
+				"-quiet",
+				"build",
+			}
+			if plat != "macos" {
+				args = append(args, "CODE_SIGNING_ALLOWED=NO")
+			}
+			specs = append(specs, xcodeBuildSpec{
+				label:    fmt.Sprintf("%s (%s)", scheme, orchestration.PlatformDisplayName(plat)),
+				platform: plat,
+				args:     args,
+			})
+		}
+	} else {
+		// Single-platform: one device build
+		destination := orchestration.PlatformBuildDestination(platform)
+		args := []string{
+			"-project", xcodeprojName,
+			"-scheme", appName,
+			"-destination", destination,
+			"-quiet",
+			"build",
+		}
+		if platform != "macos" {
+			args = append(args, "CODE_SIGNING_ALLOWED=NO")
+		}
+		specs = append(specs, xcodeBuildSpec{
+			label:    appName,
+			platform: platform,
+			args:     args,
+		})
+	}
+
+	// Build all specs
+	spinner := terminal.NewSpinner("Building for device (arm64)...")
+	spinner.Start()
+
+	failure := verifyBuildSpecs(ctx, specs, func(ctx context.Context, spec xcodeBuildSpec) ([]byte, error) {
+		return runXcodeBuildSpec(ctx, project.ProjectPath, spec)
+	})
+	if failure == nil {
+		spinner.Stop()
+		terminal.Success("Build succeeded")
+		return nil
+	}
+
+	spinner.StopWithMessage(fmt.Sprintf("%s%s!%s Build failed (%s) — auto-fixing...", terminal.Bold, terminal.Yellow, terminal.Reset, failure.spec.label))
+	return s.runAutoFixLoop(ctx, project, specs, failure)
 }
 
 // Run builds and launches the project in the Simulator (or natively on macOS).
@@ -447,69 +554,31 @@ func (s *Service) Run(ctx context.Context) error {
 	spinner := terminal.NewSpinner(buildMsg)
 	spinner.Start()
 
-	buildCmd := exec.CommandContext(ctx, "xcodebuild",
-		"-project", xcodeprojName,
-		"-scheme", scheme,
-		"-derivedDataPath", derivedDataPath,
-		"-destination", destination,
-		"-quiet",
-		"build",
-	)
-	buildCmd.Dir = project.ProjectPath
-	buildOutput, err := buildCmd.CombinedOutput()
-
-	if err == nil {
-		spinner.Stop()
-	} else {
-		spinner.StopWithMessage(fmt.Sprintf("%s%s!%s Build failed — auto-fixing...", terminal.Bold, terminal.Yellow, terminal.Reset))
-
-		// Auto-fix: use Claude to diagnose and repair via Action
-		pipeline := orchestration.NewPipeline(s.claude, s.config, s.model)
-		pipeline.SetManager(s.manager)
-		fixPrompt := "Build the project, read any compilation errors, and fix all of them. Rebuild and repeat until the build succeeds."
-		fixPlatform, fixPlatforms, fixWatchShape := orchestration.DetectProjectBuildHints(project.ProjectPath)
-		fixAC := orchestration.ActionContext{
-			ProjectDir:        project.ProjectPath,
-			AppName:           orchestration.ReadProjectAppName(project.ProjectPath),
-			SessionID:         project.SessionID,
-			Platform:          fixPlatform,
-			Platforms:         fixPlatforms,
-			WatchProjectShape: fixWatchShape,
-		}
-		fixResult, fixErr := pipeline.Action(ctx, fixPrompt, fixAC, nil)
-		if fixErr != nil {
-			terminal.Error("Auto-fix failed")
-			return fmt.Errorf("xcodebuild failed: %w\n%s", err, string(buildOutput))
-		}
-
-		// Record fix usage
-		s.usageStore.RecordUsage(fixResult.TotalCostUSD, fixResult.InputTokens, fixResult.OutputTokens, fixResult.CacheRead, fixResult.CacheCreated)
-		if fixResult.SessionID != "" {
-			project.SessionID = fixResult.SessionID
-			s.projectStore.Save(project)
-		}
-
-		// Retry the build
-		spinner = terminal.NewSpinner("Verifying build...")
-		spinner.Start()
-
-		retryCmd := exec.CommandContext(ctx, "xcodebuild",
+	buildSpec := xcodeBuildSpec{
+		label:    scheme,
+		platform: platform,
+		args: []string{
 			"-project", xcodeprojName,
 			"-scheme", scheme,
 			"-derivedDataPath", derivedDataPath,
 			"-destination", destination,
 			"-quiet",
 			"build",
-		)
-		retryCmd.Dir = project.ProjectPath
-		retryOutput, retryErr := retryCmd.CombinedOutput()
+		},
+	}
+	buildOutput, err := runXcodeBuildSpec(ctx, project.ProjectPath, buildSpec)
 
-		if retryErr != nil {
-			spinner.StopWithMessage(fmt.Sprintf("%s%s✗%s Build still failing after auto-fix", terminal.Bold, terminal.Red, terminal.Reset))
-			terminal.Info("Try describing the issue to fix it")
-			return fmt.Errorf("xcodebuild failed after fix: %w\n%s", retryErr, string(retryOutput))
+	if err == nil {
+		spinner.Stop()
+	} else {
+		spinner.StopWithMessage(fmt.Sprintf("%s%s!%s Build failed — auto-fixing...", terminal.Bold, terminal.Yellow, terminal.Reset))
+		if err := s.runAutoFixLoop(ctx, project, []xcodeBuildSpec{buildSpec}, &buildFailure{
+			spec:   buildSpec,
+			output: buildOutput,
+			err:    err,
+		}); err != nil {
+			return err
 		}
-		spinner.StopWithMessage(fmt.Sprintf("%s%s✓%s Build fixed!", terminal.Bold, terminal.Green, terminal.Reset))
 	}
 
 	if err == nil {

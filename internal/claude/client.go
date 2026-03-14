@@ -72,8 +72,11 @@ func buildImageContext(userMessage string, images []string) string {
 		return userMessage
 	}
 	var sb strings.Builder
-	sb.WriteString(userMessage)
-	sb.WriteString("\n\n[Attached images — read each file to view the image:]\n")
+	if strings.TrimSpace(userMessage) != "" {
+		sb.WriteString(userMessage)
+		sb.WriteString("\n\n")
+	}
+	sb.WriteString("[Attached images — read each file to view the image:]\n")
 	for i, img := range images {
 		sb.WriteString(fmt.Sprintf("- Image %d: %s\n", i+1, img))
 	}

@@ -8,13 +8,13 @@ import (
 var fixCmd = &cobra.Command{
 	Use:   "fix",
 	Short: "Auto-fix compilation errors",
-	Long:  "Build the project and automatically fix any compilation errors.",
+	Long:  "Build the project for device (arm64), diagnose errors, and fix them automatically.",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		svc, err := loadProjectService(service.ServiceOpts{Model: ModelFlag()})
 		if err != nil {
 			printNoProjectFoundCreateFirst()
 			return err
 		}
-		return svc.Send(cmd.Context(), "Build the project, read any compilation errors, and fix all of them. Rebuild and repeat until the build succeeds.", nil)
+		return svc.Fix(cmd.Context())
 	},
 }

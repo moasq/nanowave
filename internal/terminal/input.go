@@ -4,11 +4,15 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"syscall"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/reeflective/readline"
 	"golang.org/x/term"
@@ -45,12 +49,20 @@ type InputResult struct {
 	Images []string // Absolute paths to image files found in the input
 }
 
+type inputToken struct {
+	start int
+	end   int
+	value string
+}
+
 // imageExtensions are file extensions recognized as images.
 var imageExtensions = map[string]bool{
 	".png": true, ".jpg": true, ".jpeg": true, ".gif": true,
 	".webp": true, ".bmp": true, ".tiff": true, ".tif": true,
 	".heic": true, ".heif": true, ".svg": true,
 }
+
+var imageIndicatorPattern = regexp.MustCompile(`\[(?i:image)\d+\]\s*`)
 
 // isImagePath checks if a string looks like a path to an image file.
 func isImagePath(s string) bool {
@@ -91,26 +103,179 @@ func resolveImagePath(s string) string {
 // extractImages separates image paths from the input text.
 // Returns the remaining text and a list of image paths.
 func extractImages(input string) (string, []string) {
-	// First check if the entire input (single line) is just an image path
-	trimmed := strings.TrimSpace(input)
-	if isImagePath(trimmed) {
-		return "", []string{resolveImagePath(trimmed)}
+	tokens := scanInputTokens(input)
+	if len(tokens) == 0 {
+		if strings.TrimSpace(input) == "" {
+			return "", nil
+		}
+		return input, nil
 	}
 
-	lines := strings.Split(input, "\n")
-	var textLines []string
-	var images []string
+	type removal struct {
+		start int
+		end   int
+	}
 
-	for _, line := range lines {
-		lt := strings.TrimSpace(line)
-		if isImagePath(lt) {
-			images = append(images, resolveImagePath(lt))
-		} else {
-			textLines = append(textLines, line)
+	var removals []removal
+	var images []string
+	seen := make(map[string]struct{})
+
+	for _, token := range tokens {
+		if resolved, ok := resolveImageReference(token.value); ok {
+			if _, exists := seen[resolved]; !exists {
+				images = append(images, resolved)
+				seen[resolved] = struct{}{}
+			}
+			removals = append(removals, removal{start: token.start, end: token.end})
 		}
 	}
 
-	return strings.TrimSpace(strings.Join(textLines, "\n")), images
+	if len(images) == 0 {
+		return input, nil
+	}
+
+	var sb strings.Builder
+	last := 0
+	for _, removal := range removals {
+		if removal.start > last {
+			sb.WriteString(input[last:removal.start])
+		}
+		last = removal.end
+	}
+	if last < len(input) {
+		sb.WriteString(input[last:])
+	}
+
+	text := sb.String()
+	if strings.TrimSpace(text) == "" {
+		return "", images
+	}
+	return text, images
+}
+
+func scanInputTokens(input string) []inputToken {
+	var tokens []inputToken
+
+	for i := 0; i < len(input); {
+		r, width := utf8DecodeRuneInString(input[i:])
+		if unicode.IsSpace(r) {
+			i += width
+			continue
+		}
+
+		start := i
+		var sb strings.Builder
+		var quote rune
+
+		for i < len(input) {
+			r, width = utf8DecodeRuneInString(input[i:])
+
+			if quote != 0 {
+				switch {
+				case r == quote:
+					quote = 0
+					i += width
+				case r == '\\' && quote == '"':
+					next, nextWidth := utf8DecodeRuneInString(input[i+width:])
+					if nextWidth == 0 {
+						i += width
+						continue
+					}
+					sb.WriteRune(next)
+					i += width + nextWidth
+				default:
+					sb.WriteRune(r)
+					i += width
+				}
+				continue
+			}
+
+			switch {
+			case unicode.IsSpace(r):
+				tokens = append(tokens, inputToken{start: start, end: i, value: sb.String()})
+				goto nextToken
+			case r == '"' || r == '\'':
+				quote = r
+				i += width
+			case r == '\\':
+				next, nextWidth := utf8DecodeRuneInString(input[i+width:])
+				if nextWidth == 0 {
+					i += width
+					continue
+				}
+				sb.WriteRune(next)
+				i += width + nextWidth
+			default:
+				sb.WriteRune(r)
+				i += width
+			}
+		}
+
+		tokens = append(tokens, inputToken{start: start, end: len(input), value: sb.String()})
+		break
+
+	nextToken:
+	}
+
+	return tokens
+}
+
+func utf8DecodeRuneInString(s string) (rune, int) {
+	if s == "" {
+		return 0, 0
+	}
+	r := rune(s[0])
+	if r < utf8.RuneSelf {
+		return r, 1
+	}
+	return utf8.DecodeRuneInString(s)
+}
+
+func resolveImageReference(raw string) (string, bool) {
+	candidates := []string{strings.TrimSpace(raw)}
+	if trimmed := strings.TrimRight(candidates[0], ".,;:!?"); trimmed != candidates[0] {
+		candidates = append(candidates, trimmed)
+	}
+
+	for _, candidate := range candidates {
+		if candidate == "" {
+			continue
+		}
+		if resolved, ok := resolveImagePathReference(candidate); ok {
+			return resolved, true
+		}
+	}
+	return "", false
+}
+
+func resolveImagePathReference(candidate string) (string, bool) {
+	candidate = strings.TrimSpace(candidate)
+	if candidate == "" {
+		return "", false
+	}
+
+	if strings.HasPrefix(candidate, "file://") {
+		parsed, err := url.Parse(candidate)
+		if err != nil {
+			return "", false
+		}
+		if parsed.Scheme != "file" {
+			return "", false
+		}
+		if parsed.Host != "" && parsed.Host != "localhost" {
+			return "", false
+		}
+		unescaped, err := url.PathUnescape(parsed.Path)
+		if err != nil {
+			return "", false
+		}
+		candidate = unescaped
+	}
+
+	if !isImagePath(candidate) {
+		return "", false
+	}
+	return resolveImagePath(candidate), true
 }
 
 // rl is the shared readline shell instance, initialized eagerly so the
@@ -123,6 +288,7 @@ func newShell() *readline.Shell {
 	// Enable as-you-type autocomplete so slash commands appear
 	// immediately while typing (like the old custom implementation).
 	sh.Config.Set("autocomplete", true)
+	sh.Config.Set("enable-bracketed-paste", true)
 
 	sh.Prompt.Primary(func() string {
 		return Bold + "> " + Reset
@@ -131,25 +297,27 @@ func newShell() *readline.Shell {
 		return Dim + "  " + Reset
 	})
 
-	// Enter always submits; Ctrl+J inserts a newline (standard readline).
+	// Enter always submits.
 	sh.AcceptMultiline = func(line []rune) bool {
 		return true
 	}
 
 	// Register clipboard image paste command (Ctrl+V).
-	// When Ctrl+V is pressed, check the macOS clipboard for image data.
-	// If found, save to temp file and insert a visual [imageN] indicator.
+	// When Ctrl+V is pressed, attach Finder image files first, then
+	// fallback to raster image data from the clipboard.
 	sh.Keymap.Register(map[string]func(){
 		"paste-clipboard-image": func() {
-			if pasteClipboardImage() {
-				count := clipboardImageCount()
-				indicator := []rune(fmt.Sprintf("[image%d] ", count))
+			startIndex := clipboardImageCount() + 1
+			added := pasteClipboardImages()
+			for i := range added {
+				indicator := []rune(fmt.Sprintf("[image%d] ", startIndex+i))
 				sh.Cursor().InsertAt(indicator...)
 			}
 		},
 	})
 	// Bind Ctrl+V to the paste command in emacs mode (default)
 	sh.Config.Bind("emacs", "\x16", "paste-clipboard-image", false)
+	sh.Config.Bind("vi-insert", "\x16", "paste-clipboard-image", false)
 
 	// Slash command completion: only activate for "/" prefix.
 	sh.Completer = func(line []rune, cursor int) readline.Completions {
@@ -172,7 +340,7 @@ func newShell() *readline.Shell {
 }
 
 // ReadInput reads input from the terminal with slash command completion.
-// Enter submits. Ctrl+J adds a newline. Pasted multiline text is kept intact.
+// Enter submits. Pasted multiline text is kept intact.
 // Image file paths (dragged/pasted) and clipboard images (Ctrl+V) are returned separately.
 func ReadInput() InputResult {
 	line, err := rl.Readline()
@@ -189,16 +357,13 @@ func ReadInput() InputResult {
 		return InputResult{}
 	}
 
-	line = strings.TrimSpace(line)
-
 	// Collect any clipboard images pasted via Ctrl+V during this input
 	clipImages := takeClipboardImages()
 
 	// Strip [imageN] indicators from the text (inserted for visual feedback)
 	line = stripImageIndicators(line)
-	line = strings.TrimSpace(line)
 
-	if line == "" && len(clipImages) == 0 {
+	if strings.TrimSpace(line) == "" && len(clipImages) == 0 {
 		return InputResult{}
 	}
 
@@ -207,17 +372,31 @@ func ReadInput() InputResult {
 
 	// Merge clipboard images + dragged images
 	allImages := append(clipImages, dragImages...)
+	allImages = uniqueStrings(allImages)
 
 	return InputResult{Text: text, Images: allImages}
 }
 
 // stripImageIndicators removes [imageN] markers from the input text.
 func stripImageIndicators(s string) string {
-	for i := 1; i <= 20; i++ {
-		s = strings.ReplaceAll(s, fmt.Sprintf("[image%d] ", i), "")
-		s = strings.ReplaceAll(s, fmt.Sprintf("[image%d]", i), "")
+	return imageIndicatorPattern.ReplaceAllString(s, "")
+}
+
+func uniqueStrings(values []string) []string {
+	if len(values) < 2 {
+		return values
 	}
-	return s
+
+	seen := make(map[string]struct{}, len(values))
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		out = append(out, value)
+	}
+	return out
 }
 
 // filterCommands returns commands matching the given prefix.

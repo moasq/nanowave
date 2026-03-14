@@ -35,6 +35,7 @@ func appendBuildPlanFileEntry(b *strings.Builder, f FilePlan) {
 // buildPrompts constructs the system and user prompts for the build phase.
 func (p *Pipeline) buildPrompts(_ string, appName string, _ string, analysis *AnalysisResult, plan *PlannerResult, backendProvisioned bool, ac ActionContext) (string, string, error) {
 	destination := canonicalBuildDestinationForShape(plan.GetPlatform(), plan.GetWatchProjectShape())
+	simulatorDestination := canonicalSimulatorBuildDestination(plan.GetPlatform(), plan.GetWatchProjectShape())
 
 	// Load all relevant coder skills — Claude picks the right approach
 	skillNames := []string{"builder", "editor", "fixer"}
@@ -184,6 +185,11 @@ func (p *Pipeline) buildPrompts(_ string, appName string, _ string, analysis *An
 		for i, cmd := range buildCmds {
 			fmt.Fprintf(&buildCmdStr, "%d. %s\n", i+1, cmd)
 		}
+		simBuildCmds := multiPlatformSimulatorBuildCommands(appName, plan.GetPlatforms())
+		var simBuildCmdStr strings.Builder
+		for i, cmd := range simBuildCmds {
+			fmt.Fprintf(&simBuildCmdStr, "%d. %s\n", i+1, cmd)
+		}
 
 		var sourceDirsList strings.Builder
 		for _, plat := range plan.GetPlatforms() {
@@ -215,10 +221,12 @@ INSTRUCTIONS:
 3. Extension files go under Targets/{ExtensionName}/.
 4. Shared cross-platform types go under Shared/.
 5. If you need additional permissions, extensions, or entitlements beyond the plan, use the xcodegen MCP tools.
-6. After writing ALL files for ALL platforms, build each scheme in sequence:
+6. After writing ALL files for ALL platforms, build each scheme for device (the default validation target):
 %s7. If any build fails, read the errors, fix the Swift code, and rebuild.
-8. Repeat until all builds succeed.
-9. If Xcode says a scheme is missing, run: xcodebuild -list -project %s.xcodeproj and use the listed schemes.
+8. Repeat until all device builds succeed.
+9. Then validate simulator builds:
+%s10. If any simulator build fails, fix the code and rebuild both device and simulator until both pass.
+11. If Xcode says a scheme is missing, run: xcodebuild -list -project %s.xcodeproj and use the listed schemes.
 
 IMPORTANT:
 - Write files in the build order specified in the plan
@@ -226,7 +234,7 @@ IMPORTANT:
 - Every View must have a #Preview block
 - Each platform has its own @main App entry point`,
 			analysis.AppName, analysis.Description, featureList.String(), analysis.CoreFlow,
-			backendFirstBlock, sourceDirsList.String(), buildCmdStr.String(), appName)
+			backendFirstBlock, sourceDirsList.String(), buildCmdStr.String(), simBuildCmdStr.String(), appName)
 	} else {
 		userMsg = fmt.Sprintf(`Build the %s app following the plan in the system prompt.
 
@@ -247,17 +255,19 @@ INSTRUCTIONS:
 2. Extension files go under Targets/{ExtensionName}/.
 3. Shared types (e.g. ActivityAttributes) go under Shared/.
 4. If you need additional permissions, extensions, or entitlements beyond the plan, use the xcodegen MCP tools.
-5. After writing ALL files, run: xcodebuild -project %s.xcodeproj -scheme %s -destination '%s' -quiet build
+5. After writing ALL files, run the device build (default validation target): xcodebuild -project %s.xcodeproj -scheme %s -destination '%s' CODE_SIGNING_ALLOWED=NO -quiet build
 6. If the build fails, read the errors, fix the Swift code, and rebuild.
-7. Repeat until the build succeeds.
-8. If Xcode says the scheme is missing, run: xcodebuild -list -project %s.xcodeproj and use the listed app scheme.
+7. Repeat until the device build succeeds.
+8. Then validate the simulator build: xcodebuild -project %s.xcodeproj -scheme %s -destination '%s' -quiet build
+9. If the simulator build fails, read the errors, fix the Swift code, and rebuild both device and simulator until both succeed.
+10. If Xcode says the scheme is missing, run: xcodebuild -list -project %s.xcodeproj and use the listed app scheme.
 
 IMPORTANT:
 - Write files in the build order specified in the plan
 - Use the exact type names and file paths from the plan
 - Every View must have a #Preview block`,
 			analysis.AppName, analysis.Description, featureList.String(), analysis.CoreFlow,
-			backendFirstBlock, appName, appName, appName, destination, appName)
+			backendFirstBlock, appName, appName, appName, destination, appName, appName, simulatorDestination, appName)
 	}
 
 	return appendPrompt.String(), userMsg, nil
@@ -266,6 +276,7 @@ IMPORTANT:
 // completionPrompts builds targeted prompts for unresolved planned files.
 func (p *Pipeline) completionPrompts(appName string, projectDir string, plan *PlannerResult, report *FileCompletionReport) (string, string, error) {
 	destination := canonicalBuildDestinationForShape(plan.GetPlatform(), plan.GetWatchProjectShape())
+	simulatorDestination := canonicalSimulatorBuildDestination(plan.GetPlatform(), plan.GetWatchProjectShape())
 	basePrompt, err := composeCoderAppendPrompt("completion-recovery", plan.GetPlatform())
 	if err != nil {
 		return "", "", err
@@ -313,6 +324,11 @@ func (p *Pipeline) completionPrompts(appName string, projectDir string, plan *Pl
 		for i, cmd := range buildCmds {
 			fmt.Fprintf(&buildCmdStr, "%d. %s\n", i+1, cmd)
 		}
+		simBuildCmds := multiPlatformSimulatorBuildCommands(appName, plan.GetPlatforms())
+		var simBuildCmdStr strings.Builder
+		for i, cmd := range simBuildCmds {
+			fmt.Fprintf(&simBuildCmdStr, "%d. %s\n", i+1, cmd)
+		}
 		userMsg = fmt.Sprintf(`Complete the unresolved files from the original build plan.
 
 Unresolved files:
@@ -322,10 +338,12 @@ Required process:
 2. Ensure each file contains the expected type name exactly.
 3. Place files in the correct platform source directory based on the Platform field.
 4. Keep existing already-valid files unchanged unless required for imports/signatures.
-5. Build each scheme in sequence:
+5. Build each scheme for device (default validation target):
 %s6. If any build fails, fix issues and rebuild.
-7. If a scheme is missing, run: xcodebuild -list -project %s.xcodeproj and use the listed schemes.
-8. Stop only when every unresolved file is complete and all builds succeed.`, fileList.String(), buildCmdStr.String(), appName)
+7. Then validate simulator builds:
+%s8. Fix any simulator build errors and rebuild both until all pass.
+9. If a scheme is missing, run: xcodebuild -list -project %s.xcodeproj and use the listed schemes.
+10. Stop only when every unresolved file is complete and all builds succeed.`, fileList.String(), buildCmdStr.String(), simBuildCmdStr.String(), appName)
 	} else {
 		userMsg = fmt.Sprintf(`Complete the unresolved files from the original build plan.
 
@@ -335,10 +353,12 @@ Required process:
 1. Create/fix ONLY the unresolved files listed above.
 2. Ensure each file contains the expected type name exactly.
 3. Keep existing already-valid files unchanged unless required for imports/signatures.
-4. Run: xcodebuild -project %s.xcodeproj -scheme %s -destination '%s' -quiet build
+4. Run device build (default validation target): xcodebuild -project %s.xcodeproj -scheme %s -destination '%s' CODE_SIGNING_ALLOWED=NO -quiet build
 5. If build fails, fix issues and rebuild.
-6. If the scheme is missing, run: xcodebuild -list -project %s.xcodeproj and use the listed app scheme.
-7. Stop only when every unresolved file is complete and the build succeeds.`, fileList.String(), appName, appName, destination, appName)
+6. Then validate simulator build: xcodebuild -project %s.xcodeproj -scheme %s -destination '%s' -quiet build
+7. Fix any simulator build errors and rebuild both until all pass.
+8. If the scheme is missing, run: xcodebuild -list -project %s.xcodeproj and use the listed app scheme.
+9. Stop only when every unresolved file is complete and both builds succeed.`, fileList.String(), appName, appName, destination, appName, appName, simulatorDestination, appName)
 	}
 
 	return appendPrompt.String(), userMsg, nil

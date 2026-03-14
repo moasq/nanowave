@@ -320,15 +320,18 @@ func TestPlatformBuildDestination(t *testing.T) {
 		platform string
 		wantSub  string
 	}{
-		{"ios", "iOS Simulator"},
-		{"watchos", "watchOS Simulator"},
-		{"tvos", "tvOS Simulator"},
+		{"ios", "generic/platform=iOS"},
+		{"watchos", "generic/platform=watchOS"},
+		{"tvos", "generic/platform=tvOS"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.platform, func(t *testing.T) {
 			got := PlatformBuildDestination(tc.platform)
-			if !strings.Contains(got, tc.wantSub) {
-				t.Fatalf("PlatformBuildDestination(%q) = %q, want to contain %q", tc.platform, got, tc.wantSub)
+			if got != tc.wantSub {
+				t.Fatalf("PlatformBuildDestination(%q) = %q, want %q", tc.platform, got, tc.wantSub)
+			}
+			if strings.Contains(got, "Simulator") {
+				t.Fatalf("PlatformBuildDestination(%q) should return device destination, got: %q", tc.platform, got)
 			}
 		})
 	}
@@ -452,8 +455,8 @@ func TestPlatformSourceDirSuffixVisionOS(t *testing.T) {
 
 func TestPlatformBuildDestinationVisionOS(t *testing.T) {
 	got := PlatformBuildDestination("visionos")
-	if !strings.Contains(got, "visionOS Simulator") {
-		t.Fatalf("PlatformBuildDestination(visionos) = %q, want to contain %q", got, "visionOS Simulator")
+	if got != "generic/platform=visionOS" {
+		t.Fatalf("PlatformBuildDestination(visionos) = %q, want %q", got, "generic/platform=visionOS")
 	}
 }
 

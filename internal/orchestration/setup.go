@@ -73,10 +73,33 @@ func platformSummary(platform, deviceFamily string) string {
 	}
 }
 
+// canonicalBuildDestinationForShape returns the generic device destination for a platform.
+// Device builds are the default validation target — they catch entitlement, architecture,
+// and API availability issues that simulator builds miss. Uses CODE_SIGNING_ALLOWED=NO
+// so no provisioning profile is required.
 func canonicalBuildDestinationForShape(platform, watchProjectShape string) string {
 	if IsWatchOS(platform) {
-		// Paired iPhone+Watch projects use an iOS app scheme as the primary executable.
-		// Building against an iOS simulator destination avoids watch-only destination errors.
+		if watchProjectShape == WatchShapePaired {
+			return "generic/platform=iOS"
+		}
+		return "generic/platform=watchOS"
+	}
+	if IsTvOS(platform) {
+		return "generic/platform=tvOS"
+	}
+	if IsVisionOS(platform) {
+		return "generic/platform=visionOS"
+	}
+	if IsMacOS(platform) {
+		return "generic/platform=macOS"
+	}
+	return "generic/platform=iOS"
+}
+
+// canonicalSimulatorBuildDestination returns the generic simulator destination for a platform.
+// Used by Run() for launching in the simulator and as a secondary validation pass.
+func canonicalSimulatorBuildDestination(platform, watchProjectShape string) string {
+	if IsWatchOS(platform) {
 		if watchProjectShape == WatchShapePaired {
 			return "generic/platform=iOS Simulator"
 		}
@@ -96,34 +119,66 @@ func canonicalBuildDestinationForShape(platform, watchProjectShape string) strin
 
 func canonicalBuildCommandForShape(appName, platform, watchProjectShape string) string {
 	destination := canonicalBuildDestinationForShape(platform, watchProjectShape)
-	return fmt.Sprintf("xcodebuild -project %s.xcodeproj -scheme %s -destination '%s' -quiet build", appName, appName, destination)
+	if IsMacOS(platform) {
+		// macOS has no separate device/simulator distinction
+		return fmt.Sprintf("xcodebuild -project %s.xcodeproj -scheme %s -destination '%s' -quiet build", appName, appName, destination)
+	}
+	return fmt.Sprintf("xcodebuild -project %s.xcodeproj -scheme %s -destination '%s' CODE_SIGNING_ALLOWED=NO -quiet build", appName, appName, destination)
 }
 
 func canonicalBuildCommand(appName, platform string) string {
 	return canonicalBuildCommandForShape(appName, platform, "")
 }
 
-// multiPlatformBuildCommands returns build commands for each platform scheme.
+// multiPlatformBuildCommands returns device build commands for each platform scheme.
+// Device builds are the default — they catch entitlement and architecture issues.
 func multiPlatformBuildCommands(appName string, platforms []string) []string {
+	var cmds []string
+	for _, plat := range platforms {
+		var scheme string
+		switch plat {
+		case PlatformTvOS:
+			scheme = appName + "TV"
+		case PlatformVisionOS:
+			scheme = appName + "Vision"
+		case PlatformMacOS:
+			scheme = appName + "Mac"
+		case PlatformWatchOS:
+			// In multi-platform, watchOS is built via the iOS scheme (paired)
+			continue
+		default:
+			scheme = appName
+		}
+		destination := PlatformBuildDestination(plat)
+		if plat == PlatformMacOS {
+			cmds = append(cmds, fmt.Sprintf("xcodebuild -project %s.xcodeproj -scheme %s -destination '%s' -quiet build", appName, scheme, destination))
+		} else {
+			cmds = append(cmds, fmt.Sprintf("xcodebuild -project %s.xcodeproj -scheme %s -destination '%s' CODE_SIGNING_ALLOWED=NO -quiet build", appName, scheme, destination))
+		}
+	}
+	return cmds
+}
+
+// multiPlatformSimulatorBuildCommands returns simulator build commands for each platform scheme.
+// Used as a secondary validation pass and for Run() launching.
+func multiPlatformSimulatorBuildCommands(appName string, platforms []string) []string {
 	var cmds []string
 	for _, plat := range platforms {
 		var scheme, destination string
 		switch plat {
 		case PlatformTvOS:
 			scheme = appName + "TV"
-			destination = PlatformBuildDestination(PlatformTvOS)
+			destination = PlatformSimulatorDestination(PlatformTvOS)
 		case PlatformVisionOS:
 			scheme = appName + "Vision"
-			destination = PlatformBuildDestination(PlatformVisionOS)
+			destination = PlatformSimulatorDestination(PlatformVisionOS)
 		case PlatformMacOS:
-			scheme = appName + "Mac"
-			destination = PlatformBuildDestination(PlatformMacOS)
+			continue // macOS has no separate simulator build
 		case PlatformWatchOS:
-			// In multi-platform, watchOS is built via the iOS scheme (paired)
-			continue
+			continue // watchOS is built via iOS scheme
 		default:
 			scheme = appName
-			destination = PlatformBuildDestination(PlatformIOS)
+			destination = PlatformSimulatorDestination(PlatformIOS)
 		}
 		cmds = append(cmds, fmt.Sprintf("xcodebuild -project %s.xcodeproj -scheme %s -destination '%s' -quiet build", appName, scheme, destination))
 	}

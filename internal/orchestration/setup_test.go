@@ -736,35 +736,44 @@ func TestWriteInitialCLAUDEMDWatchOS(t *testing.T) {
 	if !strings.Contains(text, "watchOS") || !strings.Contains(text, "Apple Watch") {
 		t.Error("watchOS project-overview should mention watchOS/Apple Watch platform")
 	}
-	if !strings.Contains(text, "watchOS Simulator") {
-		t.Error("watchOS project-overview should have watchOS Simulator in build command")
+	if !strings.Contains(text, "generic/platform=watchOS") {
+		t.Error("watchOS project-overview should have watchOS device destination in build command")
 	}
 }
 
 func TestCanonicalBuildCommandWatchOS(t *testing.T) {
 	cmd := canonicalBuildCommand("WatchApp", "watchos")
-	if !strings.Contains(cmd, "watchOS Simulator") {
-		t.Errorf("watchOS build command should use watchOS Simulator, got: %s", cmd)
+	if !strings.Contains(cmd, "generic/platform=watchOS") {
+		t.Errorf("watchOS build command should use watchOS device destination, got: %s", cmd)
 	}
-	if strings.Contains(cmd, "iOS Simulator") {
-		t.Errorf("watchOS build command should not use iOS Simulator, got: %s", cmd)
+	if strings.Contains(cmd, "Simulator") {
+		t.Errorf("watchOS build command should not use Simulator, got: %s", cmd)
+	}
+	if !strings.Contains(cmd, "CODE_SIGNING_ALLOWED=NO") {
+		t.Errorf("watchOS build command should include CODE_SIGNING_ALLOWED=NO, got: %s", cmd)
 	}
 }
 
 func TestCanonicalBuildCommandIOS(t *testing.T) {
 	cmd := canonicalBuildCommand("IOSApp", "ios")
-	if !strings.Contains(cmd, "iOS Simulator") {
-		t.Errorf("iOS build command should use iOS Simulator, got: %s", cmd)
+	if !strings.Contains(cmd, "generic/platform=iOS") {
+		t.Errorf("iOS build command should use iOS device destination, got: %s", cmd)
+	}
+	if strings.Contains(cmd, "Simulator") {
+		t.Errorf("iOS build command should not use Simulator by default, got: %s", cmd)
+	}
+	if !strings.Contains(cmd, "CODE_SIGNING_ALLOWED=NO") {
+		t.Errorf("iOS build command should include CODE_SIGNING_ALLOWED=NO, got: %s", cmd)
 	}
 }
 
 func TestCanonicalBuildCommandPairedWatchUsesIOSDestination(t *testing.T) {
 	cmd := canonicalBuildCommandForShape("WristCounter", "watchos", WatchShapePaired)
-	if !strings.Contains(cmd, "iOS Simulator") {
-		t.Errorf("paired watch build command should use iOS Simulator destination, got: %s", cmd)
+	if !strings.Contains(cmd, "generic/platform=iOS") {
+		t.Errorf("paired watch build command should use iOS device destination, got: %s", cmd)
 	}
-	if strings.Contains(cmd, "watchOS Simulator") {
-		t.Errorf("paired watch build command should not use watchOS Simulator destination, got: %s", cmd)
+	if strings.Contains(cmd, "Simulator") {
+		t.Errorf("paired watch build command should not use Simulator, got: %s", cmd)
 	}
 }
 
@@ -1073,18 +1082,18 @@ func TestMultiPlatformBuildCommands(t *testing.T) {
 	hasIOS := false
 	hasTV := false
 	for _, cmd := range cmds {
-		if strings.Contains(cmd, "FocusFlow.xcodeproj") && strings.Contains(cmd, "iOS Simulator") {
+		if strings.Contains(cmd, "FocusFlow.xcodeproj") && strings.Contains(cmd, "generic/platform=iOS") && strings.Contains(cmd, "CODE_SIGNING_ALLOWED=NO") {
 			hasIOS = true
 		}
-		if strings.Contains(cmd, "FocusFlowTV") && strings.Contains(cmd, "tvOS Simulator") {
+		if strings.Contains(cmd, "FocusFlowTV") && strings.Contains(cmd, "generic/platform=tvOS") && strings.Contains(cmd, "CODE_SIGNING_ALLOWED=NO") {
 			hasTV = true
 		}
 	}
 	if !hasIOS {
-		t.Error("expected iOS build command")
+		t.Error("expected iOS device build command with CODE_SIGNING_ALLOWED=NO")
 	}
 	if !hasTV {
-		t.Error("expected tvOS build command")
+		t.Error("expected tvOS device build command with CODE_SIGNING_ALLOWED=NO")
 	}
 }
 

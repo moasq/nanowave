@@ -8,6 +8,25 @@ import (
 	"testing"
 )
 
+func TestBuildImageContextAllowsImageOnlyPrompts(t *testing.T) {
+	got := buildImageContext("", []string{"/tmp/example.png"})
+
+	if strings.HasPrefix(got, "\n") {
+		t.Fatalf("buildImageContext() added leading newline: %q", got)
+	}
+	if !strings.Contains(got, "Image 1: /tmp/example.png") {
+		t.Fatalf("buildImageContext() missing image path: %q", got)
+	}
+}
+
+func TestBuildImageContextKeepsPromptAndImages(t *testing.T) {
+	got := buildImageContext("Inspect this", []string{"/tmp/example.png"})
+
+	if !strings.HasPrefix(got, "Inspect this\n\n[Attached images") {
+		t.Fatalf("buildImageContext() = %q", got)
+	}
+}
+
 func TestStreamNDJSONLinesHandlesLargeLine(t *testing.T) {
 	large := strings.Repeat("a", 1024*1024+128)
 	input := []byte(large + "\n")

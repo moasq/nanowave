@@ -707,13 +707,15 @@ Keep Apple docs MCP plus web fallback as the default recovery path.
 
 func writeProjectMakefileWithShape(projectDir, appName, platform, watchProjectShape string) error {
 	buildCmd := canonicalBuildCommandForShape(appName, platform, watchProjectShape)
-	destination := canonicalBuildDestinationForShape(platform, watchProjectShape)
-	content := fmt.Sprintf(".PHONY: build test claude-check mcp-health skills-validate\n\nbuild:\n\t%s\n\nmcp-health:\n\t./scripts/claude/mcp-health.sh\n\nskills-validate:\n\t./scripts/claude/validate-skills.sh\n\nclaude-check:\n\t-./scripts/claude/mcp-health.sh\n\tplutil -lint .mcp.json >/dev/null\n\tplutil -lint .claude/settings.json >/dev/null\n\t./scripts/claude/validate-skills.sh\n\t./scripts/claude/check-no-placeholders.sh\n\t./scripts/claude/check-previews.sh\n\t./scripts/claude/check-swift-structure.sh\n\t./scripts/claude/check-a11y-dynamic-type.sh\n\t./scripts/claude/check-a11y-icon-buttons.sh\n\t./scripts/claude/check-project-config-edits.sh --scan || true\n\t./scripts/claude/run-build-check.sh\n\ntest:\n\t@if [ -d Tests ]; then \\\n\t\techo \"Tests directory found; running xcodebuild test\"; \\\n\t\txcodebuild -project %s.xcodeproj -scheme %s -destination '%s' -quiet test; \\\n\telse \\\n\t\techo \"No Tests directory present; skipping tests\"; \\\n\tfi\n", buildCmd, appName, appName, destination)
+	// Tests must run on simulator (device targets can't execute tests without provisioning)
+	testDestination := canonicalSimulatorBuildDestination(platform, watchProjectShape)
+	content := fmt.Sprintf(".PHONY: build test claude-check mcp-health skills-validate\n\nbuild:\n\t%s\n\nmcp-health:\n\t./scripts/claude/mcp-health.sh\n\nskills-validate:\n\t./scripts/claude/validate-skills.sh\n\nclaude-check:\n\t-./scripts/claude/mcp-health.sh\n\tplutil -lint .mcp.json >/dev/null\n\tplutil -lint .claude/settings.json >/dev/null\n\t./scripts/claude/validate-skills.sh\n\t./scripts/claude/check-no-placeholders.sh\n\t./scripts/claude/check-previews.sh\n\t./scripts/claude/check-swift-structure.sh\n\t./scripts/claude/check-a11y-dynamic-type.sh\n\t./scripts/claude/check-a11y-icon-buttons.sh\n\t./scripts/claude/check-project-config-edits.sh --scan || true\n\t./scripts/claude/run-build-check.sh\n\ntest:\n\t@if [ -d Tests ]; then \\\n\t\techo \"Tests directory found; running xcodebuild test\"; \\\n\t\txcodebuild -project %s.xcodeproj -scheme %s -destination '%s' -quiet test; \\\n\telse \\\n\t\techo \"No Tests directory present; skipping tests\"; \\\n\tfi\n", buildCmd, appName, appName, testDestination)
 	return writeTextFile(filepath.Join(projectDir, "Makefile"), content, 0o644)
 }
 
 func writeCIWorkflowWithShape(projectDir, appName, platform, watchProjectShape string) error {
-	destination := canonicalBuildDestinationForShape(platform, watchProjectShape)
+	// CI tests must run on simulator (no device provisioning in CI)
+	destination := canonicalSimulatorBuildDestination(platform, watchProjectShape)
 	content := fmt.Sprintf(`name: Claude Quality
 
 on:
