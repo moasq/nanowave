@@ -21,6 +21,8 @@ func setupWorkspace(projectDir string) error {
 		filepath.Join(projectDir, ".claude", "memory"),
 		filepath.Join(projectDir, ".claude", "commands"),
 		filepath.Join(projectDir, ".claude", "agents"),
+		filepath.Join(projectDir, ".agents", "skills"),
+		filepath.Join(projectDir, ".opencode", "skills"),
 		filepath.Join(projectDir, "scripts", "claude"),
 		filepath.Join(projectDir, "docs"),
 		filepath.Join(projectDir, ".github", "workflows"),

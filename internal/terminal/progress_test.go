@@ -3,6 +3,7 @@ package terminal
 import (
 	"strings"
 	"testing"
+	"time"
 )
 
 func assertFriendlyStructuredStatus(t *testing.T, got string) {
@@ -66,4 +67,13 @@ func TestOnAssistantTextPlanModeKeepsStructuredPreview(t *testing.T) {
 	pd := NewProgressDisplay("plan", 0)
 	pd.OnAssistantText("{\n  \"models\": []\n}")
 	assertFriendlyStructuredStatus(t, pd.statusText)
+}
+
+func TestBuildPhaseHeaderIncludesRuntimeLabel(t *testing.T) {
+	pd := NewProgressDisplay("plan", 0)
+	got := pd.buildPhaseHeader(PhasePlanning, "Codex", 5, 0, 0, false, "•", 7*time.Second)
+
+	if !strings.Contains(got, "[Codex]") {
+		t.Fatalf("buildPhaseHeader() = %q, want runtime label", got)
+	}
 }

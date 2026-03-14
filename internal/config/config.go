@@ -9,12 +9,20 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/moasq/nanowave/internal/agentruntime"
 )
 
 // Config holds the CLI configuration.
 type Config struct {
-	// ClaudePath is the path to the claude binary.
-	ClaudePath string
+	// RuntimeKind is the selected agent runtime.
+	RuntimeKind agentruntime.Kind
+
+	// RuntimePath is the path to the selected runtime binary.
+	RuntimePath string
+
+	// DefaultModel is the configured model for the selected runtime.
+	DefaultModel string
 
 	// NanowaveRoot is the root nanowave directory (~/.nanowave/ equivalent → ~/nanowave/).
 	NanowaveRoot string
@@ -29,6 +37,44 @@ type Config struct {
 	NanowaveDir string
 }
 
+type runtimePreferences struct {
+	RuntimeKind   string                              `json:"runtime_kind,omitempty"`
+	Model         string                              `json:"model,omitempty"`
+	DefaultModels map[string]string                   `json:"default_models,omitempty"`
+	RuntimeModels map[string][]runtimeModelPreference `json:"runtime_models,omitempty"`
+}
+
+type runtimeModelPreference struct {
+	ID          string `json:"id,omitempty"`
+	Description string `json:"description,omitempty"`
+}
+
+func (p *runtimeModelPreference) UnmarshalJSON(data []byte) error {
+	var id string
+	if err := json.Unmarshal(data, &id); err == nil {
+		p.ID = strings.TrimSpace(id)
+		p.Description = ""
+		return nil
+	}
+
+	type alias runtimeModelPreference
+	var decoded alias
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	p.ID = strings.TrimSpace(decoded.ID)
+	p.Description = strings.TrimSpace(decoded.Description)
+	return nil
+}
+
+type RuntimeStatus struct {
+	Kind       agentruntime.Kind
+	Display    string
+	BinaryPath string
+	Version    string
+	Auth       *agentruntime.AuthStatus
+}
+
 // ProjectInfo holds metadata about a project in the catalog.
 type ProjectInfo struct {
 	Name      string
@@ -40,11 +86,6 @@ type ProjectInfo struct {
 // ProjectDir is set to ~/nanowave/projects/ (the catalog root).
 // NanowaveDir is empty until a project is selected via SetProject().
 func Load() (*Config, error) {
-	claudePath, err := findClaude()
-	if err != nil {
-		return nil, fmt.Errorf("claude Code CLI not found: %w\nInstall: curl -fsSL https://claude.ai/install.sh | bash", err)
-	}
-
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get home directory: %w", err)
@@ -58,8 +99,22 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("failed to create project catalog: %w", err)
 	}
 
+	prefs := loadRuntimePreferences(nanowaveRoot)
+	runtimeKind := agentruntime.NormalizeKind(prefs.RuntimeKind)
+	if runtimeKind == "" {
+		if detectedKind, _, ok := agentruntime.FirstInstalledKind(); ok {
+			runtimeKind = detectedKind
+		} else {
+			runtimeKind = agentruntime.KindClaude
+		}
+	}
+
+	runtimePath, _ := agentruntime.FindBinary(runtimeKind)
+
 	return &Config{
-		ClaudePath:   claudePath,
+		RuntimeKind:  runtimeKind,
+		RuntimePath:  runtimePath,
+		DefaultModel: prefs.defaultModelFor(runtimeKind),
 		NanowaveRoot: nanowaveRoot,
 		ProjectDir:   projectDir,
 		NanowaveDir:  "", // set via SetProject()
@@ -138,6 +193,172 @@ func findClaude() (string, error) {
 		return "", err
 	}
 	return path, nil
+}
+
+func preferencesPath(root string) string {
+	return filepath.Join(root, "config.json")
+}
+
+func loadRuntimePreferences(root string) runtimePreferences {
+	data, err := os.ReadFile(preferencesPath(root))
+	if err != nil {
+		return runtimePreferences{}
+	}
+	var prefs runtimePreferences
+	if err := json.Unmarshal(data, &prefs); err != nil {
+		return runtimePreferences{}
+	}
+	return prefs
+}
+
+func (p runtimePreferences) defaultModelFor(kind agentruntime.Kind) string {
+	normalized := agentruntime.NormalizeKind(string(kind))
+	if normalized == "" {
+		return ""
+	}
+	if len(p.DefaultModels) > 0 {
+		if model := strings.TrimSpace(p.DefaultModels[string(normalized)]); model != "" {
+			return model
+		}
+	}
+	if agentruntime.NormalizeKind(p.RuntimeKind) == normalized {
+		return strings.TrimSpace(p.Model)
+	}
+	return ""
+}
+
+func (p *runtimePreferences) setDefaultModel(kind agentruntime.Kind, model string) {
+	normalized := agentruntime.NormalizeKind(string(kind))
+	model = strings.TrimSpace(model)
+	p.RuntimeKind = string(normalized)
+	p.Model = model
+	if p.DefaultModels == nil {
+		p.DefaultModels = make(map[string]string)
+	}
+	if model == "" {
+		delete(p.DefaultModels, string(normalized))
+		return
+	}
+	p.DefaultModels[string(normalized)] = model
+}
+
+func (p runtimePreferences) configuredModelsFor(kind agentruntime.Kind) []agentruntime.ModelOption {
+	normalized := agentruntime.NormalizeKind(string(kind))
+	var configured []agentruntime.ModelOption
+	for _, option := range p.RuntimeModels[string(normalized)] {
+		id := strings.TrimSpace(option.ID)
+		if id == "" {
+			continue
+		}
+		configured = append(configured, agentruntime.ModelOption{
+			ID:          id,
+			Description: strings.TrimSpace(option.Description),
+		})
+	}
+	if model := p.defaultModelFor(normalized); model != "" {
+		configured = append(configured, agentruntime.ModelOption{
+			ID:          model,
+			Description: "Selected model",
+		})
+	}
+	return agentruntime.MergeModelOptions(configured)
+}
+
+func (c *Config) DefaultModelForRuntime(kind agentruntime.Kind) string {
+	if c == nil {
+		return ""
+	}
+	prefs := loadRuntimePreferences(c.NanowaveRoot)
+	return prefs.defaultModelFor(kind)
+}
+
+func (c *Config) RuntimeModelOptions(kind agentruntime.Kind, discovered []agentruntime.ModelOption) []agentruntime.ModelOption {
+	if c == nil {
+		return agentruntime.MergeModelOptions(discovered)
+	}
+	prefs := loadRuntimePreferences(c.NanowaveRoot)
+	configured := prefs.configuredModelsFor(kind)
+	return agentruntime.MergeModelOptions(configured, discovered)
+}
+
+func (c *Config) SaveRuntimePreferences(kind agentruntime.Kind, model string) error {
+	prefs := loadRuntimePreferences(c.NanowaveRoot)
+	prefs.setDefaultModel(kind, model)
+	data, err := json.MarshalIndent(prefs, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal runtime preferences: %w", err)
+	}
+	if err := os.MkdirAll(c.NanowaveRoot, 0o755); err != nil {
+		return fmt.Errorf("failed to create nanowave root: %w", err)
+	}
+	if err := os.WriteFile(preferencesPath(c.NanowaveRoot), data, 0o644); err != nil {
+		return fmt.Errorf("failed to write runtime preferences: %w", err)
+	}
+	c.RuntimeKind = kind
+	c.DefaultModel = prefs.defaultModelFor(kind)
+	if path, err := agentruntime.FindBinary(kind); err == nil {
+		c.RuntimePath = path
+	}
+	return nil
+}
+
+func CheckRuntime(kind agentruntime.Kind) bool {
+	_, err := agentruntime.FindBinary(kind)
+	return err == nil
+}
+
+func RuntimeVersion(kind agentruntime.Kind, runtimePath string) string {
+	switch agentruntime.NormalizeKind(string(kind)) {
+	case agentruntime.KindClaude:
+		return ClaudeVersion(runtimePath)
+	case agentruntime.KindCodex:
+		return agentruntime.CodexVersion(runtimePath)
+	case agentruntime.KindOpenCode:
+		return agentruntime.OpenCodeVersion(runtimePath)
+	default:
+		return ""
+	}
+}
+
+func RuntimeAuthStatus(kind agentruntime.Kind, runtimePath string) *agentruntime.AuthStatus {
+	switch agentruntime.NormalizeKind(string(kind)) {
+	case agentruntime.KindClaude:
+		status := CheckClaudeAuth(runtimePath)
+		if status == nil {
+			return nil
+		}
+		return &agentruntime.AuthStatus{
+			LoggedIn: status.LoggedIn,
+			Email:    status.Email,
+			Plan:     status.SubscriptionType,
+			Detail:   status.AuthMethod,
+		}
+	case agentruntime.KindCodex:
+		return agentruntime.CheckCodexAuth(runtimePath)
+	case agentruntime.KindOpenCode:
+		return agentruntime.CheckOpenCodeAuth(runtimePath)
+	default:
+		return nil
+	}
+}
+
+func DetectInstalledRuntimes() []RuntimeStatus {
+	var statuses []RuntimeStatus
+	for _, kind := range agentruntime.SupportedKinds() {
+		path, err := agentruntime.FindBinary(kind)
+		if err != nil || path == "" {
+			continue
+		}
+		desc := agentruntime.DescriptorForKind(kind)
+		statuses = append(statuses, RuntimeStatus{
+			Kind:       kind,
+			Display:    desc.DisplayName,
+			BinaryPath: path,
+			Version:    RuntimeVersion(kind, path),
+			Auth:       RuntimeAuthStatus(kind, path),
+		})
+	}
+	return statuses
 }
 
 // CheckXcode returns true if the full Xcode IDE is installed (not just CLT).
@@ -240,4 +461,3 @@ func ClaudeVersion(claudePath string) string {
 	}
 	return strings.TrimSpace(string(out))
 }
-

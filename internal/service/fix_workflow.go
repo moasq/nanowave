@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/moasq/nanowave/internal/claude"
+	"github.com/moasq/nanowave/internal/agentruntime"
 	"github.com/moasq/nanowave/internal/orchestration"
 	"github.com/moasq/nanowave/internal/storage"
 	"github.com/moasq/nanowave/internal/terminal"
@@ -171,14 +171,14 @@ func (s *Service) runAutoFixLoop(ctx context.Context, project *storage.Project, 
 		spinner.Start()
 
 		appendPrompt, userMsg := buildFixPrompt(projectName(project), specs, failure)
-		resp, fixErr := s.claude.GenerateStreaming(ctx, userMsg, claude.GenerateOpts{
+		resp, fixErr := s.runtime.GenerateStreaming(ctx, userMsg, agentruntime.GenerateOpts{
 			AppendSystemPrompt: appendPrompt,
 			AllowedTools:       orchestration.DefaultAgenticTools(),
 			MaxTurns:           20,
-			Model:              s.model,
+			Model:              s.phaseModel(agentruntime.PhaseFix),
 			WorkDir:            project.ProjectPath,
 			SessionID:          project.SessionID,
-		}, func(ev claude.StreamEvent) {})
+		}, func(ev agentruntime.StreamEvent) {})
 		if fixErr != nil {
 			spinner.Stop()
 			return fixErr

@@ -483,3 +483,94 @@ func writeSkillCatalog(projectDir string) error {
 
 	return writeTextFile(filepath.Join(skillsDir, "INDEX.md"), b.String(), 0o644)
 }
+
+func copyTree(srcDir, dstDir string) error {
+	return filepath.WalkDir(srcDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, err := filepath.Rel(srcDir, path)
+		if err != nil {
+			return err
+		}
+		target := filepath.Join(dstDir, rel)
+		if d.IsDir() {
+			return os.MkdirAll(target, 0o755)
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(target, data, 0o644)
+	})
+}
+
+func writeAgentRuntimeSkillProjection(projectDir string) error {
+	srcDir := filepath.Join(projectDir, ".claude", "skills")
+	if _, err := os.Stat(srcDir); err != nil {
+		return err
+	}
+	for _, dest := range []string{
+		filepath.Join(projectDir, ".agents", "skills"),
+		filepath.Join(projectDir, ".opencode", "skills"),
+	} {
+		if err := os.RemoveAll(dest); err != nil {
+			return err
+		}
+		if err := os.MkdirAll(dest, 0o755); err != nil {
+			return err
+		}
+		if err := copyTree(srcDir, dest); err != nil {
+			return err
+		}
+	}
+
+	type skillInfo struct {
+		Name        string
+		Description string
+		Path        string
+	}
+	var skills []skillInfo
+	entries, err := os.ReadDir(srcDir)
+	if err != nil {
+		return err
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		skillPath := filepath.Join(srcDir, entry.Name(), "SKILL.md")
+		data, err := os.ReadFile(skillPath)
+		if err != nil {
+			continue
+		}
+		desc, _ := extractFrontmatter(string(data))
+		skills = append(skills, skillInfo{
+			Name:        entry.Name(),
+			Description: desc,
+			Path:        filepath.ToSlash(filepath.Join(".agents", "skills", entry.Name(), "SKILL.md")),
+		})
+	}
+	sort.Slice(skills, func(i, j int) bool { return skills[i].Name < skills[j].Name })
+
+	var b strings.Builder
+	b.WriteString("# Nanowave Agent Skills\n\n")
+	b.WriteString("This project exposes the generated Nanowave skills in a runtime-neutral layout.\n")
+	b.WriteString("Use the skill catalog below and open only the relevant `SKILL.md` plus directly referenced companion docs.\n\n")
+	if len(skills) > 0 {
+		b.WriteString("## Available skills\n")
+		for _, skill := range skills {
+			fmt.Fprintf(&b, "- `%s` — %s (%s)\n", skill.Name, skill.Description, skill.Path)
+		}
+	}
+	b.WriteString("\n## Usage rules\n")
+	b.WriteString("- Prefer `.agents/skills/` as the canonical project-local skill path for agent runtimes.\n")
+	b.WriteString("- Open only the specific skill(s) needed for the current task.\n")
+	b.WriteString("- Follow referenced markdown files progressively; do not bulk-load all companion docs.\n")
+	b.WriteString("- Preserve `.claude/` files for Claude Code compatibility.\n")
+
+	if err := writeTextFile(filepath.Join(projectDir, "AGENTS.md"), b.String(), 0o644); err != nil {
+		return err
+	}
+	return writeTextFile(filepath.Join(projectDir, ".opencode", "AGENTS.md"), b.String(), 0o644)
+}

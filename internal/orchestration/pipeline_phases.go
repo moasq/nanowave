@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/moasq/nanowave/internal/claude"
+	"github.com/moasq/nanowave/internal/agentruntime"
 	"github.com/moasq/nanowave/internal/terminal"
 )
 
@@ -23,34 +23,28 @@ func (p *Pipeline) analyze(ctx context.Context, prompt string, intent *IntentDec
 		userMsg = fmt.Sprintf("Existing project: %s (platform: %s)\nEdit request: %s", ac.AppName, ac.Platform, prompt)
 	}
 
-	progress.AddActivity("Sending request to Claude")
+	progress.AddActivity("Starting analysis")
 
 	gotFirstDelta := false
-	resp, err := p.claude.GenerateStreaming(ctx, userMsg, claude.GenerateOpts{
+	var progressCb func(agentruntime.StreamEvent)
+	if progress != nil {
+		progressCb = newProgressCallback(progress, p.progressRuntimeLabel())
+	}
+	resp, err := p.runtime.GenerateStreaming(ctx, userMsg, agentruntime.GenerateOpts{
 		SystemPrompt: systemPrompt,
 		MaxTurns:     3,
-		Model:        "sonnet",
-	}, func(ev claude.StreamEvent) {
+		Model:        p.modelForPhase(agentruntime.PhaseAnalyze),
+	}, func(ev agentruntime.StreamEvent) {
+		if progressCb != nil {
+			progressCb(ev)
+		}
 		switch ev.Type {
-		case "system":
-			progress.AddActivity("Connected to Claude")
 		case "content_block_delta":
 			if ev.Text != "" {
 				if !gotFirstDelta {
 					gotFirstDelta = true
 					progress.AddActivity("Identifying features and requirements")
 				}
-				progress.OnStreamingText(ev.Text)
-			}
-		case "assistant":
-			if ev.Text != "" {
-				progress.OnAssistantText(ev.Text)
-			}
-		case "tool_use":
-			if ev.ToolName != "" {
-				progress.OnToolUse(ev.ToolName, func(key string) string {
-					return extractToolInputString(ev.ToolInput, key)
-				})
 			}
 		}
 	})
@@ -90,34 +84,28 @@ func (p *Pipeline) plan(ctx context.Context, analysis *AnalysisResult, intent *I
 		userMsg = fmt.Sprintf("Create a file-level build plan for this app spec:\n\n%s", string(analysisJSON))
 	}
 
-	progress.AddActivity("Sending analysis to Claude")
+	progress.AddActivity("Starting plan")
 
 	gotFirstDelta := false
-	resp, err := p.claude.GenerateStreaming(ctx, userMsg, claude.GenerateOpts{
+	var progressCb func(agentruntime.StreamEvent)
+	if progress != nil {
+		progressCb = newProgressCallback(progress, p.progressRuntimeLabel())
+	}
+	resp, err := p.runtime.GenerateStreaming(ctx, userMsg, agentruntime.GenerateOpts{
 		SystemPrompt: systemPrompt,
 		MaxTurns:     3,
-		Model:        "sonnet",
-	}, func(ev claude.StreamEvent) {
+		Model:        p.modelForPhase(agentruntime.PhasePlan),
+	}, func(ev agentruntime.StreamEvent) {
+		if progressCb != nil {
+			progressCb(ev)
+		}
 		switch ev.Type {
-		case "system":
-			progress.AddActivity("Connected to Claude")
 		case "content_block_delta":
 			if ev.Text != "" {
 				if !gotFirstDelta {
 					gotFirstDelta = true
-					progress.AddActivity("Designing file structure and models")
+					progress.AddActivity("Drafting file structure and models")
 				}
-				progress.OnStreamingText(ev.Text)
-			}
-		case "assistant":
-			if ev.Text != "" {
-				progress.OnAssistantText(ev.Text)
-			}
-		case "tool_use":
-			if ev.ToolName != "" {
-				progress.OnToolUse(ev.ToolName, func(key string) string {
-					return extractToolInputString(ev.ToolInput, key)
-				})
 			}
 		}
 	})
@@ -134,7 +122,7 @@ func (p *Pipeline) plan(ctx context.Context, analysis *AnalysisResult, intent *I
 }
 
 // buildStreaming runs Phase 4 with real-time streaming output.
-func (p *Pipeline) buildStreaming(ctx context.Context, prompt, appName, projectDir string, analysis *AnalysisResult, plan *PlannerResult, sessionID string, progress *terminal.ProgressDisplay, images []string, backendProvisioned bool, ac ActionContext) (*claude.Response, error) {
+func (p *Pipeline) buildStreaming(ctx context.Context, prompt, appName, projectDir string, analysis *AnalysisResult, plan *PlannerResult, sessionID string, progress *terminal.ProgressDisplay, images []string, backendProvisioned bool, ac ActionContext) (*agentruntime.Response, error) {
 	appendPrompt, userMsg, err := p.buildPrompts(prompt, appName, projectDir, analysis, plan, backendProvisioned, ac)
 	if err != nil {
 		return nil, err
@@ -164,10 +152,10 @@ func (p *Pipeline) buildStreaming(ctx context.Context, prompt, appName, projectD
 	}
 	terminal.Detail("Supabase MCP tools", fmt.Sprintf("allowed=%t", hasSupabaseTools))
 
-	return p.claude.GenerateStreaming(ctx, userMsg, claude.GenerateOpts{
+	return p.runtime.GenerateStreaming(ctx, userMsg, agentruntime.GenerateOpts{
 		AppendSystemPrompt: appendPrompt,
 		MaxTurns:           30,
-		Model:              p.buildModel(),
+		Model:              p.modelForPhase(agentruntime.PhaseBuild),
 		WorkDir:            projectDir,
 		AllowedTools:       tools,
 		SessionID:          sessionID,
@@ -176,7 +164,7 @@ func (p *Pipeline) buildStreaming(ctx context.Context, prompt, appName, projectD
 }
 
 // completeMissingFilesStreaming runs targeted completion passes for unresolved planned files.
-func (p *Pipeline) completeMissingFilesStreaming(ctx context.Context, appName, projectDir string, plan *PlannerResult, report *FileCompletionReport, sessionID string, progress *terminal.ProgressDisplay) (*claude.Response, error) {
+func (p *Pipeline) completeMissingFilesStreaming(ctx context.Context, appName, projectDir string, plan *PlannerResult, report *FileCompletionReport, sessionID string, progress *terminal.ProgressDisplay) (*agentruntime.Response, error) {
 	appendPrompt, userMsg, err := p.completionPrompts(appName, projectDir, plan, report)
 	if err != nil {
 		return nil, err
@@ -184,10 +172,10 @@ func (p *Pipeline) completeMissingFilesStreaming(ctx context.Context, appName, p
 
 	tools := p.baseAgenticTools()
 
-	return p.claude.GenerateStreaming(ctx, userMsg, claude.GenerateOpts{
+	return p.runtime.GenerateStreaming(ctx, userMsg, agentruntime.GenerateOpts{
 		AppendSystemPrompt: appendPrompt,
 		MaxTurns:           20,
-		Model:              p.buildModel(),
+		Model:              p.modelForPhase(agentruntime.PhaseBuild),
 		WorkDir:            projectDir,
 		AllowedTools:       tools,
 		SessionID:          sessionID,

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/moasq/nanowave/internal/claude"
+	"github.com/moasq/nanowave/internal/agentruntime"
 	"github.com/moasq/nanowave/internal/terminal"
 )
 
@@ -380,18 +380,25 @@ func sanitizeToPascalCase(name string) string {
 	return result.String()
 }
 
-// newProgressCallback returns a callback that updates a ProgressDisplay based on Claude Code streaming events.
+// newProgressCallback returns a callback that updates a ProgressDisplay based on runtime streaming events.
 // It handles both real-time stream events (tool_use_start, tool_input_delta) and
 // full message events (tool_use, assistant) for maximum visibility.
-func newProgressCallback(progress *terminal.ProgressDisplay) func(claude.StreamEvent) {
+func newProgressCallback(progress *terminal.ProgressDisplay, runtimeLabel string) func(agentruntime.StreamEvent) {
 	var (
 		currentTool    string
 		inputBuf       strings.Builder
 		toolRegistered bool // whether we've added an activity for the current tool
+		runtimeReady   bool
 	)
 
-	return func(ev claude.StreamEvent) {
+	return func(ev agentruntime.StreamEvent) {
 		switch ev.Type {
+		case "system":
+			if !runtimeReady {
+				runtimeReady = true
+				progress.AddActivity(runtimeReadyActivityLabel(runtimeLabel))
+			}
+
 		case "tool_use_start":
 			// Real-time: tool is starting, we know the name immediately.
 			// Add a preliminary activity with just the tool name.
@@ -450,8 +457,8 @@ func newProgressCallback(progress *terminal.ProgressDisplay) func(claude.StreamE
 	}
 }
 
-// showCost displays the total cost of a Claude Code response.
-func showCost(resp *claude.Response) {
+// showCost displays the total cost of a runtime response.
+func showCost(resp *agentruntime.Response) {
 	if resp != nil && resp.TotalCostUSD > 0 {
 		terminal.Detail("Cost", fmt.Sprintf("$%.4f", resp.TotalCostUSD))
 	}

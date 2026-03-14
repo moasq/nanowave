@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/moasq/nanowave/internal/claude"
+	"github.com/moasq/nanowave/internal/agentruntime"
 	"github.com/moasq/nanowave/internal/config"
 	"github.com/moasq/nanowave/internal/integrations"
 	"github.com/moasq/nanowave/internal/mcpregistry"
@@ -79,7 +79,7 @@ func ReadProjectAppName(projectDir string) string {
 	return cfg.AppName
 }
 
-// coreAgenticTools is the set of non-MCP tools Claude Code always needs.
+// coreAgenticTools is the set of non-MCP tools the supported agent runtimes need.
 // MCP tools (apple-docs, xcodegen) are provided by the registry.
 var coreAgenticTools = []string{
 	"Write", "Edit", "Read", "Bash", "Glob", "Grep",
@@ -105,13 +105,14 @@ func (ac ActionContext) IsEdit() bool {
 
 // Pipeline orchestrates the multi-phase app generation process.
 type Pipeline struct {
-	claude          claude.ClaudeAgent
+	runtime         agentruntime.Runtime
+	runtimeKind     agentruntime.Kind
 	config          *config.Config
-	model           string                         // user-selected model for code generation (empty = "sonnet")
+	model           string                         // user-selected model for code generation
 	manager         *integrations.Manager          // provider-based integration manager (nil = no integrations)
 	registry        *mcpregistry.Registry          // internal MCP server registry (apple-docs, xcodegen)
-	activeProviders []integrations.ActiveProvider   // resolved providers for current build (transient)
-	onStreamEvent   func(claude.StreamEvent)       // optional hook for web UI streaming (nil = CLI-only)
+	activeProviders []integrations.ActiveProvider  // resolved providers for current build (transient)
+	onStreamEvent   func(agentruntime.StreamEvent) // optional hook for web UI streaming (nil = CLI-only)
 }
 
 // SetManager sets the integration manager for provider-based integrations.
@@ -121,33 +122,58 @@ func (p *Pipeline) SetManager(m *integrations.Manager) {
 
 // SetStreamHook sets an optional callback invoked for every streaming event.
 // Used by the web UI to mirror CLI progress in the browser.
-func (p *Pipeline) SetStreamHook(hook func(claude.StreamEvent)) {
+func (p *Pipeline) SetStreamHook(hook func(agentruntime.StreamEvent)) {
 	p.onStreamEvent = hook
 }
 
+func (p *Pipeline) progressRuntimeLabel() string {
+	label := ""
+	if p.runtime != nil {
+		label = strings.TrimSpace(p.runtime.DisplayName())
+	}
+	if label == "" {
+		label = strings.TrimSpace(agentruntime.DescriptorForKind(p.runtimeKind).DisplayName)
+	}
+	return strings.TrimSpace(strings.TrimSuffix(label, " Code"))
+}
+
+func runtimeReadyActivityLabel(runtimeLabel string) string {
+	runtimeLabel = strings.TrimSpace(runtimeLabel)
+	if runtimeLabel == "" {
+		return "Runtime ready"
+	}
+	return runtimeLabel + " ready"
+}
+
+func (p *Pipeline) newProgressDisplay(mode string, totalFiles int) *terminal.ProgressDisplay {
+	progress := terminal.NewProgressDisplay(mode, totalFiles)
+	progress.SetRuntimeLabel(p.progressRuntimeLabel())
+	return progress
+}
+
 // makeStreamCallback wraps the terminal progress callback and the optional web hook.
-func (p *Pipeline) makeStreamCallback(progress *terminal.ProgressDisplay) func(claude.StreamEvent) {
-	termCb := newProgressCallback(progress)
+func (p *Pipeline) makeStreamCallback(progress *terminal.ProgressDisplay) func(agentruntime.StreamEvent) {
+	termCb := newProgressCallback(progress, p.progressRuntimeLabel())
 	if p.onStreamEvent == nil {
 		return termCb
 	}
 	hook := p.onStreamEvent
-	return func(ev claude.StreamEvent) {
+	return func(ev agentruntime.StreamEvent) {
 		termCb(ev)
 		hook(ev)
 	}
 }
 
 // NewPipeline creates a new pipeline orchestrator.
-// model overrides the default "sonnet" model for build/edit/fix phases.
-func NewPipeline(claudeClient claude.ClaudeAgent, cfg *config.Config, model string) *Pipeline {
+func NewPipeline(runtimeClient agentruntime.Runtime, runtimeKind agentruntime.Kind, cfg *config.Config, model string) *Pipeline {
 	reg := mcpregistry.New()
 	mcpregistry.RegisterAll(reg)
 	return &Pipeline{
-		claude:   claudeClient,
-		config:   cfg,
-		model:    model,
-		registry: reg,
+		runtime:     runtimeClient,
+		runtimeKind: runtimeKind,
+		config:      cfg,
+		model:       model,
+		registry:    reg,
 	}
 }
 
@@ -159,21 +185,20 @@ func (p *Pipeline) baseAgenticTools() []string {
 	return tools
 }
 
-// buildModel returns the model to use for code generation phases.
-func (p *Pipeline) buildModel() string {
+func (p *Pipeline) modelForPhase(phase agentruntime.Phase) string {
 	if p.model != "" {
 		return p.model
 	}
-	return "sonnet"
+	if p.runtime == nil {
+		return ""
+	}
+	return p.runtime.DefaultModel(phase)
 }
 
 // QuickIntentCheck runs the intent router and returns the decision.
 // Used by Service.Send() to detect ASC intent before entering build/edit.
 func (p *Pipeline) QuickIntentCheck(ctx context.Context, prompt string) (*IntentDecision, error) {
-	progress := terminal.NewProgressDisplay("intent", 0)
-	progress.Start()
-	defer progress.Stop()
-	return p.decideBuildIntent(ctx, prompt, progress)
+	return p.decideBuildIntent(ctx, prompt, nil)
 }
 
 // Action runs the unified pipeline: intent → analyze → plan → integrations → code.
@@ -184,7 +209,7 @@ func (p *Pipeline) Action(ctx context.Context, prompt string, ac ActionContext, 
 	isEdit := ac.IsEdit()
 
 	// Phase 0: Intent decision (advisory hints for analyzer/planner)
-	intentProgress := terminal.NewProgressDisplay("intent", 0)
+	intentProgress := p.newProgressDisplay("intent", 0)
 	intentProgress.Start()
 
 	intentDecision, intentErr := p.decideBuildIntent(ctx, prompt, intentProgress)
@@ -222,7 +247,7 @@ func (p *Pipeline) Action(ctx context.Context, prompt string, ac ActionContext, 
 	}
 
 	// Phase 2: Analyze (with retry for transient failures)
-	analyzeProgress := terminal.NewProgressDisplay("analyze", 0)
+	analyzeProgress := p.newProgressDisplay("analyze", 0)
 	analyzeProgress.Start()
 
 	analysis, err := retryPhase(ctx, maxPhaseRetries, func() (*AnalysisResult, error) {
@@ -256,7 +281,7 @@ func (p *Pipeline) Action(ctx context.Context, prompt string, ac ActionContext, 
 	}
 
 	// Phase 3: Plan (with retry for transient failures)
-	planProgress := terminal.NewProgressDisplay("plan", 0)
+	planProgress := p.newProgressDisplay("plan", 0)
 	planProgress.Start()
 
 	plan, err := retryPhase(ctx, maxPhaseRetries, func() (*PlannerResult, error) {
@@ -315,14 +340,14 @@ func (p *Pipeline) Action(ctx context.Context, prompt string, ac ActionContext, 
 		totalCacheCreate  int
 	)
 
-	progress := terminal.NewProgressDisplay("build", len(plan.Files))
+	progress := p.newProgressDisplay("build", len(plan.Files))
 	progress.Start()
 
 	prevValidCount := 0
 	for pass := 1; pass <= maxBuildCompletionPasses; pass++ {
 		passLabel := fmt.Sprintf("Generation pass %d", pass)
 
-		var resp *claude.Response
+		var resp *agentruntime.Response
 		if pass == 1 {
 			resp, err = p.buildStreaming(ctx, prompt, appName, projectDir, analysis, plan, sessionID, progress, images, backendProvisioned, ac)
 		} else {

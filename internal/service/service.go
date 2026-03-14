@@ -8,12 +8,13 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 
 	"os/user"
 
-	"github.com/moasq/nanowave/internal/claude"
+	"github.com/moasq/nanowave/internal/agentruntime"
 	"github.com/moasq/nanowave/internal/config"
 	"github.com/moasq/nanowave/internal/integrations"
 	"github.com/moasq/nanowave/internal/integrations/providers"
@@ -24,27 +25,73 @@ import (
 
 // Service coordinates app generation for CLI usage.
 type Service struct {
-	config       *config.Config
-	claude       *claude.Client
-	projectStore *storage.ProjectStore
-	historyStore *storage.HistoryStore
-	usageStore   *storage.UsageStore
-	manager      *integrations.Manager
-	model        string // user-selected model override (empty = default "sonnet")
+	config         *config.Config
+	runtime        agentruntime.Runtime
+	projectStore   *storage.ProjectStore
+	historyStore   *storage.HistoryStore
+	usageStore     *storage.UsageStore
+	manager        *integrations.Manager
+	runtimeKind    agentruntime.Kind
+	model          string // user-selected model override for the active runtime
+	logWatchMu     sync.Mutex
+	logWatchCancel context.CancelFunc
+	logWatchSeq    uint64
 }
 
 // ServiceOpts holds optional configuration for the service.
 type ServiceOpts struct {
-	Model string // Claude model override (sonnet, opus, haiku)
+	Runtime string
+	Model   string
 }
 
 // NewService creates a new service.
 func NewService(cfg *config.Config, opts ...ServiceOpts) (*Service, error) {
-	claudeClient := claude.NewClient(cfg.ClaudePath)
+	projectStore := storage.NewProjectStore(cfg.NanowaveDir)
+	project, _ := projectStore.Load()
 
-	var model string
-	if len(opts) > 0 && opts[0].Model != "" {
-		model = opts[0].Model
+	runtimeKind := cfg.RuntimeKind
+	model := ""
+	if project != nil {
+		if project.RuntimeKind != "" {
+			runtimeKind = agentruntime.NormalizeKind(project.RuntimeKind)
+		}
+		if strings.TrimSpace(project.ModelID) != "" {
+			model = strings.TrimSpace(project.ModelID)
+		}
+	}
+	explicitModel := model != ""
+	if len(opts) > 0 {
+		if strings.TrimSpace(opts[0].Runtime) != "" {
+			runtimeKind = agentruntime.NormalizeKind(opts[0].Runtime)
+		}
+		if strings.TrimSpace(opts[0].Model) != "" {
+			model = strings.TrimSpace(opts[0].Model)
+			explicitModel = true
+		}
+	}
+	if runtimeKind == "" {
+		runtimeKind = agentruntime.KindClaude
+	}
+	if !explicitModel {
+		model = strings.TrimSpace(cfg.DefaultModelForRuntime(runtimeKind))
+	}
+
+	runtimePath := cfg.RuntimePath
+	if runtimeKind != cfg.RuntimeKind || strings.TrimSpace(runtimePath) == "" {
+		runtimePath, _ = agentruntime.FindBinary(runtimeKind)
+	}
+	if strings.TrimSpace(runtimePath) == "" {
+		desc := agentruntime.DescriptorForKind(runtimeKind)
+		return nil, fmt.Errorf("%s CLI is not installed. Install with: %s", desc.DisplayName, desc.InstallCommand)
+	}
+
+	runtimeClient, err := agentruntime.New(runtimeKind, runtimePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize %s runtime: %w", runtimeKind, err)
+	}
+	runtimeModels := cfg.RuntimeModelOptions(runtimeKind, runtimeClient.SuggestedModels())
+	if model == "" || !runtimeSupportsModel(runtimeModels, model) {
+		model = runtimeClient.DefaultModel(agentruntime.PhaseBuild)
 	}
 
 	// Initialize integration manager with all registered providers.
@@ -59,11 +106,12 @@ func NewService(cfg *config.Config, opts ...ServiceOpts) (*Service, error) {
 
 	return &Service{
 		config:       cfg,
-		claude:       claudeClient,
-		projectStore: storage.NewProjectStore(cfg.NanowaveDir),
+		runtime:      runtimeClient,
+		projectStore: projectStore,
 		historyStore: storage.NewHistoryStore(cfg.NanowaveDir),
 		usageStore:   storage.NewUsageStore(cfg.NanowaveDir),
 		manager:      mgr,
+		runtimeKind:  runtimeKind,
 		model:        model,
 	}, nil
 }
@@ -71,9 +119,14 @@ func NewService(cfg *config.Config, opts ...ServiceOpts) (*Service, error) {
 // Send auto-routes to build (no project) or handles the request on an existing project.
 // images is an optional list of absolute paths to image files to include.
 func (s *Service) Send(ctx context.Context, prompt string, images []string) error {
+	s.stopBackgroundLogStreaming()
+
 	// Guard: refuse mixed build+ASC requests — publishing must be a separate step.
-	pipeline := orchestration.NewPipeline(s.claude, s.config, s.model)
+	pipeline := orchestration.NewPipeline(s.runtime, s.runtimeKind, s.config, s.model)
+	preflight := terminal.NewSpinner("Routing request...")
+	preflight.Start()
 	intent, err := pipeline.QuickIntentCheck(ctx, prompt)
+	preflight.Stop()
 	if err == nil && intent != nil && intent.HasASCIntent {
 		terminal.Warning("App Store Connect operations must be run separately from build/edit.")
 		terminal.Info("Build your app first, then use /connect for publishing and App Store management.")
@@ -99,15 +152,100 @@ func (s *Service) Send(ctx context.Context, prompt string, images []string) erro
 
 // SetModel changes the model at runtime.
 func (s *Service) SetModel(model string) {
-	s.model = model
+	s.model = strings.TrimSpace(model)
+	if project, err := s.projectStore.Load(); err == nil && project != nil {
+		project.ModelID = s.model
+		_ = s.projectStore.Save(project)
+	}
+	_ = s.config.SaveRuntimePreferences(s.runtimeKind, s.model)
 }
 
 // CurrentModel returns the current model name.
 func (s *Service) CurrentModel() string {
 	if s.model == "" {
-		return "sonnet"
+		return s.runtime.DefaultModel(agentruntime.PhaseBuild)
 	}
 	return s.model
+}
+
+func (s *Service) phaseModel(phase agentruntime.Phase) string {
+	if s.model != "" {
+		return s.model
+	}
+	if s.runtime == nil {
+		return ""
+	}
+	return s.runtime.DefaultModel(phase)
+}
+
+func (s *Service) CurrentRuntime() agentruntime.Kind {
+	return s.runtimeKind
+}
+
+func (s *Service) CurrentRuntimeDisplayName() string {
+	if s.runtime == nil {
+		return agentruntime.DescriptorForKind(s.runtimeKind).DisplayName
+	}
+	return s.runtime.DisplayName()
+}
+
+func (s *Service) RuntimeModels() []agentruntime.ModelOption {
+	if s.runtime == nil {
+		return nil
+	}
+	return s.config.RuntimeModelOptions(s.runtimeKind, s.runtime.SuggestedModels())
+}
+
+func (s *Service) SetRuntime(kind string) error {
+	nextKind := agentruntime.NormalizeKind(kind)
+	if nextKind == "" {
+		return fmt.Errorf("unsupported runtime: %s", kind)
+	}
+	path, err := agentruntime.FindBinary(nextKind)
+	if err != nil || path == "" {
+		desc := agentruntime.DescriptorForKind(nextKind)
+		return fmt.Errorf("%s CLI is not installed. Install with: %s", desc.DisplayName, desc.InstallCommand)
+	}
+	client, err := agentruntime.New(nextKind, path)
+	if err != nil {
+		return err
+	}
+	s.runtime = client
+	s.runtimeKind = nextKind
+	s.config.RuntimeKind = nextKind
+	s.config.RuntimePath = path
+	nextModel := strings.TrimSpace(s.config.DefaultModelForRuntime(nextKind))
+	if nextModel == "" {
+		nextModel = s.model
+	}
+	runtimeModels := s.config.RuntimeModelOptions(nextKind, client.SuggestedModels())
+	if nextModel == "" || !runtimeSupportsModel(runtimeModels, nextModel) {
+		nextModel = client.DefaultModel(agentruntime.PhaseBuild)
+	}
+	s.model = nextModel
+	if s.model == "" {
+		s.model = client.DefaultModel(agentruntime.PhaseBuild)
+	}
+	if project, err := s.projectStore.Load(); err == nil && project != nil {
+		project.RuntimeKind = string(nextKind)
+		project.ModelID = s.model
+		_ = s.projectStore.Save(project)
+	}
+	_ = s.config.SaveRuntimePreferences(nextKind, s.model)
+	return nil
+}
+
+func runtimeSupportsModel(models []agentruntime.ModelOption, model string) bool {
+	model = strings.TrimSpace(model)
+	if model == "" || len(models) == 0 {
+		return false
+	}
+	for _, candidate := range models {
+		if strings.TrimSpace(candidate.ID) == model {
+			return true
+		}
+	}
+	return false
 }
 
 // ClearSession resets the session ID so the next request starts fresh.
@@ -191,7 +329,7 @@ func platformBundleIDSuffix(platform string) string {
 func (s *Service) build(ctx context.Context, prompt string, images []string) error {
 	terminal.Header("Nanowave Build")
 
-	pipeline := orchestration.NewPipeline(s.claude, s.config, s.model)
+	pipeline := orchestration.NewPipeline(s.runtime, s.runtimeKind, s.config, s.model)
 	pipeline.SetManager(s.manager)
 	result, err := pipeline.Action(ctx, prompt, orchestration.ActionContext{}, images)
 	if err != nil {
@@ -221,6 +359,8 @@ func (s *Service) build(ctx context.Context, prompt string, images []string) err
 			Platforms:    result.Platforms,
 			DeviceFamily: result.DeviceFamily,
 			SessionID:    result.SessionID,
+			RuntimeKind:  string(s.runtimeKind),
+			ModelID:      s.CurrentModel(),
 		}
 		s.projectStore.Save(proj)
 		s.historyStore.Append(storage.HistoryMessage{Role: "user", Content: prompt})
@@ -277,7 +417,7 @@ func (s *Service) edit(ctx context.Context, prompt string, images []string) erro
 
 	platform, platforms, watchProjectShape := orchestration.DetectProjectBuildHints(project.ProjectPath)
 
-	pipeline := orchestration.NewPipeline(s.claude, s.config, s.model)
+	pipeline := orchestration.NewPipeline(s.runtime, s.runtimeKind, s.config, s.model)
 	pipeline.SetManager(s.manager)
 	ac := orchestration.ActionContext{
 		ProjectDir:        project.ProjectPath,
@@ -299,8 +439,10 @@ func (s *Service) edit(ctx context.Context, prompt string, images []string) erro
 	// Update session ID for conversation continuity
 	if result.SessionID != "" {
 		project.SessionID = result.SessionID
-		s.projectStore.Save(project)
 	}
+	project.RuntimeKind = string(s.runtimeKind)
+	project.ModelID = s.CurrentModel()
+	s.projectStore.Save(project)
 
 	// Show summary
 	terminal.Success(fmt.Sprintf("Edit complete — %d files", result.CompletedFiles))
@@ -324,7 +466,7 @@ func (s *Service) ASC(ctx context.Context, prompt string) error {
 		return fmt.Errorf("no active project found")
 	}
 
-	pipeline := orchestration.NewPipeline(s.claude, s.config, s.model)
+	pipeline := orchestration.NewPipeline(s.runtime, s.runtimeKind, s.config, s.model)
 
 	if prompt == "" {
 		prompt = "Submit this app to TestFlight for beta testing."
@@ -340,8 +482,10 @@ func (s *Service) ASC(ctx context.Context, prompt string) error {
 	s.usageStore.RecordUsage(result.TotalCostUSD, result.InputTokens, result.OutputTokens, result.CacheRead, result.CacheCreated)
 	if result.SessionID != "" {
 		project.SessionID = result.SessionID
-		s.projectStore.Save(project)
 	}
+	project.RuntimeKind = string(s.runtimeKind)
+	project.ModelID = s.CurrentModel()
+	s.projectStore.Save(project)
 
 	// Print summary
 	printSummary(result.Summary)
@@ -352,6 +496,8 @@ func (s *Service) ASC(ctx context.Context, prompt string) error {
 // Unlike Run(), it does not launch on simulator — just validates the build.
 // For multi-platform projects, builds all schemes.
 func (s *Service) Fix(ctx context.Context) error {
+	s.stopBackgroundLogStreaming()
+
 	project, err := s.projectStore.Load()
 	if err != nil || project == nil {
 		return fmt.Errorf("no active project found. Run `nanowave` first")
@@ -455,6 +601,8 @@ func (s *Service) Fix(ctx context.Context) error {
 
 // Run builds and launches the project in the Simulator (or natively on macOS).
 func (s *Service) Run(ctx context.Context) error {
+	s.stopBackgroundLogStreaming()
+
 	project, err := s.projectStore.Load()
 	if err != nil || project == nil {
 		return fmt.Errorf("no active project found. Run `nanowave` first")
@@ -616,17 +764,13 @@ func (s *Service) Run(ctx context.Context) error {
 		// Stream native macOS logs
 		watchDuration := runLogWatchDuration()
 		if watchDuration > 0 {
-			terminal.Info(fmt.Sprintf("Streaming macOS logs for %s...", watchDuration.Truncate(time.Second)))
+			terminal.Info(fmt.Sprintf("Streaming macOS logs in background for %s...", watchDuration.Truncate(time.Second)))
 			terminal.Detail("Tip", "Set NANOWAVE_RUN_LOG_WATCH_SECONDS=0 to disable log watching")
-			if streamErr := streamMacOSLogs(ctx, scheme, bundleID, watchDuration); streamErr != nil {
-				terminal.Warning(fmt.Sprintf("Log streaming unavailable: %v", streamErr))
-			}
+			s.startBackgroundLogStreaming(streamMacOSLogs, scheme, bundleID, watchDuration)
 		} else if watchDuration < 0 {
-			terminal.Info("Streaming macOS logs until interrupted...")
+			terminal.Info("Streaming macOS logs in background until interrupted...")
 			terminal.Detail("Tip", "Set NANOWAVE_RUN_LOG_WATCH_SECONDS=0 to disable or a positive value for timed log watching")
-			if streamErr := streamMacOSLogs(ctx, scheme, bundleID, watchDuration); streamErr != nil {
-				terminal.Warning(fmt.Sprintf("Log streaming unavailable: %v", streamErr))
-			}
+			s.startBackgroundLogStreaming(streamMacOSLogs, scheme, bundleID, watchDuration)
 		}
 	} else {
 		// Simulator path: boot, install, launch
@@ -669,17 +813,13 @@ func (s *Service) Run(ctx context.Context) error {
 
 		watchDuration := runLogWatchDuration()
 		if watchDuration > 0 {
-			terminal.Info(fmt.Sprintf("Streaming simulator logs for %s...", watchDuration.Truncate(time.Second)))
+			terminal.Info(fmt.Sprintf("Streaming simulator logs in background for %s...", watchDuration.Truncate(time.Second)))
 			terminal.Detail("Tip", "Set NANOWAVE_RUN_LOG_WATCH_SECONDS=0 to disable log watching")
-			if streamErr := streamSimulatorLogs(ctx, scheme, bundleID, watchDuration); streamErr != nil {
-				terminal.Warning(fmt.Sprintf("Log streaming unavailable: %v", streamErr))
-			}
+			s.startBackgroundLogStreaming(streamSimulatorLogs, scheme, bundleID, watchDuration)
 		} else if watchDuration < 0 {
-			terminal.Info("Streaming simulator logs until interrupted...")
+			terminal.Info("Streaming simulator logs in background until interrupted...")
 			terminal.Detail("Tip", "Set NANOWAVE_RUN_LOG_WATCH_SECONDS=0 to disable or a positive value for timed log watching")
-			if streamErr := streamSimulatorLogs(ctx, scheme, bundleID, watchDuration); streamErr != nil {
-				terminal.Warning(fmt.Sprintf("Log streaming unavailable: %v", streamErr))
-			}
+			s.startBackgroundLogStreaming(streamSimulatorLogs, scheme, bundleID, watchDuration)
 		}
 	}
 
@@ -704,6 +844,8 @@ func (s *Service) Info() error {
 	} else if project.Platform != "" {
 		terminal.Detail("Platform", project.Platform)
 	}
+	terminal.Detail("Runtime", s.CurrentRuntimeDisplayName())
+	terminal.Detail("Model", s.CurrentModel())
 	terminal.Detail("Simulator", s.CurrentSimulator())
 
 	history, _ := s.historyStore.List()
@@ -798,25 +940,25 @@ func isQuestion(prompt string) bool {
 	return false
 }
 
-// question runs a cheap Q&A path using haiku with read-only tools.
-func (s *Service) question(ctx context.Context, prompt, projectDir, sessionID string) (*claude.Response, error) {
+// question runs a read-only Q&A path using the active runtime model selection.
+func (s *Service) question(ctx context.Context, prompt, projectDir, sessionID string) (*agentruntime.Response, error) {
 	systemPrompt := `You are a helpful assistant answering questions about an iOS app project.
 You have read-only access to the project files. Browse the codebase to answer accurately.
 Be concise and direct. Do not modify any files.`
 
 	readOnlyTools := []string{"Read", "Glob", "Grep"}
 
-	var resp *claude.Response
+	var resp *agentruntime.Response
 	var err error
 
-	resp, err = s.claude.GenerateStreaming(ctx, prompt, claude.GenerateOpts{
+	resp, err = s.runtime.GenerateStreaming(ctx, prompt, agentruntime.GenerateOpts{
 		SystemPrompt: systemPrompt,
 		MaxTurns:     5,
-		Model:        "haiku",
+		Model:        s.phaseModel(agentruntime.PhaseQuestion),
 		WorkDir:      projectDir,
 		AllowedTools: readOnlyTools,
 		SessionID:    sessionID,
-	}, func(ev claude.StreamEvent) {
+	}, func(ev agentruntime.StreamEvent) {
 		if ev.Type == "content_block_delta" && ev.Text != "" {
 			fmt.Print(ev.Text)
 		}
@@ -862,6 +1004,7 @@ func (s *Service) ask(ctx context.Context, prompt string) error {
 
 // Ask is the public method for the /ask command.
 func (s *Service) Ask(ctx context.Context, prompt string) error {
+	s.stopBackgroundLogStreaming()
 	return s.ask(ctx, prompt)
 }
 

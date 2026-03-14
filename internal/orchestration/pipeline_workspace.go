@@ -70,6 +70,10 @@ func (p *Pipeline) setupBuildWorkspace(projectDir, appName string, plan *Planner
 		return fmt.Errorf("failed to write settings: %w", err)
 	}
 
-	terminal.Detail("Workspace", "CLAUDE.md, rules, skills, scaffold ready")
+	if err := writeAgentRuntimeSkillProjection(projectDir); err != nil {
+		return fmt.Errorf("failed to write agent skill projection: %w", err)
+	}
+
+	terminal.Detail("Workspace", "Native runtime scaffolds ready")
 	return nil
 }

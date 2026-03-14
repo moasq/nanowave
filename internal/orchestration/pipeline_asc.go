@@ -10,9 +10,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/moasq/nanowave/internal/agentruntime"
 	"github.com/moasq/nanowave/internal/appleauth"
 	"github.com/moasq/nanowave/internal/asc"
-	"github.com/moasq/nanowave/internal/claude"
 	"github.com/moasq/nanowave/internal/screenshots"
 	"github.com/moasq/nanowave/internal/terminal"
 	"golang.org/x/term"
@@ -328,23 +328,23 @@ Use these flags with xcodebuild: -authenticationKeyPath %s -authenticationKeyID 
 
 	fmt.Printf("\n  %sRunning%s\n", terminal.Bold, terminal.Reset)
 
-	progress := terminal.NewProgressDisplay("asc", 0)
+	progress := p.newProgressDisplay("asc", 0)
 	progress.Start()
-	progressCb := newProgressCallback(progress)
+	progressCb := newProgressCallback(progress, p.progressRuntimeLabel())
 
 	// textRendered tracks whether assistant text was already streamed to the terminal.
 	// When true, the HITL callback skips re-rendering the question text.
 	textRendered := false
 
-	resp, err := p.claude.RunInteractive(ctx, wrappedPrompt, claude.InteractiveOpts{
-		GenerateOpts: claude.GenerateOpts{
+	resp, err := p.runtime.RunInteractive(ctx, wrappedPrompt, agentruntime.InteractiveOpts{
+		GenerateOpts: agentruntime.GenerateOpts{
 			AppendSystemPrompt: systemPrompt,
 			MaxTurns:           200,
-			Model:              p.buildModel(),
+			Model:              p.modelForPhase(agentruntime.PhaseBuild),
 			WorkDir:            projectDir,
 			AllowedTools:       allowedTools,
 		},
-	}, func(ev claude.StreamEvent) {
+	}, func(ev agentruntime.StreamEvent) {
 		switch ev.Type {
 		case "assistant":
 			// Claude finished a text block — render the full text directly.
@@ -358,9 +358,9 @@ Use these flags with xcodebuild: -authenticationKeyPath %s -authenticationKeyID 
 			// Claude is using a tool — restart progress if it was stopped for text
 			if textRendered {
 				fmt.Printf("\n  %sRunning%s\n", terminal.Bold, terminal.Reset)
-				progress = terminal.NewProgressDisplay("asc", 0)
+				progress = p.newProgressDisplay("asc", 0)
 				progress.Start()
-				progressCb = newProgressCallback(progress)
+				progressCb = newProgressCallback(progress, p.progressRuntimeLabel())
 				textRendered = false
 			}
 			progressCb(ev)
@@ -454,9 +454,9 @@ Use these flags with xcodebuild: -authenticationKeyPath %s -authenticationKeyID 
 		}
 
 		fmt.Printf("\n  %sRunning%s\n", terminal.Bold, terminal.Reset)
-		progress = terminal.NewProgressDisplay("asc", 0)
+		progress = p.newProgressDisplay("asc", 0)
 		progress.Start()
-		progressCb = newProgressCallback(progress)
+		progressCb = newProgressCallback(progress, p.progressRuntimeLabel())
 		return userInput
 	})
 	progress.Stop()

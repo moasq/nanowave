@@ -565,7 +565,6 @@ tools:
   - mcp__apple-docs__get_apple_doc_content
   - mcp__apple-docs__search_framework_symbols
   - mcp__apple-docs__get_platform_compatibility
-model: sonnet
 ---
 You are the Apple API research specialist for this project.
 
@@ -584,7 +583,6 @@ tools:
   - mcp__xcodegen__add_localization
   - mcp__xcodegen__set_build_setting
   - mcp__xcodegen__regenerate_project
-model: sonnet
 ---
 You are the XcodeGen configuration specialist.
 
@@ -598,7 +596,6 @@ tools:
   - Grep
   - Glob
   - Bash
-model: sonnet
 ---
 You are the SwiftUI quality reviewer.
 
@@ -615,7 +612,6 @@ tools:
   - Glob
   - Bash
   - ViewImage
-model: sonnet
 ---
 You are the SwiftUI accessibility reviewer.
 
@@ -631,7 +627,6 @@ tools:
   - Write
   - Edit
   - Bash
-model: sonnet
 ---
 Create deterministic, low-risk checks and tests with small diffs.
 Prefer fast checks first and avoid destabilizing app code.

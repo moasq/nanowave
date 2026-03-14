@@ -78,22 +78,23 @@ type activity struct {
 
 // ProgressDisplay provides a rich, phase-aware terminal progress UI.
 type ProgressDisplay struct {
-	mu            sync.Mutex
-	phase         Phase
-	totalFiles    int
-	filesWritten  int
-	activities    []activity
-	statusText    string          // dimmed assistant text
-	streamingBuf  strings.Builder // accumulates streaming text tokens
-	running       bool
-	done          chan struct{}
-	stopped       chan struct{} // closed when renderLoop exits
-	mode          string       // "build", "edit", "fix", "analyze", "plan"
-	totalPhases   int
-	buildFailed   bool
-	fixAttempts   int
-	startedAt     time.Time
-	interactive   bool
+	mu              sync.Mutex
+	phase           Phase
+	runtimeLabel    string
+	totalFiles      int
+	filesWritten    int
+	activities      []activity
+	statusText      string          // dimmed assistant text
+	streamingBuf    strings.Builder // accumulates streaming text tokens
+	running         bool
+	done            chan struct{}
+	stopped         chan struct{} // closed when renderLoop exits
+	mode            string        // "build", "edit", "fix", "analyze", "plan"
+	totalPhases     int
+	buildFailed     bool
+	fixAttempts     int
+	startedAt       time.Time
+	interactive     bool
 	lastRenderID    string
 	maxActivities   int
 	lastRenderLines int // tracks previous render height for dynamic clearing
@@ -151,6 +152,13 @@ func NewProgressDisplay(mode string, totalFiles int) *ProgressDisplay {
 		stopped:       make(chan struct{}),
 		maxActivities: maxAct,
 	}
+}
+
+// SetRuntimeLabel sets the short runtime label rendered in the phase header.
+func (pd *ProgressDisplay) SetRuntimeLabel(label string) {
+	pd.mu.Lock()
+	defer pd.mu.Unlock()
+	pd.runtimeLabel = strings.TrimSpace(label)
 }
 
 // Start begins the rendering loop.
@@ -319,6 +327,8 @@ func (pd *ProgressDisplay) toolActivityLabel(toolName string, inputGetter func(k
 		return "Searching code..."
 	case "WebFetch", "WebSearch":
 		return "Searching web..."
+	case "TodoWrite":
+		return "Updating task list"
 	default:
 		if label := friendlyToolName(toolName, inputGetter); label != "" {
 			return label
@@ -467,6 +477,7 @@ func (pd *ProgressDisplay) renderLoop() {
 func (pd *ProgressDisplay) render(frame int) {
 	pd.mu.Lock()
 	phase := pd.phase
+	runtimeLabel := pd.runtimeLabel
 	totalFiles := pd.totalFiles
 	filesWritten := pd.filesWritten
 	activities := make([]activity, len(pd.activities))
@@ -487,7 +498,7 @@ func (pd *ProgressDisplay) render(frame int) {
 	var lines []string
 
 	// Phase header with progress bar and elapsed time
-	phaseHeader := pd.buildPhaseHeader(phase, totalPhases, totalFiles, filesWritten, buildFailed, spinChar, elapsed)
+	phaseHeader := pd.buildPhaseHeader(phase, runtimeLabel, totalPhases, totalFiles, filesWritten, buildFailed, spinChar, elapsed)
 	lines = append(lines, phaseHeader)
 
 	// Activity tree
@@ -535,7 +546,7 @@ func (pd *ProgressDisplay) render(frame int) {
 }
 
 func (pd *ProgressDisplay) renderNonInteractive(phase Phase, totalPhases, totalFiles, filesWritten int, activities []activity, statusText string, buildFailed bool) {
-	header := pd.buildPhaseHeader(phase, totalPhases, totalFiles, filesWritten, buildFailed, "•", 0)
+	header := pd.buildPhaseHeader(phase, pd.runtimeLabel, totalPhases, totalFiles, filesWritten, buildFailed, "•", 0)
 
 	latestActivity := ""
 	if len(activities) > 0 {
@@ -568,7 +579,7 @@ func (pd *ProgressDisplay) renderNonInteractive(phase Phase, totalPhases, totalF
 }
 
 // buildPhaseHeader builds the header line with optional progress bar.
-func (pd *ProgressDisplay) buildPhaseHeader(phase Phase, totalPhases, totalFiles, filesWritten int, buildFailed bool, spinChar string, elapsed time.Duration) string {
+func (pd *ProgressDisplay) buildPhaseHeader(phase Phase, runtimeLabel string, totalPhases, totalFiles, filesWritten int, buildFailed bool, spinChar string, elapsed time.Duration) string {
 	var sb strings.Builder
 	sb.WriteString("  ")
 
@@ -583,6 +594,10 @@ func (pd *ProgressDisplay) buildPhaseHeader(phase Phase, totalPhases, totalFiles
 		}
 	} else {
 		sb.WriteString(fmt.Sprintf("%s%s %s...%s", Cyan, spinChar, phase.label(), Reset))
+	}
+
+	if runtimeLabel != "" {
+		sb.WriteString(fmt.Sprintf("  %s[%s]%s", Dim, runtimeLabel, Reset))
 	}
 
 	// Progress bar for building code phase

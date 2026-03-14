@@ -31,6 +31,12 @@ func loadProjectService(opts ...service.ServiceOpts) (*service.Service, error) {
 	if err != nil {
 		return nil, err
 	}
+	if len(opts) == 0 {
+		opts = append(opts, service.ServiceOpts{
+			Runtime: AgentFlag(),
+			Model:   ModelFlag(),
+		})
+	}
 	return service.NewService(cfg, opts...)
 }
 

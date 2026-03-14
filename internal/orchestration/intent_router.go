@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/moasq/nanowave/internal/claude"
+	"github.com/moasq/nanowave/internal/agentruntime"
 	"github.com/moasq/nanowave/internal/terminal"
 )
 
@@ -75,7 +75,7 @@ func (p *Pipeline) decideBuildIntent(ctx context.Context, prompt string, progres
 	fallback := defaultBuildIntentDecision()
 
 	if progress != nil {
-		progress.AddActivity("Using AI intent router")
+		progress.AddActivity("Routing request")
 	}
 
 	systemPrompt, err := composeIntentRouterSystemPrompt()
@@ -84,34 +84,28 @@ func (p *Pipeline) decideBuildIntent(ctx context.Context, prompt string, progres
 	}
 
 	gotFirstDelta := false
-	resp, err := p.claude.GenerateStreaming(ctx, prompt, claude.GenerateOpts{
+	var progressCb func(agentruntime.StreamEvent)
+	if progress != nil {
+		progressCb = newProgressCallback(progress, p.progressRuntimeLabel())
+	}
+	resp, err := p.runtime.GenerateStreaming(ctx, prompt, agentruntime.GenerateOpts{
 		SystemPrompt: systemPrompt,
 		MaxTurns:     2,
-		Model:        "haiku",
-	}, func(ev claude.StreamEvent) {
+		Model:        p.modelForPhase(agentruntime.PhaseIntent),
+	}, func(ev agentruntime.StreamEvent) {
 		if progress == nil {
 			return
 		}
+		if progressCb != nil {
+			progressCb(ev)
+		}
 		switch ev.Type {
-		case "system":
-			progress.AddActivity("Connected to Claude")
 		case "content_block_delta":
 			if ev.Text != "" {
 				if !gotFirstDelta {
 					gotFirstDelta = true
-					progress.AddActivity("Generating routing hints")
+					progress.AddActivity("Interpreting intent")
 				}
-				progress.OnStreamingText(ev.Text)
-			}
-		case "assistant":
-			if ev.Text != "" {
-				progress.OnAssistantText(ev.Text)
-			}
-		case "tool_use":
-			if ev.ToolName != "" {
-				progress.OnToolUse(ev.ToolName, func(key string) string {
-					return extractToolInputString(ev.ToolInput, key)
-				})
 			}
 		}
 	})

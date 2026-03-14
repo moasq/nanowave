@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"strconv"
@@ -15,6 +14,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/moasq/nanowave/internal/agentruntime"
 	"github.com/moasq/nanowave/internal/config"
 	"github.com/moasq/nanowave/internal/service"
 	"github.com/moasq/nanowave/internal/storage"
@@ -157,33 +157,35 @@ func runInteractive(cmd *cobra.Command) error {
 		updateCh <- update.Check("moasq", "nanowave", Version)
 	}()
 
-	// Print tool status
-	var claudeVersion string
-	var claudePath string
-	if config.CheckClaude() {
-		claudePath, _ = exec.LookPath("claude")
-		if claudePath != "" {
-			claudeVersion = config.ClaudeVersion(claudePath)
-		}
+	cfg, err := config.Load()
+	if err != nil {
+		return err
 	}
 
-	// Check auth status
-	var authStatus *config.ClaudeAuthStatus
-	if claudePath != "" {
-		authStatus = config.CheckClaudeAuth(claudePath)
+	runtimeKind := cfg.RuntimeKind
+	if AgentFlag() != "" {
+		runtimeKind = agentruntime.NormalizeKind(AgentFlag())
 	}
+	runtimePath := cfg.RuntimePath
+	if runtimeKind != cfg.RuntimeKind || strings.TrimSpace(runtimePath) == "" {
+		runtimePath, _ = agentruntime.FindBinary(runtimeKind)
+	}
+	runtimeVersion := config.RuntimeVersion(runtimeKind, runtimePath)
+	authStatus := config.RuntimeAuthStatus(runtimeKind, runtimePath)
 
 	toolOpts := terminal.ToolStatusOpts{
-		ClaudeVersion: claudeVersion,
-		HasXcode:      config.CheckXcode(),
-		HasXcodeCLT:   config.CheckXcodeCLT(),
-		HasSimulator:  config.CheckSimulator(),
-		HasXcodegen:   config.CheckXcodegen(),
+		RuntimeName:    agentruntime.DescriptorForKind(runtimeKind).DisplayName,
+		RuntimeVersion: runtimeVersion,
+		HasXcode:       config.CheckXcode(),
+		HasXcodeCLT:    config.CheckXcodeCLT(),
+		HasSimulator:   config.CheckSimulator(),
+		HasXcodegen:    config.CheckXcodegen(),
 	}
 	if authStatus != nil {
 		toolOpts.AuthLoggedIn = authStatus.LoggedIn
 		toolOpts.AuthEmail = authStatus.Email
-		toolOpts.AuthPlan = authStatus.SubscriptionType
+		toolOpts.AuthPlan = authStatus.Plan
+		toolOpts.AuthDetail = authStatus.Detail
 	}
 	terminal.ToolStatus(toolOpts)
 
@@ -199,23 +201,16 @@ func runInteractive(cmd *cobra.Command) error {
 	}
 
 	// Auto-run setup on first launch if critical dependencies are missing
-	if needsSetup() {
+	if needsSetupForRuntime(runtimeKind) {
 		if err := runSetup(); err != nil {
 			return err
 		}
 		fmt.Println()
 		// Re-check after setup — if still missing, exit
-		if needsSetup() {
+		if needsSetupForRuntime(runtimeKind) {
 			terminal.Error("Some dependencies are still missing. Please install them and try again.")
 			return fmt.Errorf("setup incomplete")
 		}
-	}
-
-	cfg, err := config.Load()
-	if err != nil {
-		terminal.Error("Claude Code CLI is not installed.")
-		terminal.Info("Run `nanowave setup` to install all prerequisites.")
-		return err
 	}
 
 	// Project selection flow
@@ -234,7 +229,10 @@ func runInteractive(cmd *cobra.Command) error {
 		fmt.Println()
 	}
 
-	svc, err := service.NewService(cfg, service.ServiceOpts{Model: ModelFlag()})
+	svc, err := service.NewService(cfg, service.ServiceOpts{
+		Runtime: AgentFlag(),
+		Model:   ModelFlag(),
+	})
 	if err != nil {
 		return err
 	}
@@ -330,7 +328,7 @@ func runInteractive(cmd *cobra.Command) error {
 				}
 				continue
 			}
-			handled := handleSlashCommand(trimmedInput, cfg, svc, cmd, authStatus)
+			handled := handleSlashCommand(trimmedInput, cfg, svc, cmd)
 			if handled {
 				continue
 			}
@@ -342,11 +340,33 @@ func runInteractive(cmd *cobra.Command) error {
 			break
 		}
 
+		terminal.EchoInput(input, result.Images)
+
+		currentRuntime := svc.CurrentRuntime()
+		currentRuntimePath, _ := agentruntime.FindBinary(currentRuntime)
+		currentAuth := config.RuntimeAuthStatus(currentRuntime, currentRuntimePath)
+
 		// Check auth before sending
-		if authStatus == nil || !authStatus.LoggedIn {
-			terminal.Warning("Not signed in to Claude. Run `claude auth login` to authenticate.")
-			fmt.Println()
-			continue
+		if currentAuth == nil || !currentAuth.LoggedIn {
+			desc := agentruntime.DescriptorForKind(currentRuntime)
+			switch currentRuntime {
+			case agentruntime.KindClaude:
+				terminal.Warning("Not signed in to Claude Code. Run `claude auth login` to authenticate.")
+				fmt.Println()
+				continue
+			case agentruntime.KindCodex:
+				terminal.Warning("Not signed in to Codex. Run `codex login` to authenticate.")
+				fmt.Println()
+				continue
+			case agentruntime.KindOpenCode:
+				terminal.Warning("OpenCode credentials are not configured. Run `opencode auth login` to authenticate.")
+				fmt.Println()
+				continue
+			default:
+				terminal.Warning(fmt.Sprintf("%s is not authenticated.", desc.DisplayName))
+				fmt.Println()
+				continue
+			}
 		}
 
 		// Cache any attached images
@@ -416,13 +436,15 @@ func runInteractive(cmd *cobra.Command) error {
 }
 
 // handleSlashCommand processes slash commands. Returns true if the input was handled.
-func handleSlashCommand(input string, cfg *config.Config, svc *service.Service, cmd *cobra.Command, authStatus *config.ClaudeAuthStatus) bool {
+func handleSlashCommand(input string, cfg *config.Config, svc *service.Service, cmd *cobra.Command) bool {
 	parts := strings.SplitN(input, " ", 2)
 	command := strings.ToLower(parts[0])
 	arg := ""
 	if len(parts) > 1 {
 		arg = strings.TrimSpace(parts[1])
 	}
+	runtimePath, _ := agentruntime.FindBinary(svc.CurrentRuntime())
+	authStatus := config.RuntimeAuthStatus(svc.CurrentRuntime(), runtimePath)
 
 	switch command {
 	case "/quit", "/exit":
@@ -434,13 +456,61 @@ func handleSlashCommand(input string, cfg *config.Config, svc *service.Service, 
 		printHelp()
 		return true
 
+	case "/agent":
+		if arg == "" {
+			descs := agentruntime.AllDescriptors()
+			options := make([]terminal.PickerOption, 0, len(descs))
+			for _, desc := range descs {
+				options = append(options, terminal.PickerOption{
+					Label: string(desc.Kind),
+					Desc:  desc.DisplayName,
+				})
+			}
+			picked := terminal.Pick("AI Runtime", options, string(svc.CurrentRuntime()))
+			if picked != "" {
+				if err := setRuntimeWithInstallPrompt(svc, picked); err != nil {
+					if err == errRuntimeInstallDeclined {
+						terminal.Info("Runtime switch cancelled.")
+					} else {
+						terminal.Error(err.Error())
+					}
+				} else {
+					terminal.Success(fmt.Sprintf("Runtime set to %s", svc.CurrentRuntimeDisplayName()))
+				}
+			}
+			fmt.Println()
+		} else {
+			if err := setRuntimeWithInstallPrompt(svc, arg); err != nil {
+				if err == errRuntimeInstallDeclined {
+					terminal.Info("Runtime switch cancelled.")
+				} else {
+					terminal.Error(err.Error())
+				}
+			} else {
+				terminal.Success(fmt.Sprintf("Runtime set to %s", svc.CurrentRuntimeDisplayName()))
+			}
+			fmt.Println()
+		}
+		return true
+
 	case "/model":
 		if arg == "" {
-			picked := terminal.Pick("Models", []terminal.PickerOption{
-				{Label: "sonnet", Desc: "Claude Sonnet 4.6 — fast, great for most tasks (default)"},
-				{Label: "opus", Desc: "Claude Opus 4.6 — most capable, slower"},
-				{Label: "haiku", Desc: "Claude Haiku 4.5 — fastest, lightweight tasks"},
-			}, svc.CurrentModel())
+			models := svc.RuntimeModels()
+			if len(models) == 0 {
+				terminal.Warning("No models discovered for the active runtime yet.")
+				terminal.Detail("Set manually", "/model <id>")
+				terminal.Detail("Configure", "~/nanowave/config.json → runtime_models")
+				fmt.Println()
+				return true
+			}
+			options := make([]terminal.PickerOption, 0, len(models))
+			for _, model := range models {
+				options = append(options, terminal.PickerOption{
+					Label: model.ID,
+					Desc:  model.Description,
+				})
+			}
+			picked := terminal.Pick("Models", options, svc.CurrentModel())
 			if picked != "" {
 				svc.SetModel(picked)
 				terminal.Success(fmt.Sprintf("Model set to %s", picked))
@@ -541,13 +611,19 @@ func handleSlashCommand(input string, cfg *config.Config, svc *service.Service, 
 	case "/info":
 		svc.Info()
 		// Append auth + usage info
-		if authStatus != nil && authStatus.LoggedIn && authStatus.Email != "" {
-			planLabel := authStatus.SubscriptionType
-			if planLabel != "" {
-				planLabel = strings.ToUpper(planLabel[:1]) + planLabel[1:] + " plan"
-				terminal.Detail("Claude", fmt.Sprintf("%s (%s)", authStatus.Email, planLabel))
+		if authStatus != nil && authStatus.LoggedIn {
+			if authStatus.Email != "" {
+				planLabel := authStatus.Plan
+				if planLabel != "" {
+					planLabel = strings.ToUpper(planLabel[:1]) + planLabel[1:] + " plan"
+					terminal.Detail("Account", fmt.Sprintf("%s (%s)", authStatus.Email, planLabel))
+				} else {
+					terminal.Detail("Account", authStatus.Email)
+				}
+			} else if authStatus.Detail != "" {
+				terminal.Detail("Account", authStatus.Detail)
 			} else {
-				terminal.Detail("Claude", authStatus.Email)
+				terminal.Detail("Account", "Signed in")
 			}
 		}
 		usage := svc.Usage()
@@ -576,6 +652,19 @@ func handleSlashCommand(input string, cfg *config.Config, svc *service.Service, 
 		fmt.Println()
 		return true
 	}
+}
+
+func setRuntimeWithInstallPrompt(svc *service.Service, rawKind string) error {
+	kind := agentruntime.NormalizeKind(rawKind)
+	if kind == "" {
+		return fmt.Errorf("unsupported runtime: %s", rawKind)
+	}
+	if _, err := agentruntime.FindBinary(kind); err != nil {
+		if err := promptInstallRuntime(kind); err != nil {
+			return err
+		}
+	}
+	return svc.SetRuntime(string(kind))
 }
 
 func requireProjectForSlashCommand(cfg *config.Config) bool {
@@ -740,7 +829,8 @@ func printHelp() {
 	terminal.Header("Commands")
 	fmt.Printf("  %s/run%s              Build and launch in simulator%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
 	fmt.Printf("  %s/simulator [name]%s Select simulator device%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
-	fmt.Printf("  %s/model [name]%s     Show or switch model (sonnet, opus, haiku)%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
+	fmt.Printf("  %s/agent [name]%s     Show or switch AI runtime (claude, codex, opencode)%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
+	fmt.Printf("  %s/model [name]%s     Show or switch the active runtime model%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
 	fmt.Printf("  %s/fix%s              Auto-fix build errors%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
 	fmt.Printf("  %s/connect <action>%s App Store Connect (publish, TestFlight)%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
 	fmt.Printf("  %s/ask <question>%s  Ask about your project (cheap, read-only)%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
