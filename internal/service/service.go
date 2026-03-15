@@ -121,6 +121,11 @@ func NewService(cfg *config.Config, opts ...ServiceOpts) (*Service, error) {
 func (s *Service) Send(ctx context.Context, prompt string, images []string) error {
 	s.stopBackgroundLogStreaming()
 
+	// Agentic mode: LLM drives the entire workflow via tool calling
+	if s.config.AgenticMode() {
+		return s.AgenticSend(ctx, prompt, images)
+	}
+
 	// Guard: refuse mixed build+ASC requests — publishing must be a separate step.
 	pipeline := orchestration.NewPipeline(s.runtime, s.runtimeKind, s.config, s.model)
 	preflight := terminal.NewSpinner("Routing request...")

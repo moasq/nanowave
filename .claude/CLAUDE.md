@@ -10,17 +10,25 @@ cmd/nanowave/          → CLI entry point (cobra)
 internal/
   commands/            → Cobra command definitions (root, setup, interactive, run, fix, info, mcp)
   orchestration/       → Build pipeline (intent → analyze → plan → build → finalize)
-    skills/            → Embedded skill files (//go:embed skills)
     pipeline.go        → Primary orchestrator (Pipeline struct, Build/Edit methods)
-    setup.go           → Workspace + CLAUDE.md memory file generation
+    setup.go           → Workspace setup, CLAUDE.md, build commands
+    setup_skills.go    → Core rules writing + rule content loading
+    setup_claudemd.go  → Generated Makefile
     build_prompts.go   → Build-phase prompt construction
-    phase_prompts.go   → Phase prompt composition (composeAnalyzerSystemPrompt, etc.)
+    phase_prompts.go   → Prompt composition (composeAnalyzerSystemPrompt, etc.)
     helpers.go         → JSON parsing (parseClaudeJSON[T], extractJSON), utilities
     types.go           → Type contracts (IntentDecision, AnalysisResult, PlannerResult, BuildResult)
     platform_features.go → Platform constants + validation (iOS, watchOS, tvOS)
-    skill_compliance.go → Anthropic skill format validator (ValidateAnthropicSourceSkills)
     completion.go      → File completion gate (PlannedFileStatus, FileCompletionReport)
     intent_router.go   → Pre-analysis intent detection
+    exports.go         → External API for nwtool/service packages
+  skills/              → Embedded skill files (//go:embed data)
+    data/core/         → Core rules (always copied to .claude/rules/)
+    data/always/       → Always-on skills (feature content)
+    data/features/     → Feature-specific content
+    data/ui/           → UI-specific content
+    data/extensions/   → Extension-specific content
+  nwtool/              → Agent tool registry (nw_setup_workspace, etc.)
   asc/                 → App Store Connect types, credentials, agreements, bundle ID, iris API
   appleauth/           → Apple ID SRP authentication, 2FA, onboarding, session cookies
   icons/               → App icon discovery, resizing, Contents.json generation, upload server
@@ -57,24 +65,18 @@ internal/
 - Use `parseClaudeJSON[T]()` for all structured Claude output — never raw string manipulation
 - Phase contracts: `IntentDecision`, `AnalysisResult`, `PlannerResult`, `BuildResult` define exact JSON shapes
 
-### Skill Compliance
-
-- All embedded skills must pass `make skills-source-validate`
-- Skills use Anthropic format: YAML frontmatter with `name` (kebab-case) + `description` (includes "Use when")
-- Body < 500 lines, references in `references/` subdirectory only
-- `core/` rules are intentionally excluded from Anthropic schema validation
-
 ### AppTheme Enforcement
 
 - Generated apps must use `AppTheme` tokens for all colors, fonts, spacing
 - Never hardcode `Color(...)`, `.font(.system(...))`, or magic padding numbers
-- Reference `skills/core/forbidden-patterns.md` for full forbidden pattern list
+- Reference `skills/data/core/forbidden-patterns.md` for full forbidden pattern list
 
-### Phase Contracts
+### Prompt Composition
 
 - Build phase uses `AppendSystemPrompt` (not `SystemPrompt`) — it runs in workspace with CLAUDE.md
 - All structured output parsed via `parseClaudeJSON[T]()` with `extractJSON()` fence handling
 - `composeAnalyzerSystemPrompt()`, `composePlannerSystemPrompt()`, `composeCoderAppendPrompt()` compose prompts using `appendPromptSection()`
+- No phase skill loading — prompts use inline base constants + constraints
 
 ## Development Workflow
 
@@ -85,17 +87,14 @@ make build
 # Run all tests
 make test
 
-# Validate embedded skills
-make skills-source-validate
-
 # Lint
 go vet ./...
 
 # Run specific test
 go test ./internal/orchestration/ -v -run TestName
 
-# Build + test + validate (full check)
-make build && make test && make skills-source-validate
+# Build + test (full check)
+make build && make test
 ```
 
 ## Key Files Reference
@@ -106,9 +105,10 @@ make build && make test && make skills-source-validate
 | JSON parsing | `helpers.go` — `parseClaudeJSON[T]()`, `extractJSON()`, `sanitizeToPascalCase()` |
 | Type contracts | `types.go` — all phase input/output structs |
 | Platform logic | `platform_features.go` — `ValidatePlatform()`, `FilterRuleKeysForPlatform()` |
-| Skill loading | `setup.go` — `//go:embed skills`, `loadRuleContent()` |
-| Prompt composition | `phase_prompts.go` — `loadPhaseSkillContent()`, `appendPromptSection()` |
+| Core rules | `setup_skills.go` — `writeCoreRules()`, `loadRuleContent()` |
+| Prompt composition | `phase_prompts.go` — `appendPromptSection()`, prompt composers |
 | Build prompts | `build_prompts.go` — `buildPrompts()`, `completionPrompts()` |
-| Skill validation | `skill_compliance.go` — `ValidateAnthropicSourceSkills()` |
 | Intent routing | `intent_router.go` — `composeIntentRouterSystemPrompt()` |
 | Completion gate | `completion.go` — `PlannedFileStatus`, `FileCompletionReport` |
+| Workspace setup | `setup.go` — `setupWorkspace()`, `writeInitialCLAUDEMD()` |
+| External API | `exports.go` — exported wrappers for nwtool/service |

@@ -5,7 +5,7 @@ const analyzerPrompt = `You are a senior mobile product manager. Turn user reque
 
 CRITICAL: NEVER ask clarifying questions. Make all decisions yourself.
 USER INTENT IS KING — build EXACTLY what was asked for, nothing more.
-Return valid JSON for AnalysisResult. Follow the attached phase skill content for detailed rules.`
+Return valid JSON for AnalysisResult. `
 
 // plannerPromptForPlatform returns the base prompt for the planner phase, tailored to the target platform.
 func plannerPromptForPlatform(platform string) string {
@@ -23,7 +23,7 @@ func plannerPromptForPlatform(platform string) string {
 	return "You are a " + role + `. Receive an MVP spec and produce a file-level build plan as JSON.
 
 USER REQUESTS OVERRIDE DEFAULTS — if the user specifies design preferences, use them exactly.
-Return ONLY valid JSON for PlannerResult (no markdown). Follow the attached phase skill content.`
+Return ONLY valid JSON for PlannerResult (no markdown).`
 }
 
 // coderPromptForPlatform returns the base prompt for build/edit/fix/completion phases, tailored to the target platform.
@@ -43,8 +43,7 @@ func coderPromptForPlatform(platform string) string {
 You have access to ALL tools — write files, edit files, run terminal commands, search Apple docs, and configure the Xcode project.
 
 NEVER guess API signatures — search Apple docs first if unsure.
-Do not manually edit project.yml — use xcodegen MCP tools instead.
-Follow the attached phase skill content for detailed workflow and rules.`
+Do not manually edit project.yml — use xcodegen MCP tools instead.`
 }
 
 // planningConstraints limits scope for analyzer/planner phases.
@@ -58,7 +57,7 @@ const planningConstraints = `PLATFORM & SCOPE:
 - Apple frameworks preferred. SPM packages allowed when they provide a significantly better experience than native frameworks alone (e.g. complex animations, rich media processing, advanced UI effects). No external services. No API keys/secrets.
 - All functionality must work 100% offline using local data and on-device frameworks UNLESS the user explicitly requests cloud/backend/multi-device features.
 - Build the minimum product that matches user intent. User wording overrides defaults.
-- Follow the attached phase skill content for detailed rules and output requirements.`
+- `
 
 // sharedConstraints provides cross-phase safety and architecture guardrails.
 const sharedConstraints = `ARCHITECTURE:
@@ -93,4 +92,4 @@ COMMON API PITFALLS:
 - String(localized:) ignores .environment(\.locale) — uses system locale.
 - .environment(\.locale) does NOT set layoutDirection — must ALSO set .environment(\.layoutDirection, .rightToLeft).
 
-Follow the attached phase skill content for detailed coding and fixing rules.`
+`

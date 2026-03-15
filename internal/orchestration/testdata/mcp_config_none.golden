@@ -7,6 +7,13 @@
       ],
       "command": "npx"
     },
+    "nanowave-tools": {
+      "args": [
+        "mcp",
+        "tools"
+      ],
+      "command": "nanowave"
+    },
     "xcodegen": {
       "args": [
         "mcp",

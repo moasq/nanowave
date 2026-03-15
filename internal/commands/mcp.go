@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"github.com/moasq/nanowave/internal/nwtool"
 	"github.com/moasq/nanowave/internal/revenuecatserver"
 	"github.com/moasq/nanowave/internal/supabaseserver"
 	"github.com/moasq/nanowave/internal/xcodegenserver"
@@ -40,8 +41,17 @@ var mcpRevenuecatCmd = &cobra.Command{
 	},
 }
 
+var mcpToolsCmd = &cobra.Command{
+	Use:   "tools",
+	Short: "Run the nanowave tools MCP server",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return nwtool.RunMCPServer(cmd.Context())
+	},
+}
+
 func init() {
 	mcpCmd.AddCommand(mcpXcodegenCmd)
 	mcpCmd.AddCommand(mcpSupabaseCmd)
 	mcpCmd.AddCommand(mcpRevenuecatCmd)
+	mcpCmd.AddCommand(mcpToolsCmd)
 }

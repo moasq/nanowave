@@ -39,6 +39,7 @@ var openCmd = &cobra.Command{
 func init() {
 	rootCmd.PersistentFlags().StringVar(&agentFlag, "agent", "", "AI runtime to use (claude, codex, opencode)")
 	rootCmd.PersistentFlags().StringVar(&modelFlag, "model", "", "Model to use for code generation inside the selected runtime")
+	rootCmd.PersistentFlags().BoolVar(&agenticFlag, "agentic", false, "Use agentic mode: LLM drives the build via tool calling")
 
 	rootCmd.AddCommand(fixCmd)
 	rootCmd.AddCommand(runCmd)
@@ -50,6 +51,7 @@ func init() {
 	rootCmd.AddCommand(usageCmd)
 	rootCmd.AddCommand(integrationsCmd)
 	rootCmd.AddCommand(publishCmd)
+	rootCmd.AddCommand(toolCmd)
 }
 
 // modelFlag holds the --model flag value.
@@ -57,6 +59,9 @@ var modelFlag string
 
 // agentFlag holds the --agent flag value.
 var agentFlag string
+
+// agenticFlag holds the --agentic flag value.
+var agenticFlag bool
 
 // ModelFlag returns the current --model flag value.
 func ModelFlag() string {
@@ -66,4 +71,9 @@ func ModelFlag() string {
 // AgentFlag returns the current --agent flag value.
 func AgentFlag() string {
 	return agentFlag
+}
+
+// AgenticFlag returns the current --agentic flag value.
+func AgenticFlag() bool {
+	return agenticFlag
 }

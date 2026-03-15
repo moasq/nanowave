@@ -11,7 +11,6 @@ import (
 
 const intentRouterBasePrompt = `You are an intent router for the app generation pipeline.
 Return ONLY valid JSON.
-Follow the attached phase skill instructions.
 Hints are advisory only and must reflect explicit user wording.`
 
 func defaultBuildIntentDecision() *IntentDecision {
@@ -60,15 +59,10 @@ func finalizeBuildIntentDecision(parsed, fallback *IntentDecision) *IntentDecisi
 	return &out
 }
 
-func composeIntentRouterSystemPrompt() (string, error) {
-	phaseSkill, err := loadPhaseSkillContent("intent-router")
-	if err != nil {
-		return "", err
-	}
+func composeIntentRouterSystemPrompt() string {
 	var b strings.Builder
 	appendPromptSection(&b, "Intent Router Base", intentRouterBasePrompt)
-	appendPromptSection(&b, "Phase Skill", phaseSkill)
-	return b.String(), nil
+	return b.String()
 }
 
 func (p *Pipeline) decideBuildIntent(ctx context.Context, prompt string, progress *terminal.ProgressDisplay) (*IntentDecision, error) {
@@ -78,10 +72,7 @@ func (p *Pipeline) decideBuildIntent(ctx context.Context, prompt string, progres
 		progress.AddActivity("Routing request")
 	}
 
-	systemPrompt, err := composeIntentRouterSystemPrompt()
-	if err != nil {
-		return nil, err
-	}
+	systemPrompt := composeIntentRouterSystemPrompt()
 
 	gotFirstDelta := false
 	var progressCb func(agentruntime.StreamEvent)

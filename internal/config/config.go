@@ -35,6 +35,14 @@ type Config struct {
 	// NanowaveDir is the .nanowave/ state directory for the active project.
 	// Empty until a project is selected via SetProject().
 	NanowaveDir string
+
+	// Agentic enables agentic mode where the LLM drives the build via tool calling.
+	Agentic bool
+}
+
+// AgenticMode returns true if agentic mode is enabled.
+func (c *Config) AgenticMode() bool {
+	return c != nil && c.Agentic
 }
 
 type runtimePreferences struct {

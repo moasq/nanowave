@@ -134,10 +134,13 @@ func NewProgressDisplay(mode string, totalFiles int) *ProgressDisplay {
 	case "asc":
 		startPhase = PhaseASC
 		totalPhases = 0
+	case "agentic":
+		startPhase = PhaseBuildingCode
+		totalPhases = 0
 	}
 
 	maxAct := defaultMaxActivities
-	if mode == "asc" {
+	if mode == "asc" || mode == "agentic" {
 		maxAct = 8
 	}
 

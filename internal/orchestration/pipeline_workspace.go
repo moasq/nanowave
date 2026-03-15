@@ -2,12 +2,10 @@ package orchestration
 
 import (
 	"fmt"
-
-	"github.com/moasq/nanowave/internal/terminal"
 )
 
-// setupBuildWorkspace creates the CLAUDE.md, core rules, conditional skills,
-// and Claude project scaffold in the workspace directory.
+// setupBuildWorkspace creates the CLAUDE.md, core rules, settings,
+// and Makefile in the workspace directory.
 func (p *Pipeline) setupBuildWorkspace(projectDir, appName string, plan *PlannerResult) error {
 	if err := setupWorkspace(projectDir); err != nil {
 		return fmt.Errorf("workspace setup failed: %w", err)
@@ -25,55 +23,24 @@ func (p *Pipeline) setupBuildWorkspace(projectDir, appName string, plan *Planner
 		return fmt.Errorf("failed to write core rules: %w", err)
 	}
 
-	if plan.IsMultiPlatform() {
-		platforms := plan.GetPlatforms()
-		if err := writeAlwaysSkills(projectDir, platforms[0], platforms[1:]...); err != nil {
-			return fmt.Errorf("failed to write always skills: %w", err)
-		}
-	} else {
-		if err := writeAlwaysSkills(projectDir, plan.GetPlatform()); err != nil {
-			return fmt.Errorf("failed to write always skills: %w", err)
-		}
-	}
-
-	// Auto-inject adaptive-layout skill for iPad/universal apps (iOS only)
-	if plan.GetPlatform() == PlatformIOS {
-		if family := plan.GetDeviceFamily(); family == "ipad" || family == "universal" {
-			hasAdaptive := false
-			for _, k := range plan.RuleKeys {
-				if k == "adaptive-layout" {
-					hasAdaptive = true
-					break
-				}
-			}
-			if !hasAdaptive {
-				plan.RuleKeys = append(plan.RuleKeys, "adaptive-layout")
-			}
-		}
-	}
-
-	if err := writeConditionalSkills(projectDir, plan.RuleKeys, plan.GetPlatform()); err != nil {
-		return fmt.Errorf("failed to write conditional skills: %w", err)
-	}
-
 	scaffoldPlatform := plan.GetPlatform()
 	scaffoldShape := plan.GetWatchProjectShape()
 	if plan.IsMultiPlatform() {
 		scaffoldPlatform = PlatformIOS
 		scaffoldShape = ""
 	}
-	if err := writeClaudeProjectScaffoldWithShape(projectDir, appName, scaffoldPlatform, scaffoldShape, p.registry); err != nil {
-		return fmt.Errorf("failed to write Claude project scaffold: %w", err)
+
+	if err := writeSettingsShared(projectDir, p.registry, nil); err != nil {
+		return fmt.Errorf("failed to write shared settings: %w", err)
 	}
 
 	if err := writeSettingsLocal(projectDir); err != nil {
 		return fmt.Errorf("failed to write settings: %w", err)
 	}
 
-	if err := writeAgentRuntimeSkillProjection(projectDir); err != nil {
-		return fmt.Errorf("failed to write agent skill projection: %w", err)
+	if err := writeProjectMakefileWithShape(projectDir, appName, scaffoldPlatform, scaffoldShape); err != nil {
+		return fmt.Errorf("failed to write Makefile: %w", err)
 	}
 
-	terminal.Detail("Workspace", "Native runtime scaffolds ready")
 	return nil
 }

@@ -51,7 +51,6 @@ func (p *Pipeline) provisionIntegrations(ctx context.Context, projectDir, appNam
 	}
 
 	if p.manager == nil || (len(newIntegrations) == 0 && len(existingProviders) == 0) {
-		terminal.Detail("Integrations", "none in plan")
 		return state, nil
 	}
 

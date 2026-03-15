@@ -15,6 +15,7 @@ func loadConfigWithProject() (*config.Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	cfg.Agentic = AgenticFlag()
 
 	projects := cfg.ListProjects()
 	if len(projects) == 0 {

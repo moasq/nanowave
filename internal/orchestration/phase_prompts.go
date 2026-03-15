@@ -2,65 +2,8 @@ package orchestration
 
 import (
 	"fmt"
-	"io/fs"
-	"sort"
 	"strings"
 )
-
-func loadPhaseSkillContent(skillName string) (string, error) {
-	dirPath := fmt.Sprintf("skills/phases/%s", skillName)
-	if _, err := fs.ReadDir(skillsFS, dirPath); err != nil {
-		return "", fmt.Errorf("phase skill %q not found: %w", skillName, err)
-	}
-
-	var parts []string
-	if body, found := readEmbeddedMarkdownBody(dirPath + "/SKILL.md"); found && strings.TrimSpace(body) != "" {
-		parts = append(parts, strings.TrimSpace(body))
-	}
-
-	seen := map[string]bool{
-		dirPath + "/SKILL.md": true,
-	}
-	orderedRefs := []string{
-		dirPath + "/references/workflow.md",
-		dirPath + "/references/output-format.md",
-		dirPath + "/references/common-mistakes.md",
-		dirPath + "/references/examples.md",
-	}
-	for _, p := range orderedRefs {
-		if body, found := readEmbeddedMarkdownBody(p); found && strings.TrimSpace(body) != "" {
-			parts = append(parts, strings.TrimSpace(body))
-			seen[p] = true
-		}
-	}
-
-	var extras []string
-	_ = fs.WalkDir(skillsFS, dirPath, func(path string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
-			return nil
-		}
-		if !strings.HasSuffix(strings.ToLower(d.Name()), ".md") {
-			return nil
-		}
-		if seen[path] {
-			return nil
-		}
-		extras = append(extras, path)
-		return nil
-	})
-	sort.Strings(extras)
-	for _, p := range extras {
-		if body, found := readEmbeddedMarkdownBody(p); found && strings.TrimSpace(body) != "" {
-			parts = append(parts, strings.TrimSpace(body))
-		}
-	}
-
-	content := strings.TrimSpace(strings.Join(parts, "\n\n"))
-	if content == "" {
-		return "", fmt.Errorf("phase skill %q has no loadable markdown content", skillName)
-	}
-	return content, nil
-}
 
 func appendPromptSection(b *strings.Builder, title, content string) {
 	content = strings.TrimSpace(content)
@@ -133,51 +76,63 @@ func formatIntentHintsForPrompt(intent *IntentDecision) string {
 	return strings.TrimSpace(b.String())
 }
 
-func composeAnalyzerSystemPrompt(intent *IntentDecision) (string, error) {
-	phaseSkill, err := loadPhaseSkillContent("analyzer")
-	if err != nil {
-		return "", err
-	}
-
+func composeAnalyzerSystemPrompt(intent *IntentDecision) string {
 	var b strings.Builder
 	appendPromptSection(&b, "Analyzer Base", analyzerPrompt)
 	appendXMLSection(&b, "constraints", planningConstraints)
-	appendPromptSection(&b, "Phase Skill", phaseSkill)
 	if hints := formatIntentHintsForPrompt(intent); hints != "" {
 		appendPromptSection(&b, "Intent Hints", hints)
 	}
-	return b.String(), nil
+	return b.String()
 }
 
-func composePlannerSystemPrompt(intent *IntentDecision, platform string) (string, error) {
-	phaseSkill, err := loadPhaseSkillContent("planner")
-	if err != nil {
-		return "", err
-	}
-
+func composePlannerSystemPrompt(intent *IntentDecision, platform string) string {
 	var b strings.Builder
 	appendPromptSection(&b, "Planner Base", plannerPromptForPlatform(platform))
 	appendXMLSection(&b, "constraints", planningConstraints)
-	appendPromptSection(&b, "Phase Skill", phaseSkill)
 	if hints := formatIntentHintsForPrompt(intent); hints != "" {
 		appendPromptSection(&b, "Intent Hints", hints)
 	}
-	return b.String(), nil
+	return b.String()
 }
 
-func composeCoderAppendPrompt(phaseSkillName, platform string) (string, error) {
-	phaseSkill, err := loadPhaseSkillContent(phaseSkillName)
-	if err != nil {
-		return "", err
-	}
-
+func composeCoderAppendPrompt(platform string) string {
 	var b strings.Builder
 	appendPromptSection(&b, "Coder Base", coderPromptForPlatform(platform))
 	appendXMLSection(&b, "constraints", sharedConstraints)
-	appendPromptSection(&b, "Phase Skill", phaseSkill)
+	appendXMLSection(&b, "verification", composeSelfCheck(platform))
+	return b.String()
+}
+
+// ComposeAgenticSystemPrompt assembles a single system prompt for agentic mode.
+// Provides domain knowledge (constraints, design rules, quality checks) — no
+// rigid workflow steps. The LLM decides how to use the available tools.
+func ComposeAgenticSystemPrompt(ac ActionContext) string {
+	platform := ac.Platform
+	if platform == "" {
+		platform = PlatformIOS
+	}
+
+	var b strings.Builder
+
+	appendPromptSection(&b, "Role", `You are an autonomous Apple app builder. You have tools to set up workspaces, scaffold Xcode projects, build, verify, and finalize. You make all decisions yourself. Never ask clarifying questions.`)
+
+	appendXMLSection(&b, "constraints", planningConstraints)
+	appendXMLSection(&b, "architecture", sharedConstraints)
+
+	appendPromptSection(&b, "Coder", coderPromptForPlatform(platform))
+
 	appendXMLSection(&b, "verification", composeSelfCheck(platform))
 
-	return b.String(), nil
+	if ac.IsEdit() {
+		editCtx := fmt.Sprintf("Operating on existing project:\n- Project dir: %s\n- App name: %s\n- Platform: %s", ac.ProjectDir, ac.AppName, ac.Platform)
+		if len(ac.Platforms) > 1 {
+			editCtx += fmt.Sprintf("\n- Platforms: %s", strings.Join(ac.Platforms, ", "))
+		}
+		appendPromptSection(&b, "Edit Context", editCtx)
+	}
+
+	return b.String()
 }
 
 func composeSelfCheck(platform string) string {

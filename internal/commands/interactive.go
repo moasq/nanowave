@@ -161,6 +161,7 @@ func runInteractive(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
+	cfg.Agentic = AgenticFlag()
 
 	runtimeKind := cfg.RuntimeKind
 	if AgentFlag() != "" {

@@ -37,18 +37,9 @@ func (p *Pipeline) buildPrompts(_ string, appName string, _ string, analysis *An
 	destination := canonicalBuildDestinationForShape(plan.GetPlatform(), plan.GetWatchProjectShape())
 	simulatorDestination := canonicalSimulatorBuildDestination(plan.GetPlatform(), plan.GetWatchProjectShape())
 
-	// Load all relevant coder skills — Claude picks the right approach
-	skillNames := []string{"builder", "editor", "fixer"}
+	// Inline coder prompt with constraints and self-check
 	var appendPrompt strings.Builder
-	for _, name := range skillNames {
-		skill, skillErr := composeCoderAppendPrompt(name, plan.GetPlatform())
-		if skillErr == nil {
-			if appendPrompt.Len() > 0 {
-				appendPrompt.WriteString("\n\n")
-			}
-			appendPrompt.WriteString(skill)
-		}
-	}
+	appendPrompt.WriteString(composeCoderAppendPrompt(plan.GetPlatform()))
 
 	// Add plan context
 	appendPrompt.WriteString("\n\n<build-plan>\n")
@@ -277,12 +268,8 @@ IMPORTANT:
 func (p *Pipeline) completionPrompts(appName string, projectDir string, plan *PlannerResult, report *FileCompletionReport) (string, string, error) {
 	destination := canonicalBuildDestinationForShape(plan.GetPlatform(), plan.GetWatchProjectShape())
 	simulatorDestination := canonicalSimulatorBuildDestination(plan.GetPlatform(), plan.GetWatchProjectShape())
-	basePrompt, err := composeCoderAppendPrompt("completion-recovery", plan.GetPlatform())
-	if err != nil {
-		return "", "", err
-	}
 	var appendPrompt strings.Builder
-	appendPrompt.WriteString(basePrompt)
+	appendPrompt.WriteString(composeCoderAppendPrompt(plan.GetPlatform()))
 	appendPrompt.WriteString("\n\n## Completion Recovery Mode\n")
 	appendPrompt.WriteString("Only complete the unresolved planned files listed in the user message.\n")
 	appendPrompt.WriteString("Do not mark work done until every listed file exists, contains its expected type, and the build succeeds.\n")

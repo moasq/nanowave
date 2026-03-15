@@ -12,10 +12,7 @@ import (
 
 // analyze runs Phase 2: prompt → AnalysisResult.
 func (p *Pipeline) analyze(ctx context.Context, prompt string, intent *IntentDecision, ac ActionContext, progress *terminal.ProgressDisplay) (*AnalysisResult, error) {
-	systemPrompt, err := composeAnalyzerSystemPrompt(intent)
-	if err != nil {
-		return nil, err
-	}
+	systemPrompt := composeAnalyzerSystemPrompt(intent)
 
 	// For edits, prepend existing project context so the analyzer focuses on NEW capabilities
 	userMsg := prompt
@@ -66,10 +63,7 @@ func (p *Pipeline) analyze(ctx context.Context, prompt string, intent *IntentDec
 
 // plan runs Phase 3: analysis → PlannerResult.
 func (p *Pipeline) plan(ctx context.Context, analysis *AnalysisResult, intent *IntentDecision, ac ActionContext, progress *terminal.ProgressDisplay) (*PlannerResult, error) {
-	systemPrompt, err := composePlannerSystemPrompt(intent, intent.PlatformHint)
-	if err != nil {
-		return nil, err
-	}
+	systemPrompt := composePlannerSystemPrompt(intent, intent.PlatformHint)
 
 	// Marshal the analysis as the user message
 	analysisJSON, err := json.MarshalIndent(analysis, "", "  ")
@@ -132,25 +126,6 @@ func (p *Pipeline) buildStreaming(ctx context.Context, prompt, appName, projectD
 	if p.manager != nil {
 		tools = append(tools, p.manager.AgentTools(p.activeProviders)...)
 	}
-	terminal.Detail("Build prompt", fmt.Sprintf("system_append=%d chars, user_msg=%d chars, tools=%d",
-		len(appendPrompt), len(userMsg), len(tools)))
-
-	// Log key prompt sections present
-	hasBackendSetup := strings.Contains(appendPrompt, "<backend-setup>")
-	hasIntegrationConfig := strings.Contains(appendPrompt, "<integration-config>")
-	hasBackendFirst := strings.Contains(userMsg, "BACKEND FIRST")
-	terminal.Detail("Prompt sections", fmt.Sprintf("backend-setup=%t, integration-config=%t, backend-first-in-user-msg=%t",
-		hasBackendSetup, hasIntegrationConfig, hasBackendFirst))
-
-	// Log if supabase MCP tools are in the allowed list
-	hasSupabaseTools := false
-	for _, t := range tools {
-		if strings.HasPrefix(t, "mcp__supabase__") {
-			hasSupabaseTools = true
-			break
-		}
-	}
-	terminal.Detail("Supabase MCP tools", fmt.Sprintf("allowed=%t", hasSupabaseTools))
 
 	return p.runtime.GenerateStreaming(ctx, userMsg, agentruntime.GenerateOpts{
 		AppendSystemPrompt: appendPrompt,

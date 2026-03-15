@@ -1,31 +1,22 @@
 package orchestration
 
 import (
-	"embed"
 	"fmt"
-	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
+
+	"github.com/moasq/nanowave/internal/skills"
 )
 
-//go:embed skills
-var skillsFS embed.FS
+// skillsFS aliases the skills package FS for backward compatibility within orchestration.
+var skillsFS = skills.FS
 
 // setupWorkspace creates the project directory and .claude/ structure.
 func setupWorkspace(projectDir string) error {
 	dirs := []string{
 		projectDir,
 		filepath.Join(projectDir, ".claude", "rules"),
-		filepath.Join(projectDir, ".claude", "skills"),
-		filepath.Join(projectDir, ".claude", "memory"),
-		filepath.Join(projectDir, ".claude", "commands"),
-		filepath.Join(projectDir, ".claude", "agents"),
-		filepath.Join(projectDir, ".agents", "skills"),
-		filepath.Join(projectDir, ".opencode", "skills"),
-		filepath.Join(projectDir, "scripts", "claude"),
-		filepath.Join(projectDir, "docs"),
-		filepath.Join(projectDir, ".github", "workflows"),
 	}
 	for _, d := range dirs {
 		if err := os.MkdirAll(d, 0o755); err != nil {
@@ -35,21 +26,37 @@ func setupWorkspace(projectDir string) error {
 	return nil
 }
 
-// writeInitialCLAUDEMD writes the CLAUDE.md with project-specific info only (before plan exists).
-// CLAUDE.md is a thin index that imports shared project memory modules and core rules.
+// writeInitialCLAUDEMD writes a thin CLAUDE.md with project name and build command.
 func writeInitialCLAUDEMD(projectDir, appName, platform, deviceFamily string) error {
-	if err := writeClaudeMemoryFiles(projectDir, appName, platform, deviceFamily, nil); err != nil {
-		return err
-	}
-	return writeCLAUDEMDIndex(projectDir, appName)
+	return writeCLAUDEMD(projectDir, appName, platform, deviceFamily, "")
 }
 
-// enrichCLAUDEMD updates memory modules with plan-specific details after Phase 3.
+// enrichCLAUDEMD updates CLAUDE.md with plan-specific details after planning.
 func enrichCLAUDEMD(projectDir string, plan *PlannerResult, appName string) error {
-	if err := writeClaudeMemoryFiles(projectDir, appName, plan.GetPlatform(), plan.GetDeviceFamily(), plan); err != nil {
-		return err
-	}
-	return writeCLAUDEMDIndex(projectDir, appName)
+	return writeCLAUDEMD(projectDir, appName, plan.GetPlatform(), plan.GetDeviceFamily(), plan.GetWatchProjectShape())
+}
+
+func writeCLAUDEMD(projectDir, appName, platform, deviceFamily, watchProjectShape string) error {
+	buildCmd := canonicalBuildCommandForShape(appName, platform, watchProjectShape)
+
+	content := fmt.Sprintf(`# %s
+
+## Build
+
+%s
+
+## Rules
+
+Core rules live in .claude/rules/ — read them before writing code.
+
+## Project Config
+
+- project_config.json = source of truth
+- project.yml = XcodeGen spec (use xcodegen MCP tools to modify)
+- .xcodeproj = generated output (never edit manually)
+`, appName, buildCmd)
+
+	return os.WriteFile(filepath.Join(projectDir, ".claude", "CLAUDE.md"), []byte(content), 0o644)
 }
 
 func platformSummary(platform, deviceFamily string) string {
@@ -76,9 +83,6 @@ func platformSummary(platform, deviceFamily string) string {
 }
 
 // canonicalBuildDestinationForShape returns the generic device destination for a platform.
-// Device builds are the default validation target — they catch entitlement, architecture,
-// and API availability issues that simulator builds miss. Uses CODE_SIGNING_ALLOWED=NO
-// so no provisioning profile is required.
 func canonicalBuildDestinationForShape(platform, watchProjectShape string) string {
 	if IsWatchOS(platform) {
 		if watchProjectShape == WatchShapePaired {
@@ -99,7 +103,6 @@ func canonicalBuildDestinationForShape(platform, watchProjectShape string) strin
 }
 
 // canonicalSimulatorBuildDestination returns the generic simulator destination for a platform.
-// Used by Run() for launching in the simulator and as a secondary validation pass.
 func canonicalSimulatorBuildDestination(platform, watchProjectShape string) string {
 	if IsWatchOS(platform) {
 		if watchProjectShape == WatchShapePaired {
@@ -122,7 +125,6 @@ func canonicalSimulatorBuildDestination(platform, watchProjectShape string) stri
 func canonicalBuildCommandForShape(appName, platform, watchProjectShape string) string {
 	destination := canonicalBuildDestinationForShape(platform, watchProjectShape)
 	if IsMacOS(platform) {
-		// macOS has no separate device/simulator distinction
 		return fmt.Sprintf("xcodebuild -project %s.xcodeproj -scheme %s -destination '%s' -quiet build", appName, appName, destination)
 	}
 	return fmt.Sprintf("xcodebuild -project %s.xcodeproj -scheme %s -destination '%s' CODE_SIGNING_ALLOWED=NO -quiet build", appName, appName, destination)
@@ -133,7 +135,6 @@ func canonicalBuildCommand(appName, platform string) string {
 }
 
 // multiPlatformBuildCommands returns device build commands for each platform scheme.
-// Device builds are the default — they catch entitlement and architecture issues.
 func multiPlatformBuildCommands(appName string, platforms []string) []string {
 	var cmds []string
 	for _, plat := range platforms {
@@ -146,7 +147,6 @@ func multiPlatformBuildCommands(appName string, platforms []string) []string {
 		case PlatformMacOS:
 			scheme = appName + "Mac"
 		case PlatformWatchOS:
-			// In multi-platform, watchOS is built via the iOS scheme (paired)
 			continue
 		default:
 			scheme = appName
@@ -162,7 +162,6 @@ func multiPlatformBuildCommands(appName string, platforms []string) []string {
 }
 
 // multiPlatformSimulatorBuildCommands returns simulator build commands for each platform scheme.
-// Used as a secondary validation pass and for Run() launching.
 func multiPlatformSimulatorBuildCommands(appName string, platforms []string) []string {
 	var cmds []string
 	for _, plat := range platforms {
@@ -175,9 +174,9 @@ func multiPlatformSimulatorBuildCommands(appName string, platforms []string) []s
 			scheme = appName + "Vision"
 			destination = PlatformSimulatorDestination(PlatformVisionOS)
 		case PlatformMacOS:
-			continue // macOS has no separate simulator build
+			continue
 		case PlatformWatchOS:
-			continue // watchOS is built via iOS scheme
+			continue
 		default:
 			scheme = appName
 			destination = PlatformSimulatorDestination(PlatformIOS)
@@ -187,7 +186,7 @@ func multiPlatformSimulatorBuildCommands(appName string, platforms []string) []s
 	return cmds
 }
 
-func writeTextFile(path, content string, mode fs.FileMode) error {
+func writeTextFile(path, content string, mode os.FileMode) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}

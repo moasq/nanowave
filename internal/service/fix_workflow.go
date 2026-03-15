@@ -111,10 +111,7 @@ func buildOutputExcerpt(output []byte) string {
 }
 
 func buildFixPrompt(projectName string, specs []xcodeBuildSpec, failure buildFailure) (string, string) {
-	appendPrompt, err := orchestration.ComposeFixerAppendPrompt(failure.spec.platform)
-	if err != nil {
-		appendPrompt = ""
-	}
+	appendPrompt := orchestration.ComposeFixerAppendPrompt(failure.spec.platform)
 
 	var allCommands strings.Builder
 	for i, spec := range specs {
