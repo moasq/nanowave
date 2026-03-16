@@ -2,30 +2,33 @@ package orchestration
 
 import (
 	"github.com/moasq/nanowave/internal/agentruntime"
+	"github.com/moasq/nanowave/internal/mcpregistry"
 	"github.com/moasq/nanowave/internal/terminal"
+)
+
+// Re-export agentruntime.Kind constants for external callers.
+const (
+	RuntimeClaude   = agentruntime.KindClaude
+	RuntimeCodex    = agentruntime.KindCodex
+	RuntimeOpenCode = agentruntime.KindOpenCode
 )
 
 // exports.go provides exported wrappers around internal orchestration functions
 // so the nwtool and service packages can call them without duplicating logic.
 
-// SetupWorkspaceExternal creates the project directory and .claude/ structure.
-func SetupWorkspaceExternal(projectDir string) error {
-	return setupWorkspace(projectDir)
+// WriteSkillsForRuntimeExternal writes skill files in the native format for the given runtime.
+func WriteSkillsForRuntimeExternal(projectDir, platform string, ruleKeys []string, packages []PackagePlan, runtimeKind agentruntime.Kind) error {
+	return writeSkillsForRuntime(projectDir, platform, ruleKeys, packages, runtimeKind)
 }
 
-// WriteInitialCLAUDEMDExternal writes a thin CLAUDE.md with project name and build command.
-func WriteInitialCLAUDEMDExternal(projectDir, appName, platform, deviceFamily string) error {
-	return writeInitialCLAUDEMD(projectDir, appName, platform, deviceFamily)
+// LoadSkillContent loads skill/rule content by key for any runtime.
+func LoadSkillContent(key string) string {
+	return loadRuleContent(key)
 }
 
-// EnrichCLAUDEMDExternal updates CLAUDE.md with plan-specific details.
-func EnrichCLAUDEMDExternal(projectDir string, plan *PlannerResult, appName string) error {
-	return enrichCLAUDEMD(projectDir, plan, appName)
-}
-
-// WriteCoreRulesExternal writes core rules to the project's .claude/rules/.
-func WriteCoreRulesExternal(projectDir, platform string, packages []PackagePlan) error {
-	return writeCoreRules(projectDir, platform, packages)
+// ListAvailableSkillKeys returns all available skill keys from the embedded FS.
+func ListAvailableSkillKeys() []string {
+	return listAvailableSkillKeys()
 }
 
 // ScaffoldProjectExternal scaffolds the Xcode project: config, yml, assets, dirs, xcodegen.
@@ -87,4 +90,26 @@ func CoreAgenticToolsList() []string {
 // NewProgressCallbackExported wraps newProgressCallback for use outside orchestration.
 func NewProgressCallbackExported(progress *terminal.ProgressDisplay, runtimeLabel string) func(agentruntime.StreamEvent) {
 	return newProgressCallback(progress, runtimeLabel)
+}
+
+// WriteMCPConfigExternal writes .mcp.json for the project using the standard MCP registry.
+func WriteMCPConfigExternal(projectDir string) error {
+	reg := mcpregistry.New()
+	mcpregistry.RegisterAll(reg)
+	return writeMCPConfig(projectDir, reg, nil)
+}
+
+// WriteSettingsSharedExternal writes .claude/settings.json for the project using the standard MCP registry.
+func WriteSettingsSharedExternal(projectDir string) error {
+	reg := mcpregistry.New()
+	mcpregistry.RegisterAll(reg)
+	return writeSettingsShared(projectDir, reg, nil)
+}
+
+// EnsureProjectConfigsExternal writes .mcp.json, settings.json, and settings.local.json if missing.
+func EnsureProjectConfigsExternal(projectDir string) {
+	reg := mcpregistry.New()
+	mcpregistry.RegisterAll(reg)
+	p := &Pipeline{registry: reg}
+	p.ensureProjectConfigs(projectDir)
 }

@@ -5,7 +5,7 @@ import "github.com/moasq/nanowave/internal/mcpregistry"
 // ComposeFixerAppendPrompt exposes the coder prompt for CLI flows
 // that repair existing projects outside the full orchestration pipeline.
 func ComposeFixerAppendPrompt(platform string) string {
-	return composeCoderAppendPrompt(platform)
+	return coderPromptForPlatform(platform)
 }
 
 // DefaultAgenticTools returns the core Claude tools plus all registered MCP tools.

@@ -9,14 +9,14 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/moasq/nanowave/internal/agentruntime"
 	"github.com/moasq/nanowave/internal/orchestration"
 )
 
 // NewDefaultRegistry creates a registry with all nanowave tools registered.
 func NewDefaultRegistry() *Registry {
 	r := NewRegistry()
-	r.Register(setupWorkspaceTool())
-	r.Register(enrichWorkspaceTool())
+	r.Register(getSkillsTool())
 	r.Register(scaffoldProjectTool())
 	r.Register(verifyFilesTool())
 	r.Register(xcodeBuildTool())
@@ -26,97 +26,54 @@ func NewDefaultRegistry() *Registry {
 	return r
 }
 
-// --- nw_setup_workspace ---
+// --- nw_get_skills ---
 
-func setupWorkspaceTool() *Tool {
+func getSkillsTool() *Tool {
 	return &Tool{
-		Name:        "nw_setup_workspace",
-		Description: "Create a new nanowave project workspace with .claude/ structure, CLAUDE.md memory index, core rules, and always-on skills. Call this first when building a new app.",
+		Name:        "nw_get_skills",
+		Description: "Load embedded skill/rule content by key. Returns markdown content for the requested skills. Use this to get architecture rules, feature guides, UI patterns, and platform-specific knowledge before writing code. Common keys: swift-conventions, mvvm-architecture, file-structure, forbidden-patterns, camera, storage, authentication, supabase, revenuecat, charts, localization, dark-mode, widgets, live-activities, animations, accessibility, navigation-patterns, gestures, etc.",
 		InputSchema: json.RawMessage(`{
   "type": "object",
   "properties": {
-    "project_dir": {"type": "string", "description": "Absolute path for the new project directory"},
-    "app_name":    {"type": "string", "description": "PascalCase app name (e.g. HabitTracker)"},
-    "platform":    {"type": "string", "description": "Target platform: ios, watchos, tvos, visionos, macos", "default": "ios"},
-    "device_family": {"type": "string", "description": "Device family: iphone, ipad, universal (iOS only)", "default": "iphone"}
-  },
-  "required": ["project_dir", "app_name"]
+    "keys": {"type": "array", "items": {"type": "string"}, "description": "Skill/rule keys to load (e.g. [\"swift-conventions\", \"camera\", \"dark-mode\"])"},
+    "list_available": {"type": "boolean", "description": "If true, returns a list of all available skill keys instead of content", "default": false}
+  }
 }`),
-		Handler: handleSetupWorkspace,
+		Handler: handleGetSkills,
 	}
 }
 
-type setupWorkspaceInput struct {
-	ProjectDir   string `json:"project_dir"`
-	AppName      string `json:"app_name"`
-	Platform     string `json:"platform"`
-	DeviceFamily string `json:"device_family"`
-}
-
-func handleSetupWorkspace(_ context.Context, input json.RawMessage) (json.RawMessage, error) {
-	var in setupWorkspaceInput
-	if err := json.Unmarshal(input, &in); err != nil {
-		return jsonError(fmt.Sprintf("invalid input: %v", err))
-	}
-	if in.ProjectDir == "" || in.AppName == "" {
-		return jsonError("project_dir and app_name are required")
-	}
-	if in.Platform == "" {
-		in.Platform = "ios"
-	}
-	if in.DeviceFamily == "" {
-		in.DeviceFamily = "iphone"
-	}
-
-	if err := orchestration.SetupWorkspaceExternal(in.ProjectDir); err != nil {
-		return jsonError(fmt.Sprintf("workspace setup failed: %v", err))
-	}
-	if err := orchestration.WriteInitialCLAUDEMDExternal(in.ProjectDir, in.AppName, in.Platform, in.DeviceFamily); err != nil {
-		return jsonError(fmt.Sprintf("CLAUDE.md write failed: %v", err))
-	}
-	if err := orchestration.WriteCoreRulesExternal(in.ProjectDir, in.Platform, nil); err != nil {
-		return jsonError(fmt.Sprintf("core rules write failed: %v", err))
-	}
-
-	return jsonOK(map[string]any{"success": true, "path": in.ProjectDir})
-}
-
-// --- nw_enrich_workspace ---
-
-func enrichWorkspaceTool() *Tool {
-	return &Tool{
-		Name:        "nw_enrich_workspace",
-		Description: "Enrich an existing workspace with plan-specific CLAUDE.md content, conditional skills, and memory files. Call after planning, before writing code.",
-		InputSchema: json.RawMessage(`{
-  "type": "object",
-  "properties": {
-    "project_dir": {"type": "string", "description": "Absolute path to the project directory"},
-    "app_name":    {"type": "string", "description": "PascalCase app name"},
-    "plan_json":   {"type": "string", "description": "JSON string of the PlannerResult"}
-  },
-  "required": ["project_dir", "app_name", "plan_json"]
-}`),
-		Handler: handleEnrichWorkspace,
-	}
-}
-
-func handleEnrichWorkspace(_ context.Context, input json.RawMessage) (json.RawMessage, error) {
+func handleGetSkills(_ context.Context, input json.RawMessage) (json.RawMessage, error) {
 	var in struct {
-		ProjectDir string `json:"project_dir"`
-		AppName    string `json:"app_name"`
-		PlanJSON   string `json:"plan_json"`
+		Keys          []string `json:"keys"`
+		ListAvailable bool     `json:"list_available"`
 	}
 	if err := json.Unmarshal(input, &in); err != nil {
 		return jsonError(fmt.Sprintf("invalid input: %v", err))
 	}
-	var plan orchestration.PlannerResult
-	if err := json.Unmarshal([]byte(in.PlanJSON), &plan); err != nil {
-		return jsonError(fmt.Sprintf("invalid plan_json: %v", err))
+
+	if in.ListAvailable {
+		keys := orchestration.ListAvailableSkillKeys()
+		return jsonOK(map[string]any{"keys": keys})
 	}
-	if err := orchestration.EnrichCLAUDEMDExternal(in.ProjectDir, &plan, in.AppName); err != nil {
-		return jsonError(fmt.Sprintf("enrich CLAUDE.md failed: %v", err))
+
+	if len(in.Keys) == 0 {
+		return jsonError("keys array is required (or set list_available: true)")
 	}
-	return jsonOK(map[string]any{"success": true})
+
+	results := make(map[string]string, len(in.Keys))
+	for _, key := range in.Keys {
+		content := orchestration.LoadSkillContent(key)
+		if content != "" {
+			results[key] = content
+		}
+	}
+
+	return jsonOK(map[string]any{
+		"skills":    results,
+		"loaded":    len(results),
+		"requested": len(in.Keys),
+	})
 }
 
 // --- nw_scaffold_project ---
@@ -124,13 +81,14 @@ func handleEnrichWorkspace(_ context.Context, input json.RawMessage) (json.RawMe
 func scaffoldProjectTool() *Tool {
 	return &Tool{
 		Name:        "nw_scaffold_project",
-		Description: "Scaffold the Xcode project: write project_config.json, project.yml, asset catalogs, source directories, and run xcodegen to create the .xcodeproj. Call after workspace setup, before writing Swift code.",
+		Description: "Scaffold the Xcode project: write project_config.json, project.yml, asset catalogs, source directories, MCP config, settings, skill files, and run xcodegen to create the .xcodeproj. This is the first tool to call for new builds — it creates the project directory and all configuration.",
 		InputSchema: json.RawMessage(`{
   "type": "object",
   "properties": {
-    "project_dir": {"type": "string", "description": "Absolute path to the project directory"},
-    "app_name":    {"type": "string", "description": "PascalCase app name"},
-    "plan_json":   {"type": "string", "description": "JSON string of the PlannerResult"}
+    "project_dir":   {"type": "string", "description": "Absolute path to the project directory"},
+    "app_name":      {"type": "string", "description": "PascalCase app name"},
+    "plan_json":     {"type": "string", "description": "JSON string of the PlannerResult"},
+    "runtime_kind":  {"type": "string", "description": "Agent runtime: claude, codex, or opencode", "default": "claude"}
   },
   "required": ["project_dir", "app_name", "plan_json"]
 }`),
@@ -140,9 +98,10 @@ func scaffoldProjectTool() *Tool {
 
 func handleScaffoldProject(_ context.Context, input json.RawMessage) (json.RawMessage, error) {
 	var in struct {
-		ProjectDir string `json:"project_dir"`
-		AppName    string `json:"app_name"`
-		PlanJSON   string `json:"plan_json"`
+		ProjectDir  string `json:"project_dir"`
+		AppName     string `json:"app_name"`
+		PlanJSON    string `json:"plan_json"`
+		RuntimeKind string `json:"runtime_kind"`
 	}
 	if err := json.Unmarshal(input, &in); err != nil {
 		return jsonError(fmt.Sprintf("invalid input: %v", err))
@@ -154,6 +113,27 @@ func handleScaffoldProject(_ context.Context, input json.RawMessage) (json.RawMe
 	if err := orchestration.ScaffoldProjectExternal(in.ProjectDir, in.AppName, &plan); err != nil {
 		return jsonError(fmt.Sprintf("scaffold failed: %v", err))
 	}
+
+	// Write MCP config and settings now that the project directory exists
+	if err := orchestration.WriteMCPConfigExternal(in.ProjectDir); err != nil {
+		return jsonError(fmt.Sprintf("failed to write MCP config: %v", err))
+	}
+	if err := orchestration.WriteSettingsSharedExternal(in.ProjectDir); err != nil {
+		return jsonError(fmt.Sprintf("failed to write settings: %v", err))
+	}
+
+	// Write skill files in the native format for the active runtime
+	runtimeKind := orchestration.RuntimeClaude
+	if in.RuntimeKind != "" {
+		runtimeKind = agentruntime.NormalizeKind(in.RuntimeKind)
+		if runtimeKind == "" {
+			runtimeKind = orchestration.RuntimeClaude
+		}
+	}
+	if err := orchestration.WriteSkillsForRuntimeExternal(in.ProjectDir, plan.GetPlatform(), plan.RuleKeys, plan.Packages, runtimeKind); err != nil {
+		return jsonError(fmt.Sprintf("failed to write skills: %v", err))
+	}
+
 	return jsonOK(map[string]any{
 		"success":        true,
 		"xcodeproj_path": filepath.Join(in.ProjectDir, in.AppName+".xcodeproj"),

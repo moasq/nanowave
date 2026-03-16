@@ -121,38 +121,8 @@ func NewService(cfg *config.Config, opts ...ServiceOpts) (*Service, error) {
 func (s *Service) Send(ctx context.Context, prompt string, images []string) error {
 	s.stopBackgroundLogStreaming()
 
-	// Agentic mode: LLM drives the entire workflow via tool calling
-	if s.config.AgenticMode() {
-		return s.AgenticSend(ctx, prompt, images)
-	}
-
-	// Guard: refuse mixed build+ASC requests — publishing must be a separate step.
-	pipeline := orchestration.NewPipeline(s.runtime, s.runtimeKind, s.config, s.model)
-	preflight := terminal.NewSpinner("Routing request...")
-	preflight.Start()
-	intent, err := pipeline.QuickIntentCheck(ctx, prompt)
-	preflight.Stop()
-	if err == nil && intent != nil && intent.HasASCIntent {
-		terminal.Warning("App Store Connect operations must be run separately from build/edit.")
-		terminal.Info("Build your app first, then use /connect for publishing and App Store management.")
-		fmt.Println()
-		terminal.Info("Examples:")
-		fmt.Printf("  %s/connect check my app status%s\n", terminal.Bold, terminal.Reset)
-		fmt.Printf("  %s/connect submit to TestFlight%s\n", terminal.Bold, terminal.Reset)
-		fmt.Printf("  %s/connect publish to App Store%s\n", terminal.Bold, terminal.Reset)
-		fmt.Println()
-		return nil
-	}
-
-	if !s.config.HasProject() {
-		if err := s.build(ctx, prompt, images); err != nil {
-			return err
-		}
-		// Auto-run on simulator after successful build
-		fmt.Println()
-		return s.Run(ctx)
-	}
-	return s.edit(ctx, prompt, images)
+	// All builds/edits go through the agentic path: a single LLM call with all tools.
+	return s.AgenticSend(ctx, prompt, images)
 }
 
 // SetModel changes the model at runtime.
@@ -330,139 +300,6 @@ func platformBundleIDSuffix(platform string) string {
 	}
 }
 
-// build creates a new app from a prompt using the multi-phase pipeline.
-func (s *Service) build(ctx context.Context, prompt string, images []string) error {
-	terminal.Header("Nanowave Build")
-
-	pipeline := orchestration.NewPipeline(s.runtime, s.runtimeKind, s.config, s.model)
-	pipeline.SetManager(s.manager)
-	result, err := pipeline.Action(ctx, prompt, orchestration.ActionContext{}, images)
-	if err != nil {
-		terminal.Error(fmt.Sprintf("Build failed: %v", err))
-		return err
-	}
-
-	// Switch config to the newly created project directory so state is saved there
-	s.config.SetProject(result.ProjectDir)
-	s.projectStore = storage.NewProjectStore(s.config.NanowaveDir)
-	s.historyStore = storage.NewHistoryStore(s.config.NanowaveDir)
-	s.usageStore = storage.NewUsageStore(s.config.NanowaveDir)
-
-	// Record usage
-	s.usageStore.RecordUsage(result.TotalCostUSD, result.InputTokens, result.OutputTokens, result.CacheRead, result.CacheCreated)
-
-	// Save state
-	if err := s.config.EnsureNanowaveDir(); err == nil {
-		appName := result.AppName
-		proj := &storage.Project{
-			ID:           1,
-			Name:         &appName,
-			Status:       "active",
-			ProjectPath:  result.ProjectDir,
-			BundleID:     result.BundleID,
-			Platform:     result.Platform,
-			Platforms:    result.Platforms,
-			DeviceFamily: result.DeviceFamily,
-			SessionID:    result.SessionID,
-			RuntimeKind:  string(s.runtimeKind),
-			ModelID:      s.CurrentModel(),
-		}
-		s.projectStore.Save(proj)
-		s.historyStore.Append(storage.HistoryMessage{Role: "user", Content: prompt})
-		buildSummary := fmt.Sprintf("Built %s (%d files)", result.AppName, result.CompletedFiles)
-		if result.Description != "" {
-			buildSummary += " — " + result.Description
-		}
-		s.historyStore.Append(storage.HistoryMessage{
-			Role:    "assistant",
-			Content: buildSummary,
-		})
-	}
-
-	// Print results
-	fmt.Println()
-	terminal.Success(fmt.Sprintf("%s is ready!", result.AppName))
-	if result.Description != "" {
-		fmt.Printf("  %s%s%s\n", terminal.Dim, result.Description, terminal.Reset)
-	}
-	fmt.Println()
-	if len(result.Features) > 0 {
-		for _, f := range result.Features {
-			fmt.Printf("  %s•%s %s%s%s", terminal.Bold, terminal.Reset, terminal.Bold, f.Name, terminal.Reset)
-			if f.Description != "" {
-				fmt.Printf(" %s— %s%s", terminal.Dim, f.Description, terminal.Reset)
-			}
-			fmt.Println()
-		}
-		fmt.Println()
-	}
-	terminal.Detail("Files", fmt.Sprintf("%d", result.CompletedFiles))
-	terminal.Detail("Location", result.ProjectDir)
-
-	appNamePascal := SanitizeToPascalCase(result.AppName)
-	xcodeproj := filepath.Join(result.ProjectDir, appNamePascal+".xcodeproj")
-	if _, err := os.Stat(xcodeproj); err == nil {
-		terminal.Detail("Open in Xcode", fmt.Sprintf("open %s", xcodeproj))
-	} else {
-		terminal.Detail("Open folder", fmt.Sprintf("open %s", result.ProjectDir))
-	}
-
-	return nil
-}
-
-// edit handles all work on an existing project — edits, fixes, refactors, etc.
-func (s *Service) edit(ctx context.Context, prompt string, images []string) error {
-	project, err := s.projectStore.Load()
-	if err != nil || project == nil {
-		return fmt.Errorf("no active project found")
-	}
-
-	terminal.Header("Nanowave")
-	terminal.Detail("Project", projectName(project))
-
-	platform, platforms, watchProjectShape := orchestration.DetectProjectBuildHints(project.ProjectPath)
-
-	pipeline := orchestration.NewPipeline(s.runtime, s.runtimeKind, s.config, s.model)
-	pipeline.SetManager(s.manager)
-	ac := orchestration.ActionContext{
-		ProjectDir:        project.ProjectPath,
-		AppName:           orchestration.ReadProjectAppName(project.ProjectPath),
-		SessionID:         project.SessionID,
-		Platform:          platform,
-		Platforms:         platforms,
-		WatchProjectShape: watchProjectShape,
-	}
-	result, err := pipeline.Action(ctx, prompt, ac, images)
-	if err != nil {
-		terminal.Error(fmt.Sprintf("Edit failed: %v", err))
-		return err
-	}
-
-	// Record usage
-	s.usageStore.RecordUsage(result.TotalCostUSD, result.InputTokens, result.OutputTokens, result.CacheRead, result.CacheCreated)
-
-	// Update session ID for conversation continuity
-	if result.SessionID != "" {
-		project.SessionID = result.SessionID
-	}
-	project.RuntimeKind = string(s.runtimeKind)
-	project.ModelID = s.CurrentModel()
-	s.projectStore.Save(project)
-
-	// Show summary
-	terminal.Success(fmt.Sprintf("Edit complete — %d files", result.CompletedFiles))
-
-	s.historyStore.Append(storage.HistoryMessage{Role: "user", Content: prompt})
-	summary := fmt.Sprintf("Applied edit: %s (%d files)", truncateStr(prompt, 50), result.CompletedFiles)
-	s.historyStore.Append(storage.HistoryMessage{
-		Role:    "assistant",
-		Content: summary,
-	})
-
-	// Validate: build for device after edits (no simulator launch needed)
-	fmt.Println()
-	return s.Fix(ctx)
-}
 
 // ASC runs the App Store Connect flow directly in the terminal.
 func (s *Service) ASC(ctx context.Context, prompt string) error {
@@ -901,48 +738,6 @@ func (s *Service) Open() error {
 // HasProject returns whether the service has a loaded project.
 func (s *Service) HasProject() bool {
 	return s.config.HasProject()
-}
-
-// isQuestion returns true if the prompt looks like a pure question rather than an edit request.
-// Conservative: only matches clear questions. Ambiguous prompts go through the edit pipeline.
-func isQuestion(prompt string) bool {
-	trimmed := strings.TrimSpace(prompt)
-	if trimmed == "" {
-		return false
-	}
-
-	lower := strings.ToLower(trimmed)
-
-	// If it contains action words, it's an edit request even if phrased as a question
-	actionWords := []string{
-		"fix ", "add ", "change ", "update ", "remove ", "delete ",
-		"make ", "create ", "implement ", "replace ", "move ",
-		"refactor ", "please ", "let us ", "let's ",
-	}
-	for _, a := range actionWords {
-		if strings.Contains(lower, a) {
-			return false
-		}
-	}
-
-	// Must end with ? to be detected as a question via prefix matching
-	if !strings.HasSuffix(trimmed, "?") {
-		return false
-	}
-
-	// Only match clear question-word prefixes (with trailing ?)
-	prefixes := []string{
-		"what ", "how ", "why ", "where ", "which ",
-		"is ", "are ", "does ", "do ", "can ", "could ",
-		"should ", "would ", "tell me ", "explain ", "describe ",
-		"show me ", "list ", "how many ", "how much ",
-	}
-	for _, p := range prefixes {
-		if strings.HasPrefix(lower, p) {
-			return true
-		}
-	}
-	return false
 }
 
 // question runs a read-only Q&A path using the active runtime model selection.

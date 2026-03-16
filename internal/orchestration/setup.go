@@ -12,53 +12,6 @@ import (
 // skillsFS aliases the skills package FS for backward compatibility within orchestration.
 var skillsFS = skills.FS
 
-// setupWorkspace creates the project directory and .claude/ structure.
-func setupWorkspace(projectDir string) error {
-	dirs := []string{
-		projectDir,
-		filepath.Join(projectDir, ".claude", "rules"),
-	}
-	for _, d := range dirs {
-		if err := os.MkdirAll(d, 0o755); err != nil {
-			return fmt.Errorf("failed to create directory %s: %w", d, err)
-		}
-	}
-	return nil
-}
-
-// writeInitialCLAUDEMD writes a thin CLAUDE.md with project name and build command.
-func writeInitialCLAUDEMD(projectDir, appName, platform, deviceFamily string) error {
-	return writeCLAUDEMD(projectDir, appName, platform, deviceFamily, "")
-}
-
-// enrichCLAUDEMD updates CLAUDE.md with plan-specific details after planning.
-func enrichCLAUDEMD(projectDir string, plan *PlannerResult, appName string) error {
-	return writeCLAUDEMD(projectDir, appName, plan.GetPlatform(), plan.GetDeviceFamily(), plan.GetWatchProjectShape())
-}
-
-func writeCLAUDEMD(projectDir, appName, platform, deviceFamily, watchProjectShape string) error {
-	buildCmd := canonicalBuildCommandForShape(appName, platform, watchProjectShape)
-
-	content := fmt.Sprintf(`# %s
-
-## Build
-
-%s
-
-## Rules
-
-Core rules live in .claude/rules/ — read them before writing code.
-
-## Project Config
-
-- project_config.json = source of truth
-- project.yml = XcodeGen spec (use xcodegen MCP tools to modify)
-- .xcodeproj = generated output (never edit manually)
-`, appName, buildCmd)
-
-	return os.WriteFile(filepath.Join(projectDir, ".claude", "CLAUDE.md"), []byte(content), 0o644)
-}
-
 func platformSummary(platform, deviceFamily string) string {
 	if IsWatchOS(platform) {
 		return "Apple Watch, watchOS 26+, Swift 6"

@@ -107,36 +107,23 @@ const (
 )
 
 // NewProgressDisplay creates a progress display for the given mode.
-// totalFiles is used for the build progress bar (0 if unknown).
+// totalFiles is unused (kept for API compatibility).
 func NewProgressDisplay(mode string, totalFiles int) *ProgressDisplay {
-	totalPhases := 5 // build: analyze → plan → code → generate → compile
 	startPhase := PhaseBuildingCode
 
 	switch mode {
-	case "intent":
-		startPhase = PhaseAnalyzing
-		totalPhases = 5
 	case "analyze":
 		startPhase = PhaseAnalyzing
-		totalPhases = 5
 	case "plan":
 		startPhase = PhasePlanning
-		totalPhases = 5
-	case "build":
+	case "build", "agentic":
 		startPhase = PhaseBuildingCode
-		totalPhases = 5
 	case "edit":
 		startPhase = PhaseEditing
-		totalPhases = 0
 	case "fix":
 		startPhase = PhaseCompiling
-		totalPhases = 0
 	case "asc":
 		startPhase = PhaseASC
-		totalPhases = 0
-	case "agentic":
-		startPhase = PhaseBuildingCode
-		totalPhases = 0
 	}
 
 	maxAct := defaultMaxActivities
@@ -148,7 +135,7 @@ func NewProgressDisplay(mode string, totalFiles int) *ProgressDisplay {
 		phase:         startPhase,
 		totalFiles:    totalFiles,
 		mode:          mode,
-		totalPhases:   totalPhases,
+		totalPhases:   0,
 		startedAt:     time.Now(),
 		interactive:   term.IsTerminal(int(os.Stdout.Fd())),
 		done:          make(chan struct{}),
@@ -581,33 +568,20 @@ func (pd *ProgressDisplay) renderNonInteractive(phase Phase, totalPhases, totalF
 	}
 }
 
-// buildPhaseHeader builds the header line with optional progress bar.
-func (pd *ProgressDisplay) buildPhaseHeader(phase Phase, runtimeLabel string, totalPhases, totalFiles, filesWritten int, buildFailed bool, spinChar string, elapsed time.Duration) string {
+// buildPhaseHeader builds the header line with spinner, label, runtime, and elapsed time.
+func (pd *ProgressDisplay) buildPhaseHeader(phase Phase, runtimeLabel string, _, _, _ int, buildFailed bool, spinChar string, elapsed time.Duration) string {
 	var sb strings.Builder
 	sb.WriteString("  ")
 
-	// Phase number (only for build mode with numbered phases)
-	if totalPhases > 0 {
-		phaseNum := phase.number()
-		if buildFailed && phase == PhaseFixing {
-			sb.WriteString(fmt.Sprintf("%s%s %s...%s", Yellow, spinChar, phase.label(), Reset))
-		} else {
-			sb.WriteString(fmt.Sprintf("%sPhase %d/%d:%s %s%s %s...%s",
-				Dim, phaseNum, totalPhases, Reset, Cyan, spinChar, phase.label(), Reset))
-		}
+	// Simple spinner + phase label (no phase numbering)
+	if buildFailed && phase == PhaseFixing {
+		sb.WriteString(fmt.Sprintf("%s%s %s...%s", Yellow, spinChar, phase.label(), Reset))
 	} else {
 		sb.WriteString(fmt.Sprintf("%s%s %s...%s", Cyan, spinChar, phase.label(), Reset))
 	}
 
 	if runtimeLabel != "" {
 		sb.WriteString(fmt.Sprintf("  %s[%s]%s", Dim, runtimeLabel, Reset))
-	}
-
-	// Progress bar for building code phase
-	if phase == PhaseBuildingCode && totalFiles > 0 {
-		sb.WriteString("  ")
-		sb.WriteString(buildProgressBar(filesWritten, totalFiles))
-		sb.WriteString(fmt.Sprintf(" %s%d/%d files%s", Dim, filesWritten, totalFiles, Reset))
 	}
 
 	// Elapsed time
