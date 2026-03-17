@@ -69,6 +69,34 @@ func TestOnAssistantTextPlanModeKeepsStructuredPreview(t *testing.T) {
 	assertFriendlyStructuredStatus(t, pd.statusText)
 }
 
+func TestOnAgentCommentaryAddsActivityAndDeduplicates(t *testing.T) {
+	pd := NewProgressDisplay("agentic", 0)
+
+	pd.OnAgentCommentary("Inspecting runtime wiring. Then patching.")
+	if len(pd.activities) != 1 {
+		t.Fatalf("len(activities) = %d, want 1", len(pd.activities))
+	}
+	if pd.activities[0].text != "Inspecting runtime wiring" {
+		t.Fatalf("activities[0].text = %q", pd.activities[0].text)
+	}
+
+	pd.OnAgentCommentary("Inspecting runtime wiring. More detail.")
+	if len(pd.activities) != 1 {
+		t.Fatalf("len(activities) after duplicate = %d, want 1", len(pd.activities))
+	}
+
+	pd.OnAgentCommentary("Patching the Codex adapter.")
+	if len(pd.activities) != 2 {
+		t.Fatalf("len(activities) after new message = %d, want 2", len(pd.activities))
+	}
+	if !pd.activities[0].done {
+		t.Fatal("expected first commentary activity to be marked done")
+	}
+	if pd.activities[1].text != "Patching the Codex adapter" {
+		t.Fatalf("activities[1].text = %q", pd.activities[1].text)
+	}
+}
+
 func TestBuildPhaseHeaderIncludesRuntimeLabel(t *testing.T) {
 	pd := NewProgressDisplay("plan", 0)
 	got := pd.buildPhaseHeader(PhasePlanning, "Codex", 5, 0, 0, false, "•", 7*time.Second)

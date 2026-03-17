@@ -129,6 +129,24 @@ func TestTranslateCodexPayloadCommandExecution(t *testing.T) {
 	}
 }
 
+func TestTranslateCodexPayloadCommandExecutionUnderscoreEvent(t *testing.T) {
+	payload := map[string]any{
+		"type": "item_started",
+		"item": map[string]any{
+			"type":    "command_execution",
+			"command": "xcodegen generate",
+		},
+	}
+
+	update := translateCodexPayload(payload)
+	if len(update.Events) != 2 {
+		t.Fatalf("len(Events) = %d, want 2", len(update.Events))
+	}
+	if update.Events[0].Type != "tool_use_start" || update.Events[0].ToolName != "Bash" {
+		t.Fatalf("Events[0] = %#v", update.Events[0])
+	}
+}
+
 func TestTranslateCodexPayloadAgentMessageDelta(t *testing.T) {
 	payload := map[string]any{
 		"type": "agent_message_delta",
@@ -141,6 +159,59 @@ func TestTranslateCodexPayloadAgentMessageDelta(t *testing.T) {
 	}
 	if len(update.Events) != 1 || update.Events[0].Type != "content_block_delta" {
 		t.Fatalf("Events = %#v", update.Events)
+	}
+}
+
+func TestTranslateCodexPayloadEventMsgCommentary(t *testing.T) {
+	payload := map[string]any{
+		"type": "event_msg",
+		"payload": map[string]any{
+			"type":    "agent_message",
+			"message": "Inspecting runtime wiring. Then patching.",
+			"phase":   "commentary",
+		},
+	}
+
+	update := translateCodexPayload(payload)
+	if update.FullText != "" {
+		t.Fatalf("FullText = %q, want empty for commentary", update.FullText)
+	}
+	if len(update.Events) != 1 {
+		t.Fatalf("len(Events) = %d, want 1", len(update.Events))
+	}
+	if update.Events[0].Type != "assistant" || update.Events[0].Subtype != "commentary" {
+		t.Fatalf("Events[0] = %#v", update.Events[0])
+	}
+	if update.Events[0].Text != "Inspecting runtime wiring. Then patching." {
+		t.Fatalf("Events[0].Text = %q", update.Events[0].Text)
+	}
+}
+
+func TestTranslateCodexPayloadResponseItemCommentary(t *testing.T) {
+	payload := map[string]any{
+		"type": "response_item",
+		"payload": map[string]any{
+			"type":  "message",
+			"role":  "assistant",
+			"phase": "commentary",
+			"content": []any{
+				map[string]any{
+					"type": "output_text",
+					"text": "Inspecting runtime wiring. Then patching.",
+				},
+			},
+		},
+	}
+
+	update := translateCodexPayload(payload)
+	if update.FullText != "" {
+		t.Fatalf("FullText = %q, want empty for commentary", update.FullText)
+	}
+	if len(update.Events) != 1 {
+		t.Fatalf("len(Events) = %d, want 1", len(update.Events))
+	}
+	if update.Events[0].Type != "assistant" || update.Events[0].Subtype != "commentary" {
+		t.Fatalf("Events[0] = %#v", update.Events[0])
 	}
 }
 

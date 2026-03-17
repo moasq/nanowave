@@ -1,6 +1,8 @@
 package orchestration
 
 import (
+	"context"
+
 	"github.com/moasq/nanowave/internal/agentruntime"
 	"github.com/moasq/nanowave/internal/mcpregistry"
 	"github.com/moasq/nanowave/internal/terminal"
@@ -104,6 +106,12 @@ func WriteSettingsSharedExternal(projectDir string) error {
 	reg := mcpregistry.New()
 	mcpregistry.RegisterAll(reg)
 	return writeSettingsShared(projectDir, reg, nil)
+}
+
+// SetupIntegrationExternal runs the interactive setup flow for a single integration provider.
+// Returns a result map with provider config details on success.
+func SetupIntegrationExternal(ctx context.Context, providerID, appName, projectDir string) (map[string]any, error) {
+	return setupIntegration(ctx, providerID, appName, projectDir)
 }
 
 // EnsureProjectConfigsExternal writes .mcp.json, settings.json, and settings.local.json if missing.

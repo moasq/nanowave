@@ -1,0 +1,16 @@
+[
+  {
+    "date": "2026-03-16",
+    "total_cost_usd": 0,
+    "input_tokens": 3522999,
+    "output_tokens": 41074,
+    "requests": 2
+  },
+  {
+    "date": "2026-03-17",
+    "total_cost_usd": 0,
+    "input_tokens": 3230089,
+    "output_tokens": 42419,
+    "requests": 4
+  }
+]

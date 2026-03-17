@@ -451,7 +451,11 @@ func newProgressCallback(progress *terminal.ProgressDisplay, runtimeLabel string
 
 		case "assistant":
 			if ev.Text != "" {
-				progress.OnAssistantText(ev.Text)
+				if strings.EqualFold(ev.Subtype, "commentary") {
+					progress.OnAgentCommentary(ev.Text)
+				} else {
+					progress.OnAssistantText(ev.Text)
+				}
 			}
 		}
 	}

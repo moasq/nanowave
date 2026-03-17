@@ -117,9 +117,6 @@ func (r *CodexRuntime) GenerateStreaming(ctx context.Context, userMessage string
 		defer wg.Done()
 		stderrErr = streamTextLines(stderr, func(line string) error {
 			appendCapturedLine(&stderrText, line)
-			if onEvent != nil {
-				onEvent(StreamEvent{Type: "assistant", Text: line})
-			}
 			return nil
 		})
 	}()
@@ -240,10 +237,14 @@ type codexStreamUpdate struct {
 
 func translateCodexPayload(payload map[string]any) codexStreamUpdate {
 	update := codexStreamUpdate{}
-	eventType := strings.ToLower(stringValue(payload["type"]))
+	eventType := normalizeCodexEventType(stringValue(payload["type"]))
 
 	switch eventType {
-	case "thread.started":
+	case "event_msg":
+		return translateCodexEventMsg(mapValue(payload["payload"]))
+	case "response_item":
+		return translateCodexResponseItem(mapValue(payload["payload"]))
+	case "thread_started":
 		update.SessionID = firstNonEmpty(
 			stringValue(payload["thread_id"]),
 			stringValue(payload["session_id"]),
@@ -251,13 +252,13 @@ func translateCodexPayload(payload map[string]any) codexStreamUpdate {
 		if update.SessionID != "" {
 			update.Events = append(update.Events, StreamEvent{Type: "system", Subtype: "init", SessionID: update.SessionID})
 		}
-	case "turn.completed":
+	case "turn_completed":
 		update.TotalCostUSD = floatValue(payload["total_cost_usd"])
 		if usage := parseUsageMap(mapValue(payload["usage"])); usage != nil {
 			update.Usage = *usage
 			update.HasUsage = true
 		}
-	case "turn.failed", "error":
+	case "turn_failed", "error":
 		update.LastError = firstNonEmpty(
 			extractString(payload, "message", "text", "content"),
 			extractString(mapValue(payload["error"]), "message", "text", "content"),
@@ -265,8 +266,11 @@ func translateCodexPayload(payload map[string]any) codexStreamUpdate {
 		if update.LastError != "" {
 			update.Events = append(update.Events, StreamEvent{Type: "assistant", Text: update.LastError})
 		}
-	case "agent_message_delta", "assistant_message_delta":
-		update.DeltaText = extractString(payload, "text", "message", "content")
+	case "agent_message_delta", "assistant_message_delta", "agent_message_content_delta":
+		update.DeltaText = firstNonEmpty(
+			stringValue(payload["delta"]),
+			extractString(payload, "text", "message", "content"),
+		)
 		if update.DeltaText != "" {
 			update.Events = append(update.Events, StreamEvent{Type: "content_block_delta", Text: update.DeltaText})
 		}
@@ -275,14 +279,17 @@ func translateCodexPayload(payload map[string]any) codexStreamUpdate {
 		if update.FullText != "" {
 			update.Events = append(update.Events, StreamEvent{Type: "assistant", Text: update.FullText})
 		}
-	case "item.started", "item.completed":
+	case "item_started", "item_completed":
 		itemUpdate := translateCodexItem(eventType, mapValue(payload["item"]))
 		update.Events = append(update.Events, itemUpdate.Events...)
 		update.DeltaText = itemUpdate.DeltaText
 		update.FullText = itemUpdate.FullText
 		update.LastError = itemUpdate.LastError
 	default:
-		text := extractString(payload, "message", "text", "content")
+		text := firstNonEmpty(
+			stringValue(payload["delta"]),
+			extractString(payload, "message", "text", "content"),
+		)
 		if text == "" {
 			text = extractString(mapValue(payload["item"]), "message", "text", "content")
 		}
@@ -306,7 +313,8 @@ func translateCodexItem(eventType string, item map[string]any) codexStreamUpdate
 		return update
 	}
 
-	itemType := strings.ToLower(firstNonEmpty(
+	eventType = normalizeCodexEventType(eventType)
+	itemType := normalizeCodexEventType(firstNonEmpty(
 		stringValue(item["type"]),
 		stringValue(item["kind"]),
 	))
@@ -397,7 +405,7 @@ func translateCodexItem(eventType string, item map[string]any) codexStreamUpdate
 		))
 		if name != "" {
 			input := rawJSON(firstNonNil(item["input"], item["arguments"], item["parameters"]))
-			if eventType == "item.started" {
+			if eventType == "item_started" {
 				update.Events = append(update.Events, StreamEvent{Type: "tool_use_start", ToolName: name})
 				if len(input) > 0 {
 					update.Events = append(update.Events, StreamEvent{Type: "tool_input_delta", ToolName: name, Text: string(input)})
@@ -419,7 +427,7 @@ func codexToolProgress(eventType string, toolName string, input map[string]any) 
 		return nil
 	}
 	encoded := rawJSON(input)
-	if eventType == "item.started" {
+	if normalizeCodexEventType(eventType) == "item_started" {
 		events := []StreamEvent{{Type: "tool_use_start", ToolName: toolName}}
 		if len(encoded) > 0 {
 			events = append(events, StreamEvent{Type: "tool_input_delta", ToolName: toolName, Text: string(encoded)})
@@ -504,6 +512,91 @@ func normalizeRuntimeToolName(name string) string {
 	default:
 		return strings.TrimSpace(name)
 	}
+}
+
+func normalizeCodexEventType(name string) string {
+	name = strings.ToLower(strings.TrimSpace(name))
+	name = strings.ReplaceAll(name, ".", "_")
+	name = strings.ReplaceAll(name, "/", "_")
+	return name
+}
+
+func translateCodexEventMsg(event map[string]any) codexStreamUpdate {
+	update := codexStreamUpdate{}
+	if len(event) == 0 {
+		return update
+	}
+
+	switch normalizeCodexEventType(stringValue(event["type"])) {
+	case "agent_message":
+		text := firstNonEmpty(
+			stringValue(event["message"]),
+			extractString(event, "text", "message", "content"),
+		)
+		if text == "" {
+			return update
+		}
+		subtype := strings.ToLower(strings.TrimSpace(stringValue(event["phase"])))
+		if subtype == "commentary" {
+			update.Events = append(update.Events, StreamEvent{Type: "assistant", Subtype: subtype, Text: text})
+			return update
+		}
+		update.FullText = text
+		update.Events = append(update.Events, StreamEvent{Type: "assistant", Subtype: subtype, Text: text})
+	case "task_complete", "turn_complete":
+		update.TotalCostUSD = floatValue(event["total_cost_usd"])
+		if usage := parseUsageMap(mapValue(event["usage"])); usage != nil {
+			update.Usage = *usage
+			update.HasUsage = true
+		}
+		if text := strings.TrimSpace(stringValue(event["last_agent_message"])); text != "" {
+			update.FullText = text
+		}
+	case "token_count":
+		info := mapValue(event["info"])
+		if usage := parseUsageMap(mapValue(info["last_token_usage"])); usage != nil {
+			update.Usage = *usage
+			update.HasUsage = true
+		}
+	}
+
+	return update
+}
+
+func translateCodexResponseItem(item map[string]any) codexStreamUpdate {
+	update := codexStreamUpdate{}
+	if len(item) == 0 {
+		return update
+	}
+
+	switch normalizeCodexEventType(firstNonEmpty(
+		stringValue(item["type"]),
+		stringValue(item["kind"]),
+	)) {
+	case "message":
+		role := strings.ToLower(strings.TrimSpace(stringValue(item["role"])))
+		if role != "" && role != "assistant" && role != "agent" {
+			return update
+		}
+		text := extractString(item, "text", "message", "content")
+		if text == "" {
+			return update
+		}
+		subtype := strings.ToLower(strings.TrimSpace(stringValue(item["phase"])))
+		if subtype == "commentary" {
+			update.Events = append(update.Events, StreamEvent{Type: "assistant", Subtype: subtype, Text: text})
+			return update
+		}
+		update.FullText = text
+		update.Events = append(update.Events, StreamEvent{Type: "assistant", Subtype: subtype, Text: text})
+	case "reasoning":
+		text := extractString(item, "text", "summary", "message", "content")
+		if text != "" {
+			update.Events = append(update.Events, StreamEvent{Type: "assistant", Text: text})
+		}
+	}
+
+	return update
 }
 
 func buildCodexExecArgs(outputPath string, opts GenerateOpts) []string {

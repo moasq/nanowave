@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/moasq/nanowave/internal/agentruntime"
 	"github.com/moasq/nanowave/internal/mcpregistry"
@@ -46,7 +47,8 @@ func (s *Service) AgenticSend(ctx context.Context, prompt string, images []strin
 	}
 
 	// Compose system prompt — domain knowledge only, no workflow steps
-	systemPrompt := orchestration.ComposeAgenticSystemPrompt(ac)
+	catalogRoot := s.config.CatalogRoot()
+	systemPrompt := orchestration.ComposeAgenticSystemPrompt(ac, catalogRoot)
 
 	// Build tool list: core tools + all MCP tools
 	reg := mcpregistry.New()
@@ -54,7 +56,7 @@ func (s *Service) AgenticSend(ctx context.Context, prompt string, images []strin
 	tools := orchestration.CoreAgenticToolsList()
 	tools = append(tools, reg.AllTools()...)
 
-	// Add integration tools if available
+	// Add tools from already-configured integrations
 	if s.manager != nil {
 		activeProviders := s.manager.ResolveExisting(ac.AppName)
 		tools = append(tools, s.manager.AgentTools(activeProviders)...)
@@ -65,9 +67,20 @@ func (s *Service) AgenticSend(ctx context.Context, prompt string, images []strin
 		systemPrompt += nwtool.NewDefaultRegistry().ToolDescriptionsMarkdown()
 	}
 
-	workDir := ""
+	var workDir string
+	// Snapshot existing projects before build so we can detect the new one after
+	var preExistingProjects map[string]bool
 	if isEdit {
 		workDir = ac.ProjectDir
+		// Ensure project has MCP config, settings, and skill files for the current runtime
+		orchestration.EnsureProjectConfigsExternal(workDir)
+	} else {
+		// New builds: start in the catalog root so the agent doesn't see
+		// the CLI source tree. The agent will create the project dir via
+		// nw_scaffold_project inside this directory.
+		workDir = s.config.CatalogRoot()
+		os.MkdirAll(workDir, 0o755)
+		preExistingProjects = listCatalogDirs(workDir)
 	}
 
 	// Progress display — "agentic" mode shows tool activity without rigid phase numbers
@@ -91,6 +104,25 @@ func (s *Service) AgenticSend(ctx context.Context, prompt string, images []strin
 		Images:       images,
 		SessionID:    ac.SessionID,
 	}, streamCb)
+
+	// If resume failed because the session doesn't exist (e.g., created by a different runtime),
+	// retry without the session ID so we start a fresh conversation.
+	if err != nil && ac.SessionID != "" && strings.Contains(err.Error(), "No conversation found") {
+		progress.Stop()
+		progress = terminal.NewProgressDisplay("agentic", 0)
+		progress.SetRuntimeLabel(runtimeLabel)
+		progress.Start()
+		streamCb = orchestration.NewProgressCallbackExported(progress, runtimeLabel)
+
+		resp, err = s.runtime.GenerateStreaming(ctx, prompt, agentruntime.GenerateOpts{
+			SystemPrompt: systemPrompt,
+			MaxTurns:     50,
+			Model:        s.phaseModel(agentruntime.PhaseBuild),
+			AllowedTools: tools,
+			WorkDir:      workDir,
+			Images:       images,
+		}, streamCb)
+	}
 
 	if err != nil {
 		progress.StopWithError("Build failed")
@@ -124,9 +156,15 @@ func (s *Service) AgenticSend(ctx context.Context, prompt string, images []strin
 		return nil
 	}
 
-	// For new builds, detect newly created project in the catalog
+	// For new builds, detect the newly created project
 	if resp != nil {
-		projectDir := detectNewestProject(s.config.CatalogRoot())
+		projectDir := detectNewProject(catalogRoot, preExistingProjects)
+		// Fallback: if diff detection failed but the agent mentioned a path, use that
+		if projectDir == "" && resp.Result != "" {
+			if extracted := extractProjectPathFromText(resp.Result, catalogRoot); extracted != "" {
+				projectDir = extracted
+			}
+		}
 		if projectDir != "" {
 			s.config.SetProject(projectDir)
 			s.projectStore = storage.NewProjectStore(s.config.NanowaveDir)
@@ -167,38 +205,139 @@ func (s *Service) AgenticSend(ctx context.Context, prompt string, images []strin
 	return nil
 }
 
-// detectNewestProject finds the most recently modified project_config.json in the catalog.
-func detectNewestProject(catalogRoot string) string {
+// listCatalogDirs returns a set of all directory names in the catalog root.
+func listCatalogDirs(catalogRoot string) map[string]bool {
+	entries, err := os.ReadDir(catalogRoot)
+	if err != nil {
+		return nil
+	}
+	dirs := make(map[string]bool)
+	for _, entry := range entries {
+		if entry.IsDir() {
+			dirs[entry.Name()] = true
+		}
+	}
+	return dirs
+}
+
+// detectNewProject finds the project directory created during the build by
+// comparing the catalog against the pre-build snapshot. Any new directory
+// containing at least one .swift file or a project_config.json is a candidate.
+// Falls back to the most recently modified directory if the diff finds nothing.
+func detectNewProject(catalogRoot string, preExisting map[string]bool) string {
 	entries, err := os.ReadDir(catalogRoot)
 	if err != nil {
 		return ""
 	}
 
+	var newDirs []string
 	type candidate struct {
 		path    string
 		modTime int64
 	}
-	var candidates []candidate
+	var allCandidates []candidate
 
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			continue
 		}
-		configPath := filepath.Join(catalogRoot, entry.Name(), "project_config.json")
-		info, err := os.Stat(configPath)
-		if err != nil {
+		fullPath := filepath.Join(catalogRoot, entry.Name())
+		if !looksLikeProject(fullPath) {
 			continue
 		}
-		candidates = append(candidates, candidate{
-			path:    filepath.Join(catalogRoot, entry.Name()),
-			modTime: info.ModTime().UnixNano(),
-		})
+		info, _ := entry.Info()
+		var modTime int64
+		if info != nil {
+			modTime = info.ModTime().UnixNano()
+		}
+		allCandidates = append(allCandidates, candidate{path: fullPath, modTime: modTime})
+
+		if !preExisting[entry.Name()] {
+			newDirs = append(newDirs, fullPath)
+		}
 	}
-	if len(candidates) == 0 {
+
+	if len(newDirs) == 1 {
+		return newDirs[0]
+	}
+	if len(newDirs) > 1 {
+		sort.Slice(newDirs, func(i, j int) bool {
+			iInfo, _ := os.Stat(newDirs[i])
+			jInfo, _ := os.Stat(newDirs[j])
+			if iInfo == nil || jInfo == nil {
+				return false
+			}
+			return iInfo.ModTime().After(jInfo.ModTime())
+		})
+		return newDirs[0]
+	}
+
+	// Fallback: newest directory by mtime
+	if len(allCandidates) == 0 {
 		return ""
 	}
-	sort.Slice(candidates, func(i, j int) bool {
-		return candidates[i].modTime > candidates[j].modTime
+	sort.Slice(allCandidates, func(i, j int) bool {
+		return allCandidates[i].modTime > allCandidates[j].modTime
 	})
-	return candidates[0].path
+	return allCandidates[0].path
+}
+
+// extractProjectPathFromText scans the agent's response for an absolute path
+// inside the catalog root that looks like a project directory.
+func extractProjectPathFromText(text, catalogRoot string) string {
+	// Look for the catalog root path in the text
+	idx := strings.Index(text, catalogRoot)
+	if idx < 0 {
+		return ""
+	}
+	// Extract the path starting from the catalog root
+	rest := text[idx:]
+	// Find the end of the path (space, newline, backtick, quote, or end-of-string)
+	end := len(rest)
+	for i, ch := range rest {
+		if i == 0 {
+			continue
+		}
+		if ch == ' ' || ch == '\n' || ch == '\r' || ch == '`' || ch == '"' || ch == '\'' || ch == ')' || ch == '|' {
+			end = i
+			break
+		}
+	}
+	candidate := strings.TrimRight(rest[:end], "/.")
+	if candidate == catalogRoot {
+		return "" // just the root, not a project
+	}
+	info, err := os.Stat(candidate)
+	if err != nil || !info.IsDir() {
+		return ""
+	}
+	if looksLikeProject(candidate) {
+		return candidate
+	}
+	return ""
+}
+
+// looksLikeProject returns true if the directory looks like an app project
+// (has a project_config.json, .xcodeproj, project.yml, or .swift files).
+func looksLikeProject(dir string) bool {
+	checks := []string{"project_config.json", "project.yml"}
+	for _, name := range checks {
+		if _, err := os.Stat(filepath.Join(dir, name)); err == nil {
+			return true
+		}
+	}
+	// Check for .xcodeproj or any .swift file in immediate children
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return false
+	}
+	for _, e := range entries {
+		if strings.HasSuffix(e.Name(), ".xcodeproj") {
+			return true
+		}
+		if strings.HasSuffix(e.Name(), ".swift") {
+			return true
+		}
+	}
+	return false
 }

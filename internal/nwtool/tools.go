@@ -18,6 +18,7 @@ func NewDefaultRegistry() *Registry {
 	r := NewRegistry()
 	r.Register(getSkillsTool())
 	r.Register(scaffoldProjectTool())
+	r.Register(setupIntegrationTool())
 	r.Register(verifyFilesTool())
 	r.Register(xcodeBuildTool())
 	r.Register(finalizeProjectTool())
@@ -138,6 +139,45 @@ func handleScaffoldProject(_ context.Context, input json.RawMessage) (json.RawMe
 		"success":        true,
 		"xcodeproj_path": filepath.Join(in.ProjectDir, in.AppName+".xcodeproj"),
 	})
+}
+
+// --- nw_setup_integration ---
+
+func setupIntegrationTool() *Tool {
+	return &Tool{
+		Name:        "nw_setup_integration",
+		Description: "Set up a third-party integration (Supabase, RevenueCat) for the project. This triggers an interactive setup flow that configures API keys, creates backend resources, and writes MCP config. Call this BEFORE writing integration code — it ensures credentials are available. Available providers: supabase, revenuecat.",
+		InputSchema: json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "provider":    {"type": "string", "description": "Integration provider ID: 'supabase' or 'revenuecat'"},
+    "app_name":    {"type": "string", "description": "PascalCase app name (used as the key for storing credentials)"},
+    "project_dir": {"type": "string", "description": "Absolute path to the project directory"}
+  },
+  "required": ["provider", "app_name"]
+}`),
+		Handler: handleSetupIntegration,
+	}
+}
+
+func handleSetupIntegration(ctx context.Context, input json.RawMessage) (json.RawMessage, error) {
+	var in struct {
+		Provider   string `json:"provider"`
+		AppName    string `json:"app_name"`
+		ProjectDir string `json:"project_dir"`
+	}
+	if err := json.Unmarshal(input, &in); err != nil {
+		return jsonError(fmt.Sprintf("invalid input: %v", err))
+	}
+	if in.Provider == "" || in.AppName == "" {
+		return jsonError("provider and app_name are required")
+	}
+
+	result, err := orchestration.SetupIntegrationExternal(ctx, in.Provider, in.AppName, in.ProjectDir)
+	if err != nil {
+		return jsonError(fmt.Sprintf("integration setup failed: %v", err))
+	}
+	return jsonOK(result)
 }
 
 // --- nw_verify_files ---

@@ -22,10 +22,11 @@ func appendPromptSection(b *strings.Builder, title, content string) {
 }
 
 // ComposeAgenticSystemPrompt assembles a single system prompt for agentic mode.
+// catalogRoot is the directory where new projects must be created (e.g. ~/nanowave/projects/).
 // Core rules are loaded natively by each runtime from disk (e.g. .claude/rules/ for Claude,
 // codex.md for Codex, AGENTS.md for OpenCode). This prompt only adds role and context.
 // Feature-specific skills are available on-demand via the nw_get_skills tool.
-func ComposeAgenticSystemPrompt(ac ActionContext) string {
+func ComposeAgenticSystemPrompt(ac ActionContext, catalogRoot string) string {
 	platform := ac.Platform
 	if platform == "" {
 		platform = PlatformIOS
@@ -45,6 +46,10 @@ func ComposeAgenticSystemPrompt(ac ActionContext) string {
 			editCtx += fmt.Sprintf("\n- Platforms: %s", strings.Join(ac.Platforms, ", "))
 		}
 		appendPromptSection(&b, "Edit Context", editCtx)
+	} else if catalogRoot != "" {
+		appendPromptSection(&b, "Project Location", fmt.Sprintf(
+			"CRITICAL: Create the project directory inside `%s`. For example, if the app is called MyApp, create it at `%s/MyApp/`. Do NOT create projects anywhere else.",
+			catalogRoot, catalogRoot))
 	}
 
 	return b.String()

@@ -47,29 +47,6 @@ func (p Phase) label() string {
 	}
 }
 
-func (p Phase) number() int {
-	switch p {
-	case PhaseAnalyzing:
-		return 1
-	case PhasePlanning:
-		return 2
-	case PhaseBuildingCode:
-		return 3
-	case PhaseGenerating:
-		return 4
-	case PhaseCompiling:
-		return 5
-	case PhaseFixing:
-		return 6
-	case PhaseEditing:
-		return 1
-	case PhaseASC:
-		return 1
-	default:
-		return 1
-	}
-}
-
 // activity represents a single logged action.
 type activity struct {
 	text string
@@ -102,7 +79,7 @@ type ProgressDisplay struct {
 
 const (
 	defaultMaxActivities         = 4
-	maxStatusWidth               = 70
+	maxStatusWidth               = 100
 	structuredStreamingTailRunes = 240
 )
 
@@ -128,7 +105,7 @@ func NewProgressDisplay(mode string, totalFiles int) *ProgressDisplay {
 
 	maxAct := defaultMaxActivities
 	if mode == "asc" || mode == "agentic" {
-		maxAct = 8
+		maxAct = 6
 	}
 
 	return &ProgressDisplay{
@@ -294,21 +271,17 @@ func (pd *ProgressDisplay) toolActivityLabel(toolName string, inputGetter func(k
 		}
 		return "Reading file"
 	case "Bash":
-		command := inputGetter("command")
+		command := unwrapShellCommand(inputGetter("command"))
 		if strings.Contains(command, "xcodegen") {
 			return "Generating Xcode project"
 		} else if strings.Contains(command, "xcodebuild") {
 			return "Compiling project"
-		} else if strings.Contains(command, "git") {
+		} else if strings.Contains(command, "git init") || strings.Contains(command, "git add") || strings.Contains(command, "git commit") {
 			return "Updating repository"
 		} else if label := ascCommandLabel(command); label != "" {
 			return label
 		} else if command != "" {
-			short := command
-			if len(short) > 80 {
-				short = short[:80] + "..."
-			}
-			return short
+			return truncateActivity(friendlyBashLabel(command))
 		}
 		return "Running command"
 	case "Glob":
@@ -332,36 +305,8 @@ func (pd *ProgressDisplay) OnToolUse(toolName string, inputGetter func(key strin
 	pd.mu.Lock()
 	defer pd.mu.Unlock()
 
-	// Clear stale status and streaming buffer once real tool activity begins.
-	pd.statusText = ""
+	// Clear stale streaming buffer once real tool activity begins.
 	pd.streamingBuf.Reset()
-
-	// Update phase based on tool
-	switch toolName {
-	case "Write":
-		if pd.mode == "build" {
-			pd.phase = PhaseBuildingCode
-		}
-		if inputGetter("file_path") != "" {
-			pd.filesWritten++
-			if pd.filesWritten > pd.totalFiles && pd.totalFiles > 0 {
-				pd.totalFiles = pd.filesWritten
-			}
-		}
-	case "Edit":
-		if pd.buildFailed {
-			pd.phase = PhaseFixing
-		} else if pd.mode == "edit" {
-			pd.phase = PhaseEditing
-		}
-	case "Bash":
-		command := inputGetter("command")
-		if strings.Contains(command, "xcodegen") {
-			pd.phase = PhaseGenerating
-		} else if strings.Contains(command, "xcodebuild") {
-			pd.phase = PhaseCompiling
-		}
-	}
 
 	label := pd.toolActivityLabel(toolName, inputGetter)
 	if label != "" {
@@ -371,20 +316,9 @@ func (pd *ProgressDisplay) OnToolUse(toolName string, inputGetter func(key strin
 
 // UpdateToolActivity refines the most recent activity label for a tool
 // as more input becomes available (e.g., from streaming tool_input_delta).
-// If countFile is true and the tool is a Write with a file_path, the file
-// counter is incremented (used when the complete tool input arrives).
-func (pd *ProgressDisplay) UpdateToolActivity(toolName string, inputGetter func(key string) string, countFile bool) {
+func (pd *ProgressDisplay) UpdateToolActivity(toolName string, inputGetter func(key string) string, _ bool) {
 	pd.mu.Lock()
 	defer pd.mu.Unlock()
-
-	if countFile && toolName == "Write" && pd.mode == "build" {
-		if inputGetter("file_path") != "" {
-			pd.filesWritten++
-			if pd.filesWritten > pd.totalFiles && pd.totalFiles > 0 {
-				pd.totalFiles = pd.filesWritten
-			}
-		}
-	}
 
 	label := pd.toolActivityLabel(toolName, inputGetter)
 	if label == "" {
@@ -414,37 +348,39 @@ func (pd *ProgressDisplay) OnStreamingText(text string) {
 }
 
 // OnAssistantText processes assistant text content (full message, not deltas).
+// The agent's own words become the primary status indicator.
 func (pd *ProgressDisplay) OnAssistantText(text string) {
 	pd.mu.Lock()
 	defer pd.mu.Unlock()
 
-	// Reset streaming buffer since we got the full message
 	pd.streamingBuf.Reset()
 
-	// Detect build failure mentions to transition phase
-	lower := strings.ToLower(text)
-	if strings.Contains(lower, "build failed") || strings.Contains(lower, "compilation error") ||
-		strings.Contains(lower, "build error") {
-		pd.buildFailed = true
-	}
-	if pd.buildFailed && (strings.Contains(lower, "fix") || strings.Contains(lower, "correct") ||
-		strings.Contains(lower, "let me") || strings.Contains(lower, "i'll")) {
-		pd.phase = PhaseFixing
-		pd.fixAttempts++
-	}
-
-	if isStructuredStreamingPreviewMode(pd.mode) {
-		if status := extractStreamingPreview(text, pd.mode); status != "" {
-			pd.statusText = status
-		}
-		return
-	}
-
-	// Extract a short meaningful status from assistant text
+	// Extract a short meaningful status from the agent's text
 	status := extractStatus(text)
 	if status != "" {
 		pd.statusText = status
 	}
+}
+
+// OnAgentCommentary records an agent-authored progress update as an activity line.
+// This is the primary way the agent communicates what it's doing — its own words
+// appear directly in the activity tree, not as dim status text.
+func (pd *ProgressDisplay) OnAgentCommentary(text string) {
+	pd.mu.Lock()
+	defer pd.mu.Unlock()
+
+	label := truncateActivity(extractStatus(text))
+	if label == "" {
+		return
+	}
+	// Deduplicate: don't add if the last activity is identical
+	if len(pd.activities) > 0 && pd.activities[len(pd.activities)-1].text == label {
+		return
+	}
+
+	pd.statusText = ""
+	pd.streamingBuf.Reset()
+	pd.addActivity(label)
 }
 
 // renderLoop runs the rendering goroutine.
@@ -568,20 +504,17 @@ func (pd *ProgressDisplay) renderNonInteractive(phase Phase, totalPhases, totalF
 	}
 }
 
-// buildPhaseHeader builds the header line with spinner, label, runtime, and elapsed time.
-func (pd *ProgressDisplay) buildPhaseHeader(phase Phase, runtimeLabel string, _, _, _ int, buildFailed bool, spinChar string, elapsed time.Duration) string {
+// buildPhaseHeader builds the header line with spinner, runtime, and elapsed time.
+// The agent's own text drives the activity tree — no Go-hardcoded phase labels.
+func (pd *ProgressDisplay) buildPhaseHeader(_ Phase, runtimeLabel string, _, _, _ int, _ bool, spinChar string, elapsed time.Duration) string {
 	var sb strings.Builder
 	sb.WriteString("  ")
 
-	// Simple spinner + phase label (no phase numbering)
-	if buildFailed && phase == PhaseFixing {
-		sb.WriteString(fmt.Sprintf("%s%s %s...%s", Yellow, spinChar, phase.label(), Reset))
-	} else {
-		sb.WriteString(fmt.Sprintf("%s%s %s...%s", Cyan, spinChar, phase.label(), Reset))
-	}
-
+	// Spinner + runtime label only — the activity tree shows what's happening
 	if runtimeLabel != "" {
-		sb.WriteString(fmt.Sprintf("  %s[%s]%s", Dim, runtimeLabel, Reset))
+		sb.WriteString(fmt.Sprintf("%s%s%s  %s[%s]%s", Cyan, spinChar, Reset, Dim, runtimeLabel, Reset))
+	} else {
+		sb.WriteString(fmt.Sprintf("%s%s%s", Cyan, spinChar, Reset))
 	}
 
 	// Elapsed time
@@ -611,20 +544,6 @@ func (pd *ProgressDisplay) clearDisplay() {
 		fmt.Printf("\033[K\n") // clear line and move down
 	}
 	fmt.Printf("\033[%dA", total) // move back up
-}
-
-// buildProgressBar creates a progress bar string.
-func buildProgressBar(current, total int) string {
-	if total <= 0 {
-		return ""
-	}
-	width := 16
-	filled := (current * width) / total
-	if filled > width {
-		filled = width
-	}
-	bar := strings.Repeat("█", filled) + strings.Repeat("░", width-filled)
-	return fmt.Sprintf("%s[%s]%s", Dim, bar, Reset)
 }
 
 // shortPath extracts a meaningful short path from a full file path.
@@ -693,6 +612,138 @@ func friendlyToolName(toolName string, inputGetter func(key string) string) stri
 
 	}
 
+	return ""
+}
+
+// unwrapShellCommand strips shell wrappers like `/bin/zsh -lc '...'` or
+// `/bin/bash -c "..."` that non-Claude runtimes (Codex, OpenCode) use,
+// revealing the inner command for display. Recursively unwraps nested shells.
+func unwrapShellCommand(command string) string {
+	command = strings.TrimSpace(command)
+	if command == "" {
+		return ""
+	}
+	for _, prefix := range []string{
+		"/bin/zsh -lc ", "/bin/zsh -c ",
+		"/bin/bash -lc ", "/bin/bash -c ",
+		"/bin/sh -lc ", "/bin/sh -c ",
+		"bash -lc ", "bash -c ",
+		"sh -lc ", "sh -c ",
+		"zsh -lc ", "zsh -c ",
+	} {
+		if strings.HasPrefix(command, prefix) {
+			inner := strings.TrimSpace(command[len(prefix):])
+			// Strip surrounding quotes
+			if len(inner) >= 2 {
+				if (inner[0] == '\'' && inner[len(inner)-1] == '\'') ||
+					(inner[0] == '"' && inner[len(inner)-1] == '"') {
+					inner = inner[1 : len(inner)-1]
+				}
+			}
+			// Recursively unwrap nested shells
+			return unwrapShellCommand(strings.TrimSpace(inner))
+		}
+	}
+	return command
+}
+
+// friendlyBashLabel produces a short human-readable label for a shell command.
+// Handles patterns Codex/OpenCode runtimes actually use (sed, cat, nl, head, tail, grep, etc.)
+func friendlyBashLabel(command string) string {
+	command = strings.TrimSpace(command)
+	if command == "" {
+		return "Running command"
+	}
+
+	// For piped or multi-command lines, take the first command
+	first := command
+	for _, sep := range []string{" | ", " && ", " ; "} {
+		if idx := strings.Index(first, sep); idx > 0 {
+			first = first[:idx]
+		}
+	}
+	fields := strings.Fields(first)
+	if len(fields) == 0 {
+		return "Running command"
+	}
+
+	// Get the base binary name (strip path prefix)
+	bin := fields[0]
+	if idx := strings.LastIndex(bin, "/"); idx >= 0 {
+		bin = bin[idx+1:]
+	}
+
+	// Extract the last argument that looks like a file path
+	filePath := extractFileArg(fields)
+
+	switch bin {
+	case "cat", "nl", "sed", "head", "tail", "awk", "less", "more", "wc":
+		if filePath != "" {
+			return "Reading " + shortPath(filePath)
+		}
+		return "Reading file"
+	case "grep", "rg", "ag":
+		if filePath != "" {
+			return "Searching " + shortPath(filePath)
+		}
+		return "Searching code"
+	case "ls", "find", "fd", "tree":
+		if filePath != "" {
+			return "Listing " + shortPath(filePath)
+		}
+		return "Listing files"
+	case "mkdir":
+		if filePath != "" {
+			return "Creating " + shortPath(filePath)
+		}
+		return "Creating directory"
+	case "rm":
+		return "Removing files"
+	case "cp":
+		return "Copying files"
+	case "mv":
+		return "Moving files"
+	case "touch":
+		if filePath != "" {
+			return "Creating " + shortPath(filePath)
+		}
+		return "Creating file"
+	case "chmod":
+		return "Setting permissions"
+	case "curl", "wget":
+		return "Downloading"
+	case "jq":
+		return "Processing JSON"
+	case "swift":
+		return "Running Swift"
+	case "pod":
+		return "Running CocoaPods"
+	case "echo", "printf":
+		return "Running command"
+	default:
+		return bin
+	}
+}
+
+// extractFileArg finds the last argument that looks like a file path
+// (contains a dot + extension, or a slash). Skips flags and quoted strings.
+func extractFileArg(fields []string) string {
+	// Walk backwards to find a file-like argument
+	for i := len(fields) - 1; i >= 1; i-- {
+		arg := fields[i]
+		// Skip flags
+		if strings.HasPrefix(arg, "-") {
+			continue
+		}
+		// Skip quoted sed/awk expressions
+		if strings.HasPrefix(arg, "'") || strings.HasPrefix(arg, "\"") {
+			continue
+		}
+		// Looks like a file path: has extension or contains /
+		if strings.Contains(arg, "/") || strings.Contains(arg, ".") {
+			return arg
+		}
+	}
 	return ""
 }
 
@@ -827,8 +878,6 @@ func extractStreamingPreview(text, mode string) string {
 		return ""
 	}
 	switch mode {
-	case "intent":
-		return "Preparing routing decision..."
 	case "analyze":
 		return "Preparing analysis output..."
 	case "plan":
@@ -839,7 +888,7 @@ func extractStreamingPreview(text, mode string) string {
 }
 
 func isStructuredStreamingPreviewMode(mode string) bool {
-	return mode == "intent" || mode == "analyze" || mode == "plan"
+	return mode == "analyze" || mode == "plan"
 }
 
 func tailRunes(s string, max int) string {

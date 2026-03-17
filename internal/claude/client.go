@@ -302,7 +302,14 @@ func (c *Client) GenerateStreaming(ctx context.Context, userMessage string, opts
 				Usage:        ev.Usage,
 			}
 			if ev.IsError {
-				return fmt.Errorf("claude returned error: %s", ev.Result)
+				errMsg := ev.Result
+				if errMsg == "" {
+					errMsg = assistantText.String()
+				}
+				if errMsg == "" {
+					errMsg = "(no details provided)"
+				}
+				return fmt.Errorf("claude returned error: %s", errMsg)
 			}
 		}
 
@@ -315,6 +322,10 @@ func (c *Client) GenerateStreaming(ctx context.Context, userMessage string, opts
 		_ = cmd.Wait()
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
+		}
+		stderrMsg := strings.TrimSpace(stderrBuf.String())
+		if stderrMsg != "" {
+			return nil, fmt.Errorf("failed to read claude stream: %w\nstderr: %s", streamErr, stderrMsg)
 		}
 		return nil, fmt.Errorf("failed to read claude stream: %w", streamErr)
 	}
@@ -532,7 +543,11 @@ func (c *Client) StartInteractiveStreaming(ctx context.Context, userMessage stri
 					Usage:        ev.Usage,
 				}
 				if ev.IsError {
-					return fmt.Errorf("claude returned error: %s", ev.Result)
+					errMsg := ev.Result
+					if errMsg == "" {
+						errMsg = "(no details provided)"
+					}
+					return fmt.Errorf("claude returned error: %s", errMsg)
 				}
 			}
 
@@ -583,14 +598,15 @@ func parseStreamEvent(line []byte) *StreamEvent {
 	// Claude Code stream-json emits various event shapes.
 	// We parse what we need and ignore the rest.
 	var raw struct {
-		Type      string  `json:"type"`
-		Subtype   string  `json:"subtype"`
-		SessionID string  `json:"session_id"`
-		Result    string  `json:"result"`
-		CostUSD   float64 `json:"cost_usd"`
-		NumTurns  int     `json:"num_turns"`
-		IsError   bool    `json:"is_error"`
-		Usage     Usage   `json:"usage"`
+		Type      string   `json:"type"`
+		Subtype   string   `json:"subtype"`
+		SessionID string   `json:"session_id"`
+		Result    string   `json:"result"`
+		CostUSD   float64  `json:"cost_usd"`
+		NumTurns  int      `json:"num_turns"`
+		IsError   bool     `json:"is_error"`
+		Errors    []string `json:"errors"`
+		Usage     Usage    `json:"usage"`
 
 		// For assistant messages (type: "assistant", message.content[])
 		Message struct {
@@ -622,11 +638,16 @@ func parseStreamEvent(line []byte) *StreamEvent {
 		return nil
 	}
 
+	result := raw.Result
+	if result == "" && len(raw.Errors) > 0 {
+		result = strings.Join(raw.Errors, "; ")
+	}
+
 	ev := &StreamEvent{
 		Type:      raw.Type,
 		Subtype:   raw.Subtype,
 		SessionID: raw.SessionID,
-		Result:    raw.Result,
+		Result:    result,
 		CostUSD:   raw.CostUSD,
 		NumTurns:  raw.NumTurns,
 		IsError:   raw.IsError,
@@ -806,7 +827,11 @@ func extractResultFromEvents(events []json.RawMessage, rawData []byte) (*Respons
 				Usage:        ev.Usage,
 			}
 			if ev.IsError {
-				return nil, fmt.Errorf("claude returned error: %s", ev.Result)
+				errMsg := ev.Result
+				if errMsg == "" {
+					errMsg = "(no details provided)"
+				}
+				return nil, fmt.Errorf("claude returned error: %s", errMsg)
 			}
 		}
 	}
