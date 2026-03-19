@@ -68,7 +68,9 @@ Shared/              → Shared utility types (e.g. Loadable.swift)
 Config/              → App configuration (e.g. AppConfig.swift with API keys, endpoints)
 Repositories/<Entity>/ → Repository protocols + concrete implementations, grouped by entity
                        (e.g. Repositories/Users/UserRepository.swift,
-                             Repositories/Users/SupabaseUserRepository.swift)
+                             Repositories/Users/LocalUserRepository.swift)
+                       Backend-specific repos (e.g. SupabaseUserRepository.swift)
+                       ONLY when that backend is configured (see system prompt)
 Theme/               → AppTheme.swift only
 Services/<Domain>/   → Domain services (Auth, Networking, etc.) — NOT in Features/
 Features/<Name>/     → Co-locate View + ViewModel (e.g. Features/TodoList/TodoListView.swift)

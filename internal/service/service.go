@@ -164,6 +164,32 @@ func (s *Service) CurrentRuntimeDisplayName() string {
 	return s.runtime.DisplayName()
 }
 
+// IntegrationManager returns the integration manager (may be nil).
+func (s *Service) IntegrationManager() *integrations.Manager {
+	return s.manager
+}
+
+// ProjectStore returns the project store for the active project.
+func (s *Service) ProjectStore() *storage.ProjectStore {
+	return s.projectStore
+}
+
+// CurrentAppName returns the current project's app name, or empty string.
+func (s *Service) CurrentAppName() string {
+	project, err := s.projectStore.Load()
+	if err != nil || project == nil {
+		return ""
+	}
+	name := ""
+	if project.Name != nil {
+		name = *project.Name
+	}
+	if name == "" {
+		name = orchestration.ReadProjectAppName(project.ProjectPath)
+	}
+	return name
+}
+
 func (s *Service) RuntimeModels() []agentruntime.ModelOption {
 	if s.runtime == nil {
 		return nil
@@ -686,27 +712,11 @@ func (s *Service) Info() error {
 	} else if project.Platform != "" {
 		terminal.Detail("Platform", project.Platform)
 	}
-	terminal.Detail("Runtime", s.CurrentRuntimeDisplayName())
 	terminal.Detail("Model", s.CurrentModel())
 	terminal.Detail("Simulator", s.CurrentSimulator())
 
 	history, _ := s.historyStore.List()
 	terminal.Detail("Messages", fmt.Sprintf("%d", len(history)))
-
-	// Show usage summary
-	if today := s.usageStore.TodayUsage(); today != nil {
-		terminal.Detail("Today", fmt.Sprintf("$%.4f (%d requests)", today.TotalCostUSD, today.Requests))
-	}
-	weekHistory := s.usageStore.History(7)
-	if len(weekHistory) > 0 {
-		var weekCost float64
-		var weekRequests int
-		for _, d := range weekHistory {
-			weekCost += d.TotalCostUSD
-			weekRequests += d.Requests
-		}
-		terminal.Detail("Week", fmt.Sprintf("$%.4f (%d requests, %d days)", weekCost, weekRequests, len(weekHistory)))
-	}
 
 	return nil
 }

@@ -3,7 +3,6 @@ package terminal
 import (
 	"strings"
 	"testing"
-	"time"
 )
 
 func assertFriendlyStructuredStatus(t *testing.T, got string) {
@@ -97,11 +96,51 @@ func TestOnAgentCommentaryAddsActivityAndDeduplicates(t *testing.T) {
 	}
 }
 
-func TestBuildPhaseHeaderIncludesRuntimeLabel(t *testing.T) {
-	pd := NewProgressDisplay("plan", 0)
-	got := pd.buildPhaseHeader(PhasePlanning, "Codex", 5, 0, 0, false, "•", 7*time.Second)
+func TestOnAgentMessagePromotesTextToActivity(t *testing.T) {
+	pd := NewProgressDisplay("agentic", 0)
 
-	if !strings.Contains(got, "[Codex]") {
-		t.Fatalf("buildPhaseHeader() = %q, want runtime label", got)
+	pd.OnAgentMessage("I'll start by reading the project files to understand the current structure.")
+	if len(pd.activities) != 1 {
+		t.Fatalf("len(activities) = %d, want 1", len(pd.activities))
+	}
+	if pd.activities[0].text != "I'll start by reading the project files to understand the current structure" {
+		t.Fatalf("activities[0].text = %q", pd.activities[0].text)
 	}
 }
+
+func TestOnAgentMessageCodeGoesToStatus(t *testing.T) {
+	pd := NewProgressDisplay("agentic", 0)
+
+	// Code-like text should not become an activity
+	pd.OnAgentMessage("import SwiftUI\nstruct ContentView: View {")
+	if len(pd.activities) != 0 {
+		t.Fatalf("len(activities) = %d, want 0 for code text", len(pd.activities))
+	}
+}
+
+func TestOnAgentMessageDeduplicates(t *testing.T) {
+	pd := NewProgressDisplay("agentic", 0)
+
+	pd.OnAgentMessage("Reading the project configuration.")
+	pd.OnAgentMessage("Reading the project configuration.")
+	if len(pd.activities) != 1 {
+		t.Fatalf("len(activities) = %d, want 1 after duplicate", len(pd.activities))
+	}
+
+	pd.OnAgentMessage("Now fixing the build error in ContentView.")
+	if len(pd.activities) != 2 {
+		t.Fatalf("len(activities) = %d, want 2 after new message", len(pd.activities))
+	}
+}
+
+func TestOnAgentMessagePlanModeShowsStructuredLabel(t *testing.T) {
+	pd := NewProgressDisplay("plan", 0)
+	pd.OnAgentMessage("{\"files\": []}")
+	if pd.statusText == "" {
+		t.Fatal("expected structured mode label for JSON in plan mode")
+	}
+	if len(pd.activities) != 0 {
+		t.Fatal("JSON should not become an activity in plan mode")
+	}
+}
+

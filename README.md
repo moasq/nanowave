@@ -12,7 +12,7 @@ From idea to App Store — entirely from your terminal.
 
 [![Go](https://img.shields.io/badge/Go-1.26-00ADD8?style=flat&logo=go&logoColor=white)](https://go.dev)
 [![Swift](https://img.shields.io/badge/Swift-6-FA7343?style=flat&logo=swift&logoColor=white)](https://swift.org)
-[![Runtime Selectable](https://img.shields.io/badge/AI%20Runtime-Claude%20%7C%20Codex%20%7C%20OpenCode-0F172A?style=flat)](#usage)
+[![Runtime Selectable](https://img.shields.io/badge/AI%20Runtime-Claude%20%7C%20Codex%20%7C%20OpenCode-0F172A?style=flat)](#supported-ai-runtimes)
 [![macOS](https://img.shields.io/badge/macOS-only-000000?style=flat&logo=apple&logoColor=white)](https://developer.apple.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat)](LICENSE)
 
@@ -35,6 +35,33 @@ $ nanowave
 One sentence in, a compiled Xcode project out. Nanowave plans the architecture, generates SwiftUI code, and auto-fixes until it builds. Choose the AI runtime and model that fit your workflow.
 
 <br>
+
+## Supported AI Runtimes
+
+Nanowave supports these runtimes today:
+
+<table>
+<tr>
+<td align="center" width="33%">
+<img src="assets/readme/claude-code.png" width="40" alt="Claude Code"><br>
+<b>Claude Code</b><br>
+<sub>Best for long interactive build/edit sessions</sub><br><br>
+<code>--agent claude</code>
+</td>
+<td align="center" width="33%">
+<img src="assets/readme/codex.png" width="40" alt="Codex"><br>
+<b>Codex</b><br>
+<sub>OpenAI Codex CLI support for fast edit and build loops</sub><br><br>
+<code>--agent codex</code>
+</td>
+<td align="center" width="33%">
+<img src="https://opencode.ai/favicon.ico" width="40" alt="OpenCode"><br>
+<b>OpenCode</b><br>
+<sub>Bring your provider and model through OpenCode</sub><br><br>
+<code>--agent opencode</code>
+</td>
+</tr>
+</table>
 
 ## Install
 
@@ -127,9 +154,9 @@ Ship to the App Store and TestFlight without leaving the terminal.
 
 Nanowave handles code signing, metadata, screenshots (automatic simulator capture or browser upload), privacy declarations, and submission — with confirmation before any destructive action.
 
-## Integrations
+## Available Integrations
 
-Mention authentication, a database, or a paid feature — Nanowave connects the backend automatically.
+These are the integrations available now:
 
 <table>
 <tr>
@@ -137,6 +164,8 @@ Mention authentication, a database, or a paid feature — Nanowave connects the 
 <td align="center"><a href="https://www.revenuecat.com"><img src="https://cdn.simpleicons.org/revenuecat/F25A5A" width="40"><br><b>RevenueCat</b></a><br><sub>Subscriptions & paywalls</sub></td>
 </tr>
 </table>
+
+Mention authentication, a database, or a paid feature, and Nanowave wires up the supported backend automatically.
 
 ## Frameworks
 
@@ -208,7 +237,13 @@ nanowave --version    # print version
 
 ## Runtime Selection
 
-Nanowave can target multiple agent runtimes. Use `nanowave setup` to install/configure the selected runtime, `--agent` to choose the runtime, and `--model` or `/model` to choose the model.
+Use `nanowave setup` to install or verify the runtime you want, then select it with `--agent`. Models can be chosen with `--model` or `/model`.
+
+| Runtime | Install | Login | Example |
+|---|---|---|---|
+| Claude Code | `curl -fsSL https://claude.ai/install.sh \| bash` | `claude auth login` | `nanowave --agent claude --model sonnet` |
+| Codex | `npm install -g @openai/codex` | `codex login` | `nanowave --agent codex --model gpt-5-codex` |
+| OpenCode | `curl -fsSL https://opencode.ai/install \| bash` | `opencode auth login` | `nanowave --agent opencode --model openai/gpt-5-codex` |
 
 ## Development
 

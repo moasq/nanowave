@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -163,10 +162,8 @@ func Banner(version string) {
 
 // ToolStatusOpts holds the status of each prerequisite tool.
 type ToolStatusOpts struct {
-	RuntimeName    string
 	RuntimeVersion string
 	HasXcode       bool
-	HasXcodeCLT    bool
 	HasSimulator   bool
 	HasXcodegen    bool
 	AuthEmail      string
@@ -184,37 +181,21 @@ func ToolStatus(opts ToolStatusOpts) {
 		return Red + "✗" + Reset
 	}
 
-	runtimeLabel := opts.RuntimeName
-	if runtimeLabel == "" {
-		runtimeLabel = "AI runtime"
-	}
-	runtimeStatus := mark(opts.RuntimeVersion != "")
-	if opts.RuntimeVersion != "" {
-		runtimeStatus = opts.RuntimeVersion
-	}
-
-	fmt.Printf("  %sTools:%s %s %s, Xcode %s, Simulator %s, XcodeGen %s\n",
-		Dim, Reset, runtimeLabel, runtimeStatus, mark(opts.HasXcode), mark(opts.HasSimulator), mark(opts.HasXcodegen))
+	fmt.Printf("  %sTools:%s Xcode %s, Simulator %s, XcodeGen %s\n",
+		Dim, Reset, mark(opts.HasXcode), mark(opts.HasSimulator), mark(opts.HasXcodegen))
 
 	// Auth status line
 	if opts.AuthLoggedIn {
-		if opts.AuthEmail != "" {
-			planLabel := opts.AuthPlan
-			if planLabel != "" {
-				planLabel = strings.ToUpper(planLabel[:1]) + planLabel[1:] + " plan"
-			}
-			if planLabel != "" {
-				fmt.Printf("  %sAccount:%s %s (%s)\n", Dim, Reset, opts.AuthEmail, planLabel)
-			} else {
-				fmt.Printf("  %sAccount:%s %s\n", Dim, Reset, opts.AuthEmail)
-			}
-		} else {
-			fmt.Printf("  %sAccount:%s %sSigned in%s", Dim, Reset, Green, Reset)
-			if detail := strings.TrimSpace(opts.AuthDetail); detail != "" && !strings.Contains(detail, "\n") {
-				fmt.Printf(" %s— %s%s", Dim, detail, Reset)
-			}
-			fmt.Println()
+		fmt.Printf("  %sAccount:%s %sSigned in%s", Dim, Reset, Green, Reset)
+		planLabel := opts.AuthPlan
+		if planLabel != "" {
+			planLabel = strings.ToUpper(planLabel[:1]) + planLabel[1:] + " plan"
+			fmt.Printf(" (%s)", planLabel)
 		}
+		if detail := strings.TrimSpace(opts.AuthDetail); detail != "" && !strings.Contains(detail, "\n") {
+			fmt.Printf(" %s— %s%s", Dim, detail, Reset)
+		}
+		fmt.Println()
 	} else if opts.RuntimeVersion != "" {
 		loginHint := opts.AuthDetail
 		if loginHint == "" {
@@ -282,19 +263,77 @@ func queuedInputLines(text string, images []string) []string {
 	}
 	_, contentWidth := inputBoxMetrics(width)
 
-	var lines []string
-	if strings.TrimSpace(text) != "" {
-		lines = append(lines, layoutEditorBuffer([]rune(text), contentWidth).lines...)
+	text = normalizeEditorText(text)
+	attachmentLabels := make([]string, 0, len(images))
+	for i := range images {
+		attachmentLabels = append(attachmentLabels, formatImageReference(i+1))
 	}
-	if len(images) > 0 {
-		if len(lines) > 0 {
-			lines = append(lines, "")
-		}
-		for _, image := range images {
-			lines = append(lines, fmt.Sprintf("Attached: %s", filepath.Base(image)))
+
+	if text != "" && len(attachmentLabels) > 0 || strings.Contains(text, "[") {
+		textLines := strings.Split(text, "\n")
+		last := len(textLines) - 1
+		if last >= 0 {
+			if body, labels, ok := extractTrailingAttachmentLabels(textLines[last]); ok {
+				textLines[last] = body
+				attachmentLabels = append(attachmentLabels, labels...)
+				text = strings.Join(textLines, "\n")
+			}
 		}
 	}
-	return lines
+
+	combined := appendAttachmentLabelsToText(text, attachmentLabels)
+	if strings.TrimSpace(combined) == "" {
+		return nil
+	}
+	return layoutEditorBuffer([]rune(combined), contentWidth).lines
+}
+
+func extractTrailingAttachmentLabels(line string) (string, []string, bool) {
+	for start := 0; start < len(line); start++ {
+		if line[start] != '[' {
+			continue
+		}
+		if start > 0 && line[start-1] != ' ' {
+			continue
+		}
+		labels, ok := parseAttachmentLabels(line[start:])
+		if !ok {
+			continue
+		}
+		return strings.TrimRight(line[:start], " "), labels, true
+	}
+	return line, nil, false
+}
+
+func parseAttachmentLabels(text string) ([]string, bool) {
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return nil, false
+	}
+
+	var labels []string
+	for len(text) > 0 {
+		if text[0] != '[' {
+			return nil, false
+		}
+		end := strings.IndexByte(text, ']')
+		if end < 0 {
+			return nil, false
+		}
+
+		label := text[:end+1]
+		if !isAttachmentLabel(label) {
+			return nil, false
+		}
+		labels = append(labels, label)
+		text = strings.TrimSpace(text[end+1:])
+	}
+
+	return labels, len(labels) > 0
+}
+
+func isAttachmentLabel(label string) bool {
+	return strings.HasPrefix(label, "[Image #") || strings.HasPrefix(label, "[Pasted Text #")
 }
 
 func renderQueuedBoxLine(content string, width, padding, contentWidth int) string {

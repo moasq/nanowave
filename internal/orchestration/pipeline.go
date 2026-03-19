@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/moasq/nanowave/internal/agentruntime"
 	"github.com/moasq/nanowave/internal/config"
@@ -62,12 +61,13 @@ var coreAgenticTools = []string{
 // For new builds, all fields are zero-valued.
 // For edits to existing projects, fields carry existing project info.
 type ActionContext struct {
-	ProjectDir        string   // empty for new builds
-	AppName           string   // empty for new builds (analyzer will name it)
-	SessionID         string   // for conversation continuity
-	Platform          string   // detected from existing project_config.json
-	Platforms         []string // detected from existing project_config.json
-	WatchProjectShape string   // detected from existing project_config.json
+	ProjectDir         string   // empty for new builds
+	AppName            string   // empty for new builds (analyzer will name it)
+	SessionID          string   // for conversation continuity
+	Platform           string   // detected from existing project_config.json
+	Platforms          []string // detected from existing project_config.json
+	WatchProjectShape  string   // detected from existing project_config.json
+	ActiveIntegrations []string // provider IDs with valid configs (e.g. ["supabase", "revenuecat"])
 }
 
 // IsEdit returns true when acting on an existing project.
@@ -98,34 +98,13 @@ func (p *Pipeline) SetStreamHook(hook func(agentruntime.StreamEvent)) {
 	p.onStreamEvent = hook
 }
 
-func (p *Pipeline) progressRuntimeLabel() string {
-	label := ""
-	if p.runtime != nil {
-		label = strings.TrimSpace(p.runtime.DisplayName())
-	}
-	if label == "" {
-		label = strings.TrimSpace(agentruntime.DescriptorForKind(p.runtimeKind).DisplayName)
-	}
-	return strings.TrimSpace(strings.TrimSuffix(label, " Code"))
-}
-
-func runtimeReadyActivityLabel(runtimeLabel string) string {
-	runtimeLabel = strings.TrimSpace(runtimeLabel)
-	if runtimeLabel == "" {
-		return "Runtime ready"
-	}
-	return runtimeLabel + " ready"
-}
-
 func (p *Pipeline) newProgressDisplay(mode string, totalFiles int) *terminal.ProgressDisplay {
-	progress := terminal.NewProgressDisplay(mode, totalFiles)
-	progress.SetRuntimeLabel(p.progressRuntimeLabel())
-	return progress
+	return terminal.NewProgressDisplay(mode, totalFiles)
 }
 
 // makeStreamCallback wraps the terminal progress callback and the optional web hook.
 func (p *Pipeline) makeStreamCallback(progress *terminal.ProgressDisplay) func(agentruntime.StreamEvent) {
-	termCb := newProgressCallback(progress, p.progressRuntimeLabel())
+	termCb := newProgressCallback(progress)
 	if p.onStreamEvent == nil {
 		return termCb
 	}

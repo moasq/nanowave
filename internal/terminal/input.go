@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"syscall"
 	"time"
@@ -35,7 +36,9 @@ var SlashCommands = []CommandInfo{
 	{Name: "/clear", Desc: "Clear conversation session"},
 	{Name: "/projects", Desc: "Switch project"},
 	{Name: "/setup", Desc: "Install prerequisites"},
-	{Name: "/integrations", Desc: "Manage backend integrations"},
+	{Name: "/supabase", Desc: "Connect Supabase backend"},
+	{Name: "/revenuecat", Desc: "Connect RevenueCat payments"},
+	{Name: "/integrations", Desc: "Manage all integrations"},
 	{Name: "/help", Desc: "Show available commands"},
 	{Name: "/quit", Desc: "Exit session"},
 }
@@ -48,14 +51,16 @@ type CommandInfo struct {
 
 // InputResult holds the parsed result from ReadInput.
 type InputResult struct {
-	Text   string   // The text prompt (with image paths removed)
-	Images []string // Absolute paths to image files found in the input
+	Text        string   // The text prompt (with image paths removed)
+	DisplayText string   // User-facing transcript text with attachment markers
+	Images      []string // Absolute paths to image files found in the input
 }
 
 type inputToken struct {
 	start int
 	end   int
 	value string
+	ready bool
 }
 
 // imageExtensions are file extensions recognized as images.
@@ -74,7 +79,10 @@ const (
 	inputBoxVerticalPadding   = 1
 	inputBoxVisibleRows       = 5
 	inputBoxHelperRows        = 3
+	inputBoxHelperMatches     = 8
+	inputBoxBottomSafeRows    = 2
 	inputBoxMinContentWidth   = 20
+	pastedTextCollapseLines   = 4 // pastes longer than this become collapsed blocks
 )
 
 var errInputInterrupted = errors.New("input interrupted")
@@ -115,6 +123,27 @@ type editorLayout struct {
 	positions []cursorCoord
 }
 
+// pastedBlock holds large pasted text that is shown collapsed above the text area.
+type pastedBlock struct {
+	content  string // full pasted text
+	numLines int    // line count for the label
+}
+
+type inlineAttachmentKind int
+
+const (
+	inlineAttachmentImage inlineAttachmentKind = iota
+	inlineAttachmentPastedText
+)
+
+type inlineAttachment struct {
+	id     int
+	pos    int
+	kind   inlineAttachmentKind
+	path   string
+	pasted pastedBlock
+}
+
 type inputEditor struct {
 	fd             int
 	width          int
@@ -128,42 +157,158 @@ type inputEditor struct {
 	preferredCol   int
 	scrollTop      int
 	backgroundLine string
+	nextAttachment int
+	attachments    []inlineAttachment
+}
+
+func formatImageReference(index int) string {
+	return fmt.Sprintf("[Image #%d]", index)
+}
+
+func formatPastedBlockReference(index, lineCount int) string {
+	return fmt.Sprintf("[Pasted Text #%d: %d lines]", index, lineCount)
+}
+
+func joinAttachmentLabels(labels []string) string {
+	return strings.Join(labels, " ")
+}
+
+func appendAttachmentLabelsToText(text string, labels []string) string {
+	if len(labels) == 0 {
+		return text
+	}
+
+	labelText := joinAttachmentLabels(labels)
+	lastRune, _ := utf8.DecodeLastRuneInString(text)
+	switch {
+	case text == "":
+		return labelText
+	case strings.HasSuffix(text, "\n"):
+		return text + labelText
+	case unicode.IsSpace(lastRune):
+		return text + labelText
+	default:
+		return text + " " + labelText
+	}
+}
+
+func attachmentDisplayText(labels []string, prev, next rune) string {
+	if len(labels) == 0 {
+		return ""
+	}
+
+	group := joinAttachmentLabels(labels)
+	if prev != 0 && prev != '\n' && !unicode.IsSpace(prev) {
+		group = " " + group
+	}
+	if next != 0 && next != '\n' && !unicode.IsSpace(next) {
+		group += " "
+	}
+	return group
+}
+
+func layoutAttachmentLabels(labels []string, width int) []string {
+	if len(labels) == 0 {
+		return nil
+	}
+	if width <= 0 {
+		return []string{joinAttachmentLabels(labels)}
+	}
+
+	lines := make([]string, 0, 1)
+	current := labels[0]
+	currentWidth := uniseg.StringWidth(current)
+
+	for _, label := range labels[1:] {
+		labelWidth := uniseg.StringWidth(label)
+		if currentWidth+1+labelWidth <= width {
+			current += " " + label
+			currentWidth += 1 + labelWidth
+			continue
+		}
+		lines = append(lines, current)
+		current = label
+		currentWidth = labelWidth
+	}
+
+	lines = append(lines, current)
+	return lines
+}
+
+func materializeEditorContent(buffer []rune, attachmentGroups map[int]string) ([]rune, []int) {
+	if len(attachmentGroups) == 0 {
+		indices := make([]int, len(buffer)+1)
+		for i := range indices {
+			indices[i] = i
+		}
+		return append([]rune(nil), buffer...), indices
+	}
+
+	display := make([]rune, 0, len(buffer))
+	indices := make([]int, len(buffer)+1)
+	for i := 0; i <= len(buffer); i++ {
+		if group := attachmentGroups[i]; group != "" {
+			display = append(display, []rune(group)...)
+		}
+		indices[i] = len(display)
+		if i < len(buffer) {
+			display = append(display, buffer[i])
+		}
+	}
+	return display, indices
+}
+
+func layoutEditorContent(buffer []rune, attachmentGroups map[int]string, contentWidth int) editorLayout {
+	if len(attachmentGroups) == 0 {
+		return layoutEditorBuffer(buffer, contentWidth)
+	}
+
+	display, indices := materializeEditorContent(buffer, attachmentGroups)
+	layout := layoutEditorBuffer(display, contentWidth)
+	bufferPositions := make([]cursorCoord, len(indices))
+	for i, idx := range indices {
+		bufferPositions[i] = layout.positions[idx]
+	}
+
+	return editorLayout{
+		lines:     layout.lines,
+		positions: bufferPositions,
+	}
 }
 
 // isImagePath checks if a string looks like a path to an image file.
 func isImagePath(s string) bool {
+	ext := strings.ToLower(filepath.Ext(strings.TrimSpace(s)))
+	return imageExtensions[ext] && isFilePath(s)
+}
+
+// isFilePath checks if a string looks like an absolute path to an existing file.
+func isFilePath(s string) bool {
 	s = strings.TrimSpace(s)
 	if s == "" {
-		return false
-	}
-	ext := strings.ToLower(filepath.Ext(s))
-	if !imageExtensions[ext] {
 		return false
 	}
 	// Must be an absolute path or start with ~
 	if !filepath.IsAbs(s) && !strings.HasPrefix(s, "~") {
 		return false
 	}
-	// Expand ~ to home dir
-	resolved := s
-	if strings.HasPrefix(s, "~") {
-		if home, err := os.UserHomeDir(); err == nil {
-			resolved = filepath.Join(home, s[1:])
-		}
-	}
+	resolved := expandHome(s)
 	info, err := os.Stat(resolved)
 	return err == nil && !info.IsDir()
 }
 
-// resolveImagePath expands ~ and cleans up a path.
-func resolveImagePath(s string) string {
-	s = strings.TrimSpace(s)
+func expandHome(s string) string {
 	if strings.HasPrefix(s, "~") {
 		if home, err := os.UserHomeDir(); err == nil {
-			s = filepath.Join(home, s[1:])
+			return filepath.Join(home, s[1:])
 		}
 	}
-	return filepath.Clean(s)
+	return s
+}
+
+// resolveImagePath expands ~ and cleans up a path.
+func resolveImagePath(s string) string {
+	return filepath.Clean(expandHome(strings.TrimSpace(s)))
 }
 
 // extractImages separates image paths from the input text.
@@ -187,6 +332,9 @@ func extractImages(input string) (string, []string) {
 	seen := make(map[string]struct{})
 
 	for _, token := range tokens {
+		if !token.ready {
+			continue
+		}
 		if resolved, ok := resolveImageReference(token.value); ok {
 			if _, exists := seen[resolved]; !exists {
 				images = append(images, resolved)
@@ -238,10 +386,10 @@ func scanInputTokens(input string) []inputToken {
 
 			if quote != 0 {
 				switch {
-				case r == quote:
-					quote = 0
-					i += width
-				case r == '\\' && quote == '"':
+				case r == '\\':
+					// Handle backslash escapes inside both single and double quotes.
+					// macOS Finder wraps dragged paths in single quotes and escapes
+					// embedded single quotes as \' (e.g. Queen\'s Park).
 					next, nextWidth := utf8DecodeRuneInString(input[i+width:])
 					if nextWidth == 0 {
 						i += width
@@ -249,6 +397,9 @@ func scanInputTokens(input string) []inputToken {
 					}
 					sb.WriteRune(next)
 					i += width + nextWidth
+				case r == quote:
+					quote = 0
+					i += width
 				default:
 					sb.WriteRune(r)
 					i += width
@@ -258,7 +409,7 @@ func scanInputTokens(input string) []inputToken {
 
 			switch {
 			case unicode.IsSpace(r):
-				tokens = append(tokens, inputToken{start: start, end: i, value: sb.String()})
+				tokens = append(tokens, inputToken{start: start, end: i, value: sb.String(), ready: true})
 				goto nextToken
 			case r == '"' || r == '\'':
 				quote = r
@@ -277,7 +428,7 @@ func scanInputTokens(input string) []inputToken {
 			}
 		}
 
-		tokens = append(tokens, inputToken{start: start, end: len(input), value: sb.String()})
+		tokens = append(tokens, inputToken{start: start, end: len(input), value: sb.String(), ready: quote == 0})
 		break
 
 	nextToken:
@@ -298,6 +449,14 @@ func utf8DecodeRuneInString(s string) (rune, int) {
 }
 
 func resolveImageReference(raw string) (string, bool) {
+	return resolveReferenceWith(raw, isImagePath)
+}
+
+func resolveFileReference(raw string) (string, bool) {
+	return resolveReferenceWith(raw, isFilePath)
+}
+
+func resolveReferenceWith(raw string, check func(string) bool) (string, bool) {
 	candidates := []string{strings.TrimSpace(raw)}
 	if trimmed := strings.TrimRight(candidates[0], ".,;:!?"); trimmed != candidates[0] {
 		candidates = append(candidates, trimmed)
@@ -307,7 +466,7 @@ func resolveImageReference(raw string) (string, bool) {
 		if candidate == "" {
 			continue
 		}
-		if resolved, ok := resolveImagePathReference(candidate); ok {
+		if resolved, ok := resolvePathReferenceWith(candidate, check); ok {
 			return resolved, true
 		}
 	}
@@ -315,6 +474,30 @@ func resolveImageReference(raw string) (string, bool) {
 }
 
 func resolveImagePathReference(candidate string) (string, bool) {
+	return resolvePathReferenceWith(candidate, isImagePath)
+}
+
+func resolveImageReferencesByLine(input string) ([]string, bool) {
+	lines := strings.Split(normalizeEditorText(input), "\n")
+	images := make([]string, 0, len(lines))
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		resolved, ok := resolveImageReference(line)
+		if !ok {
+			return nil, false
+		}
+		images = append(images, resolved)
+	}
+	if len(images) == 0 {
+		return nil, false
+	}
+	return uniqueStrings(images), true
+}
+
+func resolvePathReferenceWith(candidate string, check func(string) bool) (string, bool) {
 	candidate = strings.TrimSpace(candidate)
 	if candidate == "" {
 		return "", false
@@ -338,7 +521,7 @@ func resolveImagePathReference(candidate string) (string, bool) {
 		candidate = unescaped
 	}
 
-	if !isImagePath(candidate) {
+	if !check(candidate) {
 		return "", false
 	}
 	return resolveImagePath(candidate), true
@@ -520,6 +703,172 @@ func (e *inputEditor) renderBlankBoxLine() string {
 	return e.renderBoxLine("")
 }
 
+func (e *inputEditor) renderAttachmentLine(content string) string {
+	return e.renderBoxLine(content)
+}
+
+func (e *inputEditor) orderedAttachments() []inlineAttachment {
+	if len(e.attachments) == 0 {
+		return nil
+	}
+
+	ordered := append([]inlineAttachment(nil), e.attachments...)
+	sort.SliceStable(ordered, func(i, j int) bool {
+		if ordered[i].pos != ordered[j].pos {
+			return ordered[i].pos < ordered[j].pos
+		}
+		return ordered[i].id < ordered[j].id
+	})
+	return ordered
+}
+
+func (e *inputEditor) attachmentDisplayGroups() map[int]string {
+	ordered := e.orderedAttachments()
+	if len(ordered) == 0 {
+		return nil
+	}
+
+	labelsByPos := make(map[int][]string)
+	imageCount := 0
+	pastedCount := 0
+	for _, attachment := range ordered {
+		switch attachment.kind {
+		case inlineAttachmentImage:
+			imageCount++
+			labelsByPos[attachment.pos] = append(labelsByPos[attachment.pos], formatImageReference(imageCount))
+		case inlineAttachmentPastedText:
+			pastedCount++
+			labelsByPos[attachment.pos] = append(labelsByPos[attachment.pos], formatPastedBlockReference(pastedCount, attachment.pasted.numLines))
+		}
+	}
+
+	groups := make(map[int]string, len(labelsByPos))
+	for pos, labels := range labelsByPos {
+		var prev rune
+		if pos > 0 {
+			prev = e.buffer[pos-1]
+		}
+		var next rune
+		if pos < len(e.buffer) {
+			next = e.buffer[pos]
+		}
+		groups[pos] = attachmentDisplayText(labels, prev, next)
+	}
+	return groups
+}
+
+func (e *inputEditor) imagePaths() []string {
+	ordered := e.orderedAttachments()
+	paths := make([]string, 0, len(ordered))
+	for _, attachment := range ordered {
+		if attachment.kind == inlineAttachmentImage {
+			paths = append(paths, attachment.path)
+		}
+	}
+	return paths
+}
+
+func (e *inputEditor) shiftAttachmentsForInsert(pos, delta int) {
+	if delta <= 0 {
+		return
+	}
+	for i := range e.attachments {
+		if e.attachments[i].pos > pos {
+			e.attachments[i].pos += delta
+		}
+	}
+}
+
+func (e *inputEditor) shiftAttachmentsForDelete(start, end int) {
+	if end <= start {
+		return
+	}
+	delta := end - start
+	for i := range e.attachments {
+		switch {
+		case e.attachments[i].pos > end:
+			e.attachments[i].pos -= delta
+		case e.attachments[i].pos > start:
+			e.attachments[i].pos = start
+		}
+	}
+}
+
+func (e *inputEditor) insertAttachment(attachment inlineAttachment) {
+	e.insertAttachmentAt(e.cursor, attachment)
+}
+
+func (e *inputEditor) insertAttachmentAt(pos int, attachment inlineAttachment) {
+	e.nextAttachment++
+	attachment.id = e.nextAttachment
+	attachment.pos = pos
+	e.attachments = append(e.attachments, attachment)
+	e.preferredCol = -1
+}
+
+func (e *inputEditor) insertPastedBlock(text string, lineCount int) {
+	e.insertAttachment(inlineAttachment{
+		kind: inlineAttachmentPastedText,
+		pasted: pastedBlock{
+			content:  text,
+			numLines: lineCount,
+		},
+	})
+}
+
+func (e *inputEditor) insertAttachedFiles(paths []string) {
+	for _, path := range paths {
+		e.insertAttachment(inlineAttachment{
+			kind: inlineAttachmentImage,
+			path: path,
+		})
+	}
+}
+
+func (e *inputEditor) removeLastAttachmentAt(pos int) bool {
+	index := -1
+	for i := range e.attachments {
+		if e.attachments[i].pos == pos {
+			if index == -1 || e.attachments[i].id > e.attachments[index].id {
+				index = i
+			}
+		}
+	}
+	if index < 0 {
+		return false
+	}
+	e.attachments = append(e.attachments[:index], e.attachments[index+1:]...)
+	e.preferredCol = -1
+	return true
+}
+
+func (e *inputEditor) removeAttachmentsInRange(start, end int, includeStart bool) bool {
+	if end < start {
+		start, end = end, start
+	}
+
+	kept := e.attachments[:0]
+	removed := false
+	for _, attachment := range e.attachments {
+		remove := attachment.pos <= end
+		if includeStart {
+			remove = remove && attachment.pos >= start
+		} else {
+			remove = remove && attachment.pos > start
+		}
+		if remove {
+			removed = true
+			continue
+		}
+		kept = append(kept, attachment)
+	}
+	e.attachments = kept
+	if removed {
+		e.preferredCol = -1
+	}
+	return removed
+}
+
 func currentCommandPrefix(text string, cursor int) string {
 	buffer := []rune(text)
 	if cursor < 0 {
@@ -536,9 +885,9 @@ func currentCommandPrefix(text string, cursor int) string {
 	return prefix
 }
 
-func (e *inputEditor) helperLines() []string {
+func (e *inputEditor) helperLines(layout editorLayout) []string {
 	text := string(e.buffer)
-	lines := make([]string, 0, e.helperRows)
+	lines := make([]string, 0, e.helperRows+inputBoxHelperMatches)
 	if e.backgroundLine != "" {
 		bg := strings.Repeat(" ", e.padding) + e.backgroundLine
 		lines = append(lines, trimDisplayWidth(bg, e.width))
@@ -551,7 +900,6 @@ func (e *inputEditor) helperLines() []string {
 		Dim, Reset,
 		Dim, Reset)
 
-	layout := layoutEditorBuffer(e.buffer, e.contentWidth)
 	boxRows := e.boxRows(layout)
 	if len(layout.lines) > boxRows {
 		start := e.scrollTop + 1
@@ -563,7 +911,7 @@ func (e *inputEditor) helperLines() []string {
 	prefix := currentCommandPrefix(text, e.cursor)
 	if prefix != "" {
 		matches := filterCommands(prefix)
-		for i := 0; i < minInt(len(matches), e.helperRows-1); i++ {
+		for i := 0; i < minInt(len(matches), inputBoxHelperMatches); i++ {
 			line := fmt.Sprintf("%s%s%-10s%s %s",
 				strings.Repeat(" ", e.padding),
 				Cyan, matches[i].Name, Reset,
@@ -575,7 +923,7 @@ func (e *inputEditor) helperLines() []string {
 	for len(lines) < e.helperRows {
 		lines = append(lines, "")
 	}
-	return lines[:e.helperRows]
+	return lines
 }
 
 func (e *inputEditor) boxRows(layout editorLayout) int {
@@ -589,8 +937,8 @@ func (e *inputEditor) boxRows(layout editorLayout) int {
 	return rows
 }
 
-func (e *inputEditor) totalRows(boxRows int) int {
-	return inputBoxVerticalPadding*2 + boxRows + e.helperRows
+func (e *inputEditor) totalRows(boxRows, helperRows int) int {
+	return inputBoxVerticalPadding*2 + boxRows + helperRows + inputBoxBottomSafeRows
 }
 
 func (e *inputEditor) ensureCursorVisible(layout editorLayout, boxRows int) {
@@ -622,10 +970,11 @@ func (e *inputEditor) render() {
 }
 
 func (e *inputEditor) renderLocked() {
-	layout := layoutEditorBuffer(e.buffer, e.contentWidth)
+	layout := layoutEditorContent(e.buffer, e.attachmentDisplayGroups(), e.contentWidth)
 	boxRows := e.boxRows(layout)
 	e.ensureCursorVisible(layout, boxRows)
-	e.adjustReservedRowsLocked(e.totalRows(boxRows))
+	helperLines := e.helperLines(layout)
+	e.adjustReservedRowsLocked(e.totalRows(boxRows, len(helperLines)))
 
 	lines := make([]string, 0, e.regionRows)
 	for i := 0; i < inputBoxVerticalPadding; i++ {
@@ -642,7 +991,10 @@ func (e *inputEditor) renderLocked() {
 	for i := 0; i < inputBoxVerticalPadding; i++ {
 		lines = append(lines, e.renderBlankBoxLine())
 	}
-	lines = append(lines, e.helperLines()...)
+	lines = append(lines, helperLines...)
+	for i := 0; i < inputBoxBottomSafeRows; i++ {
+		lines = append(lines, "")
+	}
 
 	writeStdoutUnlocked("\033[?25l")
 	writeStdoutUnlocked("\033[u")
@@ -749,24 +1101,34 @@ func (e *inputEditor) insertText(text string) {
 	next = append(next, e.buffer[:e.cursor]...)
 	next = append(next, inserted...)
 	next = append(next, e.buffer[e.cursor:]...)
+	e.shiftAttachmentsForInsert(e.cursor, len(inserted))
 	e.buffer = next
 	e.cursor += len(inserted)
 	e.preferredCol = -1
+	e.promoteImageReferencesFromBuffer()
 }
 
 func (e *inputEditor) backspace() {
+	if e.removeLastAttachmentAt(e.cursor) {
+		return
+	}
 	if e.cursor <= 0 || len(e.buffer) == 0 {
 		return
 	}
+	e.shiftAttachmentsForDelete(e.cursor-1, e.cursor)
 	e.buffer = append(e.buffer[:e.cursor-1], e.buffer[e.cursor:]...)
 	e.cursor--
 	e.preferredCol = -1
 }
 
 func (e *inputEditor) delete() {
+	if e.removeLastAttachmentAt(e.cursor) {
+		return
+	}
 	if e.cursor < 0 || e.cursor >= len(e.buffer) {
 		return
 	}
+	e.shiftAttachmentsForDelete(e.cursor, e.cursor+1)
 	e.buffer = append(e.buffer[:e.cursor], e.buffer[e.cursor+1:]...)
 	e.preferredCol = -1
 }
@@ -786,7 +1148,7 @@ func (e *inputEditor) moveRight() {
 }
 
 func (e *inputEditor) moveHome() {
-	layout := layoutEditorBuffer(e.buffer, e.contentWidth)
+	layout := layoutEditorContent(e.buffer, e.attachmentDisplayGroups(), e.contentWidth)
 	if e.cursor < len(layout.positions) {
 		row := layout.positions[e.cursor].row
 		e.cursor = layout.indexForPosition(row, 0)
@@ -795,7 +1157,7 @@ func (e *inputEditor) moveHome() {
 }
 
 func (e *inputEditor) moveEnd() {
-	layout := layoutEditorBuffer(e.buffer, e.contentWidth)
+	layout := layoutEditorContent(e.buffer, e.attachmentDisplayGroups(), e.contentWidth)
 	if e.cursor < len(layout.positions) {
 		row := layout.positions[e.cursor].row
 		e.cursor = layout.indexForPosition(row, e.contentWidth)
@@ -804,7 +1166,7 @@ func (e *inputEditor) moveEnd() {
 }
 
 func (e *inputEditor) moveVertical(delta int) {
-	layout := layoutEditorBuffer(e.buffer, e.contentWidth)
+	layout := layoutEditorContent(e.buffer, e.attachmentDisplayGroups(), e.contentWidth)
 	if e.cursor >= len(layout.positions) {
 		e.cursor = len(layout.positions) - 1
 	}
@@ -833,9 +1195,12 @@ func (e *inputEditor) clearToStart() {
 		}
 	}
 	if start >= e.cursor {
+		e.removeAttachmentsInRange(start, e.cursor, true)
 		return
 	}
 
+	e.removeAttachmentsInRange(start, e.cursor, true)
+	e.shiftAttachmentsForDelete(start, e.cursor)
 	e.buffer = append(e.buffer[:start], e.buffer[e.cursor:]...)
 	e.cursor = start
 	e.preferredCol = -1
@@ -843,6 +1208,7 @@ func (e *inputEditor) clearToStart() {
 
 func (e *inputEditor) clearToEnd() {
 	if e.cursor >= len(e.buffer) {
+		e.removeAttachmentsInRange(e.cursor, len(e.buffer), false)
 		return
 	}
 
@@ -854,15 +1220,170 @@ func (e *inputEditor) clearToEnd() {
 		}
 	}
 	if end <= e.cursor {
+		e.removeAttachmentsInRange(e.cursor, end, false)
 		return
 	}
 
+	e.removeAttachmentsInRange(e.cursor, end, false)
+	e.shiftAttachmentsForDelete(e.cursor, end)
 	e.buffer = append(e.buffer[:e.cursor], e.buffer[end:]...)
+	e.preferredCol = -1
+}
+
+// insertPossibleAttachments checks if inserted text contains pasted image
+// references (for example from Finder or bracketed paste). Image paths are
+// promoted into attachment rows; the remaining text is inserted into the buffer
+// normally. Large multi-line pastes are collapsed into a single attachment row.
+func (e *inputEditor) insertPossibleAttachments(text string) {
+	if images, ok := resolveImageReferencesByLine(text); ok {
+		e.insertAttachedFiles(images)
+		return
+	}
+
+	tokens := scanInputTokens(text)
+	if len(tokens) == 0 {
+		e.maybeCollapsePaste(text)
+		return
+	}
+
+	var (
+		hasImage     bool
+		lastConsumed int
+	)
+	for _, tok := range tokens {
+		if !tok.ready {
+			continue
+		}
+		if resolved, ok := resolveImageReference(tok.value); ok {
+			if tok.start > lastConsumed {
+				e.maybeCollapsePaste(text[lastConsumed:tok.start])
+			}
+			e.insertAttachedFiles([]string{resolved})
+			lastConsumed = tok.end
+			hasImage = true
+		}
+	}
+	if !hasImage {
+		e.maybeCollapsePaste(text)
+		return
+	}
+	if lastConsumed < len(text) {
+		e.maybeCollapsePaste(text[lastConsumed:])
+	}
+}
+
+// maybeCollapsePaste inserts text normally if it's short, or collapses it into
+// a pasted block attachment row (like Codex/Claude Code) if it's large.
+func (e *inputEditor) maybeCollapsePaste(text string) {
+	lineCount := strings.Count(text, "\n") + 1
+	if lineCount <= pastedTextCollapseLines {
+		e.insertText(text)
+		return
+	}
+	e.insertPastedBlock(text, lineCount)
+}
+
+func (e *inputEditor) appendAttachedFiles(paths []string) {
+	e.insertAttachedFiles(paths)
+}
+
+func (e *inputEditor) removeLastAttachment() bool {
+	return e.removeLastAttachmentAt(e.cursor)
+}
+
+func (e *inputEditor) promoteImageReferencesFromBuffer() {
+	if len(e.buffer) == 0 {
+		return
+	}
+
+	fullText := string(e.buffer)
+	if images, ok := resolveImageReferencesByLine(fullText); ok {
+		e.insertAttachedFiles(images)
+		e.buffer = nil
+		e.cursor = 0
+		e.preferredCol = -1
+		return
+	}
+
+	tokens := scanInputTokens(fullText)
+	if len(tokens) == 0 {
+		return
+	}
+
+	var (
+		clean        []rune
+		removed      []inputToken
+		replacements []inlineAttachment
+		last         int
+	)
+	oldCursor := e.cursor
+	for _, tok := range tokens {
+		if !tok.ready {
+			continue
+		}
+		resolved, ok := resolveImageReference(tok.value)
+		if !ok {
+			continue
+		}
+		if tok.start > last {
+			clean = append(clean, []rune(fullText[last:tok.start])...)
+		}
+		replacements = append(replacements, inlineAttachment{
+			pos:  len(clean),
+			kind: inlineAttachmentImage,
+			path: resolved,
+		})
+		removed = append(removed, tok)
+		last = tok.end
+	}
+	if len(replacements) == 0 {
+		return
+	}
+	if last < len(fullText) {
+		clean = append(clean, []rune(fullText[last:])...)
+	}
+
+	for i := range e.attachments {
+		pos := e.attachments[i].pos
+		for _, tok := range removed {
+			start := utf8.RuneCountInString(fullText[:tok.start])
+			end := start + utf8.RuneCountInString(tok.value)
+			length := end - start
+			switch {
+			case pos > end:
+				pos -= length
+			case pos > start:
+				pos = start
+			}
+		}
+		e.attachments[i].pos = pos
+	}
+	for _, replacement := range replacements {
+		e.insertAttachmentAt(replacement.pos, replacement)
+	}
+	cursor := oldCursor
+	for _, tok := range removed {
+		start := utf8.RuneCountInString(fullText[:tok.start])
+		end := start + utf8.RuneCountInString(tok.value)
+		length := end - start
+		switch {
+		case cursor > end:
+			cursor -= length
+		case cursor > start:
+			cursor = start
+		}
+	}
+	if cursor > len(clean) {
+		cursor = len(clean)
+	}
+	e.buffer = clean
+	e.cursor = cursor
 	e.preferredCol = -1
 }
 
 func (e *inputEditor) deleteWordBackward() {
 	if e.cursor <= 0 {
+		e.removeAttachmentsInRange(0, e.cursor, true)
 		return
 	}
 
@@ -874,9 +1395,12 @@ func (e *inputEditor) deleteWordBackward() {
 		start--
 	}
 	if start >= e.cursor {
+		e.removeAttachmentsInRange(start, e.cursor, true)
 		return
 	}
 
+	e.removeAttachmentsInRange(start, e.cursor, true)
+	e.shiftAttachmentsForDelete(start, e.cursor)
 	e.buffer = append(e.buffer[:start], e.buffer[e.cursor:]...)
 	e.cursor = start
 	e.preferredCol = -1
@@ -1011,10 +1535,10 @@ func readInputFallback() (string, error) {
 	return normalizeEditorText(strings.TrimRight(line, "\r\n")), nil
 }
 
-func (e *inputEditor) read() (string, error) {
+func (e *inputEditor) read() (string, string, []string, error) {
 	oldState, err := term.MakeRaw(e.fd)
 	if err != nil {
-		return "", err
+		return "", "", nil, err
 	}
 	defer term.Restore(e.fd, oldState)
 
@@ -1032,13 +1556,13 @@ func (e *inputEditor) read() (string, error) {
 
 		event, err := e.readEvent()
 		if err != nil {
-			return "", err
+			return "", "", nil, err
 		}
 
 		switch event.kind {
 		case editorEventNone:
 		case editorEventInsert:
-			e.insertText(event.text)
+			e.insertPossibleAttachments(event.text)
 		case editorEventBackspace:
 			e.backspace()
 		case editorEventDelete:
@@ -1062,17 +1586,40 @@ func (e *inputEditor) read() (string, error) {
 		case editorEventDeleteWord:
 			e.deleteWordBackward()
 		case editorEventClipboardImage:
-			startIndex := clipboardImageCount() + 1
 			added := pasteClipboardImages()
-			for i := range added {
-				e.insertText(fmt.Sprintf("[image%d] ", startIndex+i))
-			}
+			e.insertAttachedFiles(added)
 		case editorEventSubmit:
-			return string(e.buffer), nil
+			text := e.submitText()
+			return text, e.displayText(), e.imagePaths(), nil
 		case editorEventInterrupt:
-			return "", errInputInterrupted
+			return "", "", nil, errInputInterrupted
 		}
 	}
+}
+
+// submitText returns the full text to submit, combining the buffer with any
+// collapsed pasted blocks.
+func (e *inputEditor) submitText() string {
+	var sb strings.Builder
+	ordered := e.orderedAttachments()
+	index := 0
+	for pos := 0; pos <= len(e.buffer); pos++ {
+		for index < len(ordered) && ordered[index].pos == pos {
+			if ordered[index].kind == inlineAttachmentPastedText {
+				sb.WriteString(ordered[index].pasted.content)
+			}
+			index++
+		}
+		if pos < len(e.buffer) {
+			sb.WriteRune(e.buffer[pos])
+		}
+	}
+	return sb.String()
+}
+
+func (e *inputEditor) displayText() string {
+	display, _ := materializeEditorContent(e.buffer, e.attachmentDisplayGroups())
+	return string(display)
 }
 
 // ReadInput reads input from the terminal without redrawing previous output.
@@ -1083,14 +1630,17 @@ func ReadInput() InputResult {
 
 	fd := int(os.Stdin.Fd())
 	var (
-		line string
-		err  error
+		line        string
+		displayLine string
+		editorFiles []string
+		err         error
 	)
 
 	if term.IsTerminal(fd) {
-		line, err = newInputEditor(fd).read()
+		line, displayLine, editorFiles, err = newInputEditor(fd).read()
 	} else {
 		line, err = readInputFallback()
+		displayLine = line
 	}
 	if err != nil {
 		if errors.Is(err, errInputInterrupted) {
@@ -1106,16 +1656,22 @@ func ReadInput() InputResult {
 
 	clipImages := takeClipboardImages()
 	line = stripImageIndicators(normalizeEditorText(line))
+	displayLine = stripImageIndicators(normalizeEditorText(displayLine))
 
-	if strings.TrimSpace(line) == "" && len(clipImages) == 0 {
+	allImages := append(editorFiles, clipImages...)
+
+	if strings.TrimSpace(line) == "" && len(allImages) == 0 {
 		return InputResult{}
 	}
 
 	text, dragImages := extractImages(line)
-	allImages := append(clipImages, dragImages...)
+	allImages = append(allImages, dragImages...)
 	allImages = uniqueStrings(allImages)
 
-	return InputResult{Text: text, Images: allImages}
+	if displayLine == "" {
+		displayLine = text
+	}
+	return InputResult{Text: text, DisplayText: displayLine, Images: allImages}
 }
 
 func maxInt(a, b int) int {

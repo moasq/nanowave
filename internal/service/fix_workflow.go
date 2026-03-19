@@ -164,8 +164,13 @@ func (s *Service) runAutoFixLoop(ctx context.Context, project *storage.Project, 
 	failure, attempts, err := runBuildFixLoop(ctx, initialFailure, specs, func(ctx context.Context, spec xcodeBuildSpec) ([]byte, error) {
 		return runXcodeBuildSpec(ctx, project.ProjectPath, spec)
 	}, maxAutoFixAttempts, func(ctx context.Context, failure buildFailure, attempt int) error {
-		spinner := terminal.NewSpinner(fmt.Sprintf("Auto-fixing %s (attempt %d/%d)...", failure.spec.label, attempt, maxAutoFixAttempts))
-		spinner.Start()
+		// Use a full progress display instead of a plain spinner so the user
+		// can see what the agent is doing during the (potentially long) fix.
+		progress := terminal.NewProgressDisplay("fix", 0)
+		progress.Start()
+		progress.AddActivity(fmt.Sprintf("Fixing %s (attempt %d/%d)", failure.spec.label, attempt, maxAutoFixAttempts))
+
+		streamCb := orchestration.NewProgressCallbackExported(progress)
 
 		appendPrompt, userMsg := buildFixPrompt(projectName(project), specs, failure)
 		resp, fixErr := s.runtime.GenerateStreaming(ctx, userMsg, agentruntime.GenerateOpts{
@@ -175,9 +180,9 @@ func (s *Service) runAutoFixLoop(ctx context.Context, project *storage.Project, 
 			Model:              s.phaseModel(agentruntime.PhaseFix),
 			WorkDir:            project.ProjectPath,
 			SessionID:          project.SessionID,
-		}, func(ev agentruntime.StreamEvent) {})
+		}, streamCb)
 		if fixErr != nil {
-			spinner.Stop()
+			progress.StopWithError(fmt.Sprintf("Fix attempt %d failed", attempt))
 			return fixErr
 		}
 
@@ -189,7 +194,7 @@ func (s *Service) runAutoFixLoop(ctx context.Context, project *storage.Project, 
 			}
 		}
 
-		spinner.Stop()
+		progress.StopWithSuccess(fmt.Sprintf("Fix attempt %d complete — verifying build", attempt))
 		return nil
 	})
 	if err != nil {

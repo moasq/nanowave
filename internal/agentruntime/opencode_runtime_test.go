@@ -51,3 +51,20 @@ func TestTranslateOpenCodePayloadToolUse(t *testing.T) {
 		t.Fatalf("Events[0] = %#v", update.Events[0])
 	}
 }
+
+func TestBuildOpenCodeExecArgsOmitsPrintLogs(t *testing.T) {
+	args := buildOpenCodeExecArgs("hello", GenerateOpts{
+		SessionID: "session-42",
+		Model:     "anthropic/test",
+		Images:    []string{"/tmp/mockup.png"},
+	}, "fallback-model")
+
+	for _, arg := range args {
+		if arg == "--print-logs" {
+			t.Fatalf("args = %#v, should not include --print-logs", args)
+		}
+	}
+	if len(args) == 0 || args[0] != "run" {
+		t.Fatalf("args = %#v, want run command", args)
+	}
+}

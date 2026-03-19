@@ -5,12 +5,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"strings"
 	"sync"
+	"time"
 )
 
 // Client wraps the Claude Code CLI for LLM calls.
@@ -65,6 +67,10 @@ type Response struct {
 	NumTurns     int             `json:"num_turns"`
 	Usage        Usage           `json:"usage"`
 }
+
+var errClaudeResultReceived = errors.New("claude result received")
+
+const claudeResultExitGrace = 250 * time.Millisecond
 
 // buildImageContext appends image file references to the user message.
 func buildImageContext(userMessage string, images []string) string {
@@ -159,6 +165,7 @@ func (c *Client) Generate(ctx context.Context, userMessage string, opts Generate
 	if opts.WorkDir != "" {
 		cmd.Dir = opts.WorkDir
 	}
+	configureCommandProcess(cmd)
 
 	// Strip CLAUDECODE env var to allow nested sessions
 	cmd.Env = filterEnv(os.Environ(), "CLAUDECODE")
@@ -243,6 +250,7 @@ func (c *Client) GenerateStreaming(ctx context.Context, userMessage string, opts
 	if opts.WorkDir != "" {
 		cmd.Dir = opts.WorkDir
 	}
+	configureCommandProcess(cmd)
 
 	cmd.Env = filterEnv(os.Environ(), "CLAUDECODE")
 	cmd.Stdin = strings.NewReader(userMessage)
@@ -261,6 +269,7 @@ func (c *Client) GenerateStreaming(ctx context.Context, userMessage string, opts
 	var lastResponse *Response
 	var sessionID string
 	var assistantText strings.Builder // accumulate text from assistant events
+	var resultErr error
 
 	streamErr := streamNDJSONLines(stdout, func(line []byte) error {
 		trimmed := bytes.TrimSpace(line)
@@ -309,15 +318,39 @@ func (c *Client) GenerateStreaming(ctx context.Context, userMessage string, opts
 				if errMsg == "" {
 					errMsg = "(no details provided)"
 				}
-				return fmt.Errorf("claude returned error: %s", errMsg)
+				resultErr = fmt.Errorf("claude returned error: %s", errMsg)
 			}
 		}
 
 		if onEvent != nil {
 			onEvent(*ev)
 		}
+		if ev.Type == "result" {
+			return errClaudeResultReceived
+		}
 		return nil
 	})
+	if errors.Is(streamErr, errClaudeResultReceived) {
+		if err := waitForProcessExitOrKill(cmd, claudeResultExitGrace); err != nil && ctx.Err() == nil {
+			if stderrMsg := strings.TrimSpace(stderrBuf.String()); stderrMsg != "" {
+				return nil, fmt.Errorf("claude command failed after result: %w\nstderr: %s", err, stderrMsg)
+			}
+			return nil, fmt.Errorf("claude command failed after result: %w", err)
+		}
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+		if resultErr != nil {
+			return nil, resultErr
+		}
+		if lastResponse != nil {
+			if lastResponse.SessionID == "" {
+				lastResponse.SessionID = sessionID
+			}
+			return lastResponse, nil
+		}
+		return &Response{Result: assistantText.String(), SessionID: sessionID}, nil
+	}
 	if streamErr != nil {
 		_ = cmd.Wait()
 		if ctx.Err() != nil {
@@ -350,6 +383,22 @@ func (c *Client) GenerateStreaming(ctx context.Context, userMessage string, opts
 	// No result event — still return accumulated text if any
 	result := assistantText.String()
 	return &Response{Result: result, SessionID: sessionID}, nil
+}
+
+func waitForProcessExitOrKill(cmd *exec.Cmd, grace time.Duration) error {
+	waitCh := make(chan error, 1)
+	go func() {
+		waitCh <- cmd.Wait()
+	}()
+
+	select {
+	case err := <-waitCh:
+		return err
+	case <-time.After(grace):
+		killCommandProcess(cmd)
+		<-waitCh
+		return nil
+	}
 }
 
 // InteractiveSession represents a running Claude Code subprocess with bidirectional
@@ -470,6 +519,7 @@ func (c *Client) StartInteractiveStreaming(ctx context.Context, userMessage stri
 	if opts.WorkDir != "" {
 		cmd.Dir = opts.WorkDir
 	}
+	configureCommandProcess(cmd)
 	cmd.Env = filterEnv(os.Environ(), "CLAUDECODE")
 
 	stdinPipe, err := cmd.StdinPipe()

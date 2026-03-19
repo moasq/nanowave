@@ -14,8 +14,13 @@ import (
 	"syscall"
 	"time"
 
+	"bufio"
+
 	"github.com/moasq/nanowave/internal/agentruntime"
 	"github.com/moasq/nanowave/internal/config"
+	"github.com/moasq/nanowave/internal/integrations"
+	"github.com/moasq/nanowave/internal/mcpregistry"
+	"github.com/moasq/nanowave/internal/orchestration"
 	"github.com/moasq/nanowave/internal/service"
 	"github.com/moasq/nanowave/internal/storage"
 	"github.com/moasq/nanowave/internal/terminal"
@@ -175,10 +180,8 @@ func runInteractive(cmd *cobra.Command) error {
 	authStatus := config.RuntimeAuthStatus(runtimeKind, runtimePath)
 
 	toolOpts := terminal.ToolStatusOpts{
-		RuntimeName:    agentruntime.DescriptorForKind(runtimeKind).DisplayName,
 		RuntimeVersion: runtimeVersion,
 		HasXcode:       config.CheckXcode(),
-		HasXcodeCLT:    config.CheckXcodeCLT(),
 		HasSimulator:   config.CheckSimulator(),
 		HasXcodegen:    config.CheckXcodegen(),
 	}
@@ -341,7 +344,11 @@ func runInteractive(cmd *cobra.Command) error {
 			break
 		}
 
-		terminal.EchoInput(input, result.Images)
+		displayInput := result.DisplayText
+		if displayInput == "" {
+			displayInput = input
+		}
+		terminal.EchoInput(displayInput, nil)
 
 		currentRuntime := svc.CurrentRuntime()
 		currentRuntimePath, _ := agentruntime.FindBinary(currentRuntime)
@@ -383,24 +390,10 @@ func runInteractive(cmd *cobra.Command) error {
 		ctx, cancel := context.WithCancel(cmd.Context())
 		activeCancel.Set(cancel)
 
-		// Capture usage before operation for delta
-		usageBefore := svc.Usage()
-
 		// Unified send — auto-routes build vs edit
 		if err := svc.Send(ctx, input, cachedImages); err != nil {
 			if ctx.Err() == nil {
 				terminal.Error(fmt.Sprintf("Failed: %v", err))
-			}
-		} else {
-			// Show post-operation cost summary
-			usageAfter := svc.Usage()
-			if usageAfter.Requests > usageBefore.Requests {
-				costDelta := usageAfter.TotalCostUSD - usageBefore.TotalCostUSD
-				tokenDelta := (usageAfter.InputTokens + usageAfter.OutputTokens) - (usageBefore.InputTokens + usageBefore.OutputTokens)
-				if costDelta > 0 || tokenDelta > 0 {
-					fmt.Printf("  %s$%.2f  ·  %s tokens%s\n",
-						terminal.Dim, costDelta, storage.FormatTokenCount(tokenDelta), terminal.Reset)
-				}
 			}
 		}
 
@@ -476,7 +469,7 @@ func handleSlashCommand(input string, cfg *config.Config, svc *service.Service, 
 						terminal.Error(err.Error())
 					}
 				} else {
-					terminal.Success(fmt.Sprintf("Runtime set to %s", svc.CurrentRuntimeDisplayName()))
+					terminal.Success("Runtime updated")
 				}
 			}
 			fmt.Println()
@@ -488,7 +481,7 @@ func handleSlashCommand(input string, cfg *config.Config, svc *service.Service, 
 					terminal.Error(err.Error())
 				}
 			} else {
-				terminal.Success(fmt.Sprintf("Runtime set to %s", svc.CurrentRuntimeDisplayName()))
+				terminal.Success("Runtime updated")
 			}
 			fmt.Println()
 		}
@@ -580,17 +573,10 @@ func handleSlashCommand(input string, cfg *config.Config, svc *service.Service, 
 			fmt.Println()
 			return true
 		}
-		usageBefore := svc.Usage()
 		if err := runWithSlashCommandContext(cmd, func(ctx context.Context) error {
 			return svc.Ask(ctx, arg)
 		}); err != nil {
 			terminal.Error(fmt.Sprintf("Ask failed: %v", err))
-		} else {
-			usageAfter := svc.Usage()
-			if usageAfter.Requests > usageBefore.Requests {
-				costDelta := usageAfter.TotalCostUSD - usageBefore.TotalCostUSD
-				fmt.Printf("  %s$%.4f%s\n", terminal.Dim, costDelta, terminal.Reset)
-			}
 		}
 		fmt.Println()
 		return true
@@ -648,7 +634,28 @@ func handleSlashCommand(input string, cfg *config.Config, svc *service.Service, 
 		RunIntegrationsInteractive()
 		return true
 
+	case "/revenuecat":
+		if !requireProjectForSlashCommand(cfg) {
+			return true
+		}
+		runProviderSetupAndSync("revenuecat", svc)
+		fmt.Println()
+		return true
+
+	case "/supabase":
+		if !requireProjectForSlashCommand(cfg) {
+			return true
+		}
+		runProviderSetupAndSync("supabase", svc)
+		fmt.Println()
+		return true
+
 	default:
+		// Try prefix matching: /sup → /supabase, /rev → /revenuecat, etc.
+		if resolved := resolveSlashCommand(command); resolved != "" {
+			// Re-dispatch with the resolved command
+			return handleSlashCommand(resolved+" "+arg, cfg, svc, cmd)
+		}
 		terminal.Warning(fmt.Sprintf("Unknown command: %s. Type /help for available commands.", command))
 		fmt.Println()
 		return true
@@ -841,11 +848,148 @@ func printHelp() {
 	fmt.Printf("  %s/usage%s            Show token usage and costs%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
 	fmt.Printf("  %s/clear%s            Clear conversation session%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
 	fmt.Printf("  %s/setup%s            Install prerequisites%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
-	fmt.Printf("  %s/integrations%s    Manage backend integrations%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
+	fmt.Printf("  %s/supabase%s         Connect Supabase backend%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
+	fmt.Printf("  %s/revenuecat%s       Connect RevenueCat payments%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
+	fmt.Printf("  %s/integrations%s    Manage all integrations%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
 	fmt.Printf("  %s/help%s             Show this help%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
 	fmt.Printf("  %s/quit%s             Exit session%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
 	fmt.Println()
 	fmt.Printf("  %sJust type a description and press Enter to submit.%s\n", terminal.Dim, terminal.Reset)
 	fmt.Printf("  %sEsc+Enter for newline. Ctrl+V to paste image. Drag images to attach.%s\n", terminal.Dim, terminal.Reset)
 	fmt.Println()
+}
+
+// resolveSlashCommand finds the best matching slash command for a prefix.
+// Returns the full command name if there's exactly one match, empty string otherwise.
+func resolveSlashCommand(prefix string) string {
+	if !strings.HasPrefix(prefix, "/") || len(prefix) < 2 {
+		return ""
+	}
+	var matches []string
+	for _, cmd := range terminal.SlashCommands {
+		if strings.HasPrefix(cmd.Name, prefix) {
+			matches = append(matches, cmd.Name)
+		}
+	}
+	if len(matches) == 1 {
+		return matches[0]
+	}
+	return ""
+}
+
+// runProviderSetupAndSync runs the interactive setup for a provider,
+// then syncs MCP config and settings to the active project so the agent
+// immediately has access to the integration tools on the next call.
+func runProviderSetupAndSync(providerID string, svc *service.Service) {
+	m := newCmdManager()
+	p, ok := m.GetProvider(integrations.ProviderID(providerID))
+	if !ok {
+		terminal.Error(fmt.Sprintf("Unknown provider: %s", providerID))
+		return
+	}
+	sc, ok := p.(integrations.SetupCapable)
+	if !ok {
+		terminal.Error(fmt.Sprintf("%s does not support setup", providerID))
+		return
+	}
+
+	appName := svc.CurrentAppName()
+	if appName == "" {
+		appName = resolveCurrentAppName()
+	}
+
+	// Check if already configured — look by app name first, then any config for this provider
+	existing := m.Store()
+	cfg, _ := existing.GetProvider(integrations.ProviderID(providerID), appName)
+	if cfg == nil {
+		// Try all known app names for this provider
+		for _, name := range existing.AllAppNames(integrations.ProviderID(providerID)) {
+			if c, _ := existing.GetProvider(integrations.ProviderID(providerID), name); c != nil {
+				cfg = c
+				appName = name // use the stored app name
+				break
+			}
+		}
+	}
+	if cfg != nil && (cfg.AnonKey != "" || cfg.PAT != "") {
+		terminal.Success(fmt.Sprintf("%s is already configured", p.Meta().Name))
+		if cfg.ProjectURL != "" {
+			terminal.Detail("Project", cfg.ProjectURL)
+		}
+		fmt.Println()
+
+		action := terminal.Pick("Action", []terminal.PickerOption{
+			{Label: "Keep current", Desc: "No changes"},
+			{Label: "Reconfigure", Desc: "Set up again with new credentials"},
+			{Label: "Remove", Desc: fmt.Sprintf("Disconnect %s", p.Meta().Name)},
+		}, "")
+
+		switch action {
+		case "Keep current":
+			return
+		case "Remove":
+			_ = sc.Remove(context.Background(), existing, appName)
+			terminal.Success(fmt.Sprintf("%s disconnected", p.Meta().Name))
+			syncProjectIntegrations(svc)
+			return
+		case "Reconfigure":
+			// Fall through to setup
+		default:
+			return
+		}
+	}
+
+	fmt.Println()
+
+	readLineFn := func(label string) string {
+		fmt.Printf("  %s: ", label)
+		reader := bufio.NewReader(os.Stdin)
+		line, _ := reader.ReadString('\n')
+		return strings.TrimSpace(line)
+	}
+
+	if err := sc.Setup(context.Background(), integrations.SetupRequest{
+		Store:      m.Store(),
+		AppName:    appName,
+		ReadLineFn: readLineFn,
+		PrintFn:    terminalPrintFn,
+		PickFn:     terminalPickFn,
+	}); err != nil {
+		terminal.Error(err.Error())
+		return
+	}
+
+	// Sync: update MCP config and settings in the active project
+	syncProjectIntegrations(svc)
+}
+
+// syncProjectIntegrations writes updated MCP config and settings.json
+// to the active project so the agent picks up new integration tools.
+func syncProjectIntegrations(svc *service.Service) {
+	projectDir := ""
+	if project, err := svc.ProjectStore().Load(); err == nil && project != nil {
+		projectDir = project.ProjectPath
+	}
+	if projectDir == "" {
+		return
+	}
+
+	// Re-write project configs (MCP + settings) with current integrations
+	orchestration.EnsureProjectConfigsExternal(projectDir)
+
+	// Also write integration-specific MCP configs
+	m := newCmdManager()
+	appName := svc.CurrentAppName()
+	active := m.ResolveExisting(appName)
+	if len(active) > 0 {
+		ctx := context.Background()
+		mcpConfigs, _ := m.MCPConfigs(ctx, active)
+		mcpReg := mcpregistry.New()
+		mcpregistry.RegisterAll(mcpReg)
+		_ = orchestration.WriteMCPConfigWithIntegrationsExternal(projectDir, mcpReg, mcpConfigs)
+		mcpTools := m.MCPToolAllowlist(active)
+		_ = orchestration.WriteSettingsWithIntegrationsExternal(projectDir, mcpReg, mcpTools)
+	}
+
+	terminal.Success("Project synced — integration tools are now available")
 }

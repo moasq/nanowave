@@ -6,13 +6,17 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"time"
 )
 
 var (
-	terminalOutputMu  sync.Mutex
-	activeInputEditor *inputEditor
-	ansiEscapePattern = regexp.MustCompile(`\x1b\[[0-9;?]*[ -/]*[@-~]`)
+	terminalOutputMu       sync.Mutex
+	activeInputEditor      *inputEditor
+	ansiEscapePattern      = regexp.MustCompile(`\x1b\[[0-9;?]*[ -/]*[@-~]`)
+	lastBackgroundRenderAt time.Time
 )
+
+const backgroundRenderThrottle = 500 * time.Millisecond
 
 func withTerminalOutputLock(fn func()) {
 	terminalOutputMu.Lock()
@@ -56,7 +60,13 @@ func printTerminalLineLocked(text string) {
 		inline := sanitizeInlineTerminalText(text)
 		if inline != "" {
 			activeInputEditor.pushBackgroundLineLocked(inline)
-			activeInputEditor.renderLocked()
+			// Throttle renders: only redraw if enough time has passed.
+			// This prevents sim-log floods from corrupting the input UI.
+			now := time.Now()
+			if now.Sub(lastBackgroundRenderAt) >= backgroundRenderThrottle {
+				lastBackgroundRenderAt = now
+				activeInputEditor.renderLocked()
+			}
 		}
 		return
 	}

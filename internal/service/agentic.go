@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/moasq/nanowave/internal/agentruntime"
+	"github.com/moasq/nanowave/internal/integrations"
 	"github.com/moasq/nanowave/internal/mcpregistry"
 	"github.com/moasq/nanowave/internal/nwtool"
 	"github.com/moasq/nanowave/internal/orchestration"
@@ -46,26 +47,33 @@ func (s *Service) AgenticSend(ctx context.Context, prompt string, images []strin
 		terminal.Header("Nanowave Build")
 	}
 
-	// Compose system prompt — domain knowledge only, no workflow steps
+	// Resolve configured integrations BEFORE composing the prompt —
+	// the system prompt needs to know which backends are available.
+	var activeProviders []integrations.ActiveProvider
+	if s.manager != nil {
+		activeProviders = s.manager.ResolveExisting(ac.AppName)
+		for _, ap := range activeProviders {
+			ac.ActiveIntegrations = append(ac.ActiveIntegrations, string(ap.Provider.ID()))
+		}
+	}
+
+	// Compose system prompt — includes integration awareness
 	catalogRoot := s.config.CatalogRoot()
 	systemPrompt := orchestration.ComposeAgenticSystemPrompt(ac, catalogRoot)
 
-	// Build tool list: core tools + all MCP tools
+	// Build tool list: core tools + all MCP tools + configured integration tools
 	reg := mcpregistry.New()
 	mcpregistry.RegisterAll(reg)
 	tools := orchestration.CoreAgenticToolsList()
 	tools = append(tools, reg.AllTools()...)
-
-	// Add tools from already-configured integrations
 	if s.manager != nil {
-		activeProviders := s.manager.ResolveExisting(ac.AppName)
 		tools = append(tools, s.manager.AgentTools(activeProviders)...)
 	}
 
-	// For non-Claude runtimes, inject tool descriptions into the system prompt
-	if s.runtimeKind != agentruntime.KindClaude {
-		systemPrompt += nwtool.NewDefaultRegistry().ToolDescriptionsMarkdown()
-	}
+	// Inject nanowave tool descriptions into the system prompt for all runtimes.
+	// nw_* tools (scaffold, setup_integration, etc.) are invoked via CLI:
+	//   echo '{"key":"value"}' | nanowave tool <tool_name>
+	systemPrompt += nwtool.NewDefaultRegistry().ToolDescriptionsMarkdown()
 
 	var workDir string
 	// Snapshot existing projects before build so we can detect the new one after
@@ -85,14 +93,10 @@ func (s *Service) AgenticSend(ctx context.Context, prompt string, images []strin
 
 	// Progress display — "agentic" mode shows tool activity without rigid phase numbers
 	progress := terminal.NewProgressDisplay("agentic", 0)
-	runtimeLabel := ""
-	if s.runtime != nil {
-		runtimeLabel = s.runtime.DisplayName()
-	}
-	progress.SetRuntimeLabel(runtimeLabel)
 	progress.Start()
+	progress.AddActivity(fmt.Sprintf("Starting %s", s.runtime.DisplayName()))
 
-	streamCb := orchestration.NewProgressCallbackExported(progress, runtimeLabel)
+	streamCb := orchestration.NewProgressCallbackExported(progress)
 
 	// Single call — LLM drives everything
 	resp, err := s.runtime.GenerateStreaming(ctx, prompt, agentruntime.GenerateOpts{
@@ -110,9 +114,9 @@ func (s *Service) AgenticSend(ctx context.Context, prompt string, images []strin
 	if err != nil && ac.SessionID != "" && strings.Contains(err.Error(), "No conversation found") {
 		progress.Stop()
 		progress = terminal.NewProgressDisplay("agentic", 0)
-		progress.SetRuntimeLabel(runtimeLabel)
 		progress.Start()
-		streamCb = orchestration.NewProgressCallbackExported(progress, runtimeLabel)
+		progress.AddActivity(fmt.Sprintf("Starting %s", s.runtime.DisplayName()))
+		streamCb = orchestration.NewProgressCallbackExported(progress)
 
 		resp, err = s.runtime.GenerateStreaming(ctx, prompt, agentruntime.GenerateOpts{
 			SystemPrompt: systemPrompt,
@@ -125,6 +129,10 @@ func (s *Service) AgenticSend(ctx context.Context, prompt string, images []strin
 	}
 
 	if err != nil {
+		if ctx.Err() != nil {
+			progress.Stop()
+			return ctx.Err()
+		}
 		progress.StopWithError("Build failed")
 		terminal.Error(fmt.Sprintf("Build failed: %v", err))
 		return err
@@ -134,9 +142,6 @@ func (s *Service) AgenticSend(ctx context.Context, prompt string, images []strin
 
 	if resp != nil {
 		s.usageStore.RecordUsage(resp.TotalCostUSD, resp.Usage.InputTokens, resp.Usage.OutputTokens, resp.Usage.CacheReadInputTokens, resp.Usage.CacheCreationInputTokens)
-		if resp.TotalCostUSD > 0 {
-			terminal.Detail("Cost", fmt.Sprintf("$%.4f", resp.TotalCostUSD))
-		}
 	}
 
 	if isEdit {

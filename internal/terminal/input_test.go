@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/rivo/uniseg"
 )
 
 func TestExtractImagesPreservesPlainMultilineText(t *testing.T) {
@@ -160,6 +162,33 @@ func TestInputEditorClearToStartRemovesCurrentLogicalLinePrefix(t *testing.T) {
 	}
 }
 
+func TestInputEditorClearToStartRemovesInlineAttachmentInDeletedSpan(t *testing.T) {
+	editor := &inputEditor{
+		buffer: []rune("hello world"),
+		cursor: len([]rune("hello world")),
+		attachments: []inlineAttachment{
+			{
+				id:   1,
+				pos:  len([]rune("hello ")),
+				kind: inlineAttachmentPastedText,
+				pasted: pastedBlock{
+					content:  "line 1\nline 2",
+					numLines: 2,
+				},
+			},
+		},
+	}
+
+	editor.clearToStart()
+
+	if got, want := string(editor.buffer), ""; got != want {
+		t.Fatalf("clearToStart() buffer = %q, want %q", got, want)
+	}
+	if len(editor.attachments) != 0 {
+		t.Fatalf("attachments len = %d, want 0", len(editor.attachments))
+	}
+}
+
 func TestInputEditorClearToEndRemovesCurrentLogicalLineSuffix(t *testing.T) {
 	editor := &inputEditor{
 		buffer: []rune("first line\nsecond line"),
@@ -189,6 +218,243 @@ func TestInputEditorDeleteWordBackwardRemovesPreviousWord(t *testing.T) {
 	}
 }
 
+func TestInputEditorDeleteWordBackwardRemovesInlineAttachmentInDeletedSpan(t *testing.T) {
+	editor := &inputEditor{
+		buffer: []rune("hello world"),
+		cursor: len([]rune("hello world")),
+		attachments: []inlineAttachment{
+			{
+				id:   1,
+				pos:  len([]rune("hello ")),
+				kind: inlineAttachmentPastedText,
+				pasted: pastedBlock{
+					content:  "line 1\nline 2",
+					numLines: 2,
+				},
+			},
+		},
+	}
+
+	editor.deleteWordBackward()
+
+	if got, want := string(editor.buffer), "hello "; got != want {
+		t.Fatalf("deleteWordBackward() buffer = %q, want %q", got, want)
+	}
+	if len(editor.attachments) != 0 {
+		t.Fatalf("attachments len = %d, want 0", len(editor.attachments))
+	}
+}
+
+func TestInputEditorPromotesFinderImagePasteIntoAttachment(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "Queen's Park")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	imagePath := createTestImage(t, dir, "mockup image.png")
+	pasted := finderQuotedPath(imagePath)
+
+	editor := &inputEditor{}
+	for _, r := range pasted {
+		editor.insertText(string(r))
+	}
+
+	if got, want := editor.imagePaths(), []string{imagePath}; !sameStrings(got, want) {
+		t.Fatalf("imagePaths() = %#v, want %#v", got, want)
+	}
+	if got := string(editor.buffer); got != "" {
+		t.Fatalf("buffer = %q, want empty", got)
+	}
+	if editor.cursor != 0 {
+		t.Fatalf("cursor = %d, want 0", editor.cursor)
+	}
+}
+
+func TestInputEditorPromotesRawImagePathWithSpacesIntoAttachment(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "Summer Shots")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	imagePath := createTestImage(t, dir, "family photo.png")
+
+	editor := &inputEditor{}
+	for _, r := range imagePath {
+		editor.insertText(string(r))
+	}
+
+	if got, want := editor.imagePaths(), []string{imagePath}; !sameStrings(got, want) {
+		t.Fatalf("imagePaths() = %#v, want %#v", got, want)
+	}
+	if got := string(editor.buffer); got != "" {
+		t.Fatalf("buffer = %q, want empty", got)
+	}
+}
+
+func TestInputEditorKeepsNonImagePasteAsText(t *testing.T) {
+	root := t.TempDir()
+	pdfPath := filepath.Join(root, "mockup.pdf")
+	if err := os.WriteFile(pdfPath, []byte("pdf-data"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	pasted := finderQuotedPath(pdfPath)
+
+	editor := &inputEditor{}
+	for _, r := range pasted {
+		editor.insertText(string(r))
+	}
+
+	if got := editor.imagePaths(); len(got) != 0 {
+		t.Fatalf("imagePaths() = %#v, want none", got)
+	}
+	if got := string(editor.buffer); got != pasted {
+		t.Fatalf("buffer = %q, want %q", got, pasted)
+	}
+}
+
+func TestResolveImageReferencesByLineHandlesSingleRawPathWithSpaces(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "Summer Shots")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	imagePath := createTestImage(t, dir, "family photo.png")
+
+	images, ok := resolveImageReferencesByLine(imagePath + "\n")
+
+	if !ok {
+		t.Fatalf("resolveImageReferencesByLine() ok = false, want true")
+	}
+	if got, want := images, []string{imagePath}; !sameStrings(got, want) {
+		t.Fatalf("resolveImageReferencesByLine() = %#v, want %#v", got, want)
+	}
+}
+
+func TestInputEditorDisplayTextUsesPastedBlockMarkers(t *testing.T) {
+	editor := &inputEditor{
+		buffer: []rune("Summarize this"),
+		attachments: []inlineAttachment{
+			{id: 1, pos: len([]rune("Summarize this")), kind: inlineAttachmentPastedText, pasted: pastedBlock{content: "line 1\nline 2", numLines: 2}},
+			{id: 2, pos: len([]rune("Summarize this")), kind: inlineAttachmentPastedText, pasted: pastedBlock{content: "line 3\nline 4", numLines: 2}},
+		},
+	}
+
+	got := editor.displayText()
+	want := "Summarize this [Pasted Text #1: 2 lines] [Pasted Text #2: 2 lines]"
+	if got != want {
+		t.Fatalf("displayText() = %q, want %q", got, want)
+	}
+}
+
+func TestLayoutEditorContentKeepsPastedBlockAtInsertionPoint(t *testing.T) {
+	editor := &inputEditor{
+		buffer: []rune("hello dfkldjsfkl jsdf"),
+		attachments: []inlineAttachment{
+			{id: 1, pos: len([]rune("hello ")), kind: inlineAttachmentPastedText, pasted: pastedBlock{content: strings.Repeat("line\n", 16) + "line", numLines: 17}},
+		},
+	}
+	layout := layoutEditorContent(editor.buffer, editor.attachmentDisplayGroups(), 120)
+
+	if len(layout.lines) != 1 {
+		t.Fatalf("layoutEditorContent() len = %d, want 1", len(layout.lines))
+	}
+	want := "hello [Pasted Text #1: 17 lines] dfkldjsfkl jsdf"
+	if got := layout.lines[0]; got != want {
+		t.Fatalf("layoutEditorContent()[0] = %q, want %q", got, want)
+	}
+	if got, want := layout.positions[len([]rune("hello "))].col, uniseg.StringWidth("hello [Pasted Text #1: 17 lines] "); got != want {
+		t.Fatalf("cursor col = %d, want %d", got, want)
+	}
+}
+
+func TestInputEditorBackspaceRemovesLastAttachmentWhenBufferEmpty(t *testing.T) {
+	editor := &inputEditor{
+		attachments: []inlineAttachment{
+			{id: 1, pos: 0, kind: inlineAttachmentImage, path: "/tmp/one.png"},
+			{id: 2, pos: 0, kind: inlineAttachmentPastedText, pasted: pastedBlock{content: "a\nb\nc\nd\ne", numLines: 5}},
+		},
+	}
+
+	editor.backspace()
+	if len(editor.attachments) != 1 {
+		t.Fatalf("attachments len = %d, want 1", len(editor.attachments))
+	}
+	if got, want := editor.imagePaths(), []string{"/tmp/one.png"}; !sameStrings(got, want) {
+		t.Fatalf("imagePaths() = %#v, want %#v", got, want)
+	}
+
+	editor.backspace()
+	if len(editor.attachments) != 0 {
+		t.Fatalf("attachments len = %d, want 0", len(editor.attachments))
+	}
+}
+
+func TestInputEditorBackspaceRemovesLastAttachmentWhenCursorAtBufferEnd(t *testing.T) {
+	editor := &inputEditor{
+		buffer: []rune("fdsf"),
+		cursor: 4,
+		attachments: []inlineAttachment{
+			{id: 1, pos: 4, kind: inlineAttachmentImage, path: "/tmp/one.png"},
+			{id: 2, pos: 4, kind: inlineAttachmentPastedText, pasted: pastedBlock{content: "a\nb\nc\nd\ne", numLines: 5}},
+		},
+	}
+
+	editor.backspace()
+	if len(editor.attachments) != 1 {
+		t.Fatalf("attachments len = %d, want 1", len(editor.attachments))
+	}
+	if got := string(editor.buffer); got != "fdsf" {
+		t.Fatalf("buffer = %q, want unchanged text", got)
+	}
+
+	editor.backspace()
+	if len(editor.attachments) != 0 {
+		t.Fatalf("attachments len = %d, want 0", len(editor.attachments))
+	}
+	if got := string(editor.buffer); got != "fdsf" {
+		t.Fatalf("buffer = %q, want unchanged text", got)
+	}
+}
+
+func TestInputEditorKeepsCollapsedPasteAtOriginalInsertionPoint(t *testing.T) {
+	editor := &inputEditor{
+		buffer: []rune("hello "),
+		cursor: len([]rune("hello ")),
+	}
+
+	editor.maybeCollapsePaste(strings.Repeat("line\n", 16) + "line")
+	editor.insertText("dfkldjsfkl jsdf dfskjf")
+
+	got := editor.displayText()
+	want := "hello [Pasted Text #1: 17 lines] dfkldjsfkl jsdf dfskjf"
+	if got != want {
+		t.Fatalf("displayText() = %q, want %q", got, want)
+	}
+}
+
+func TestInputEditorSubmitTextExpandsCollapsedPasteAtOriginalInsertionPoint(t *testing.T) {
+	editor := &inputEditor{
+		buffer: []rune("hello world"),
+		attachments: []inlineAttachment{
+			{
+				id:   1,
+				pos:  len([]rune("hello ")),
+				kind: inlineAttachmentPastedText,
+				pasted: pastedBlock{
+					content:  "line 1\nline 2\n",
+					numLines: 2,
+				},
+			},
+		},
+	}
+
+	got := editor.submitText()
+	want := "hello line 1\nline 2\nworld"
+	if got != want {
+		t.Fatalf("submitText() = %q, want %q", got, want)
+	}
+}
+
 func TestInputEditorHelperLinesIncludeBackgroundLine(t *testing.T) {
 	editor := &inputEditor{
 		width:          80,
@@ -198,12 +464,44 @@ func TestInputEditorHelperLinesIncludeBackgroundLine(t *testing.T) {
 		backgroundLine: "[sim-log] latest line",
 	}
 
-	lines := editor.helperLines()
-	if len(lines) != 3 {
-		t.Fatalf("helperLines() len = %d, want 3", len(lines))
+	lines := editor.helperLines(editorLayout{lines: []string{""}})
+	if len(lines) < 3 {
+		t.Fatalf("helperLines() len = %d, want at least 3", len(lines))
 	}
 	if !strings.Contains(lines[0], "[sim-log] latest line") {
 		t.Fatalf("helperLines()[0] = %q, want background log line", lines[0])
+	}
+}
+
+func TestInputEditorHelperLinesExpandForSlashMatches(t *testing.T) {
+	editor := &inputEditor{
+		width:        80,
+		padding:      1,
+		contentWidth: 78,
+		helperRows:   3,
+		buffer:       []rune("/"),
+		cursor:       1,
+	}
+
+	lines := editor.helperLines(editorLayout{lines: []string{"/"}})
+	if len(lines) <= 3 {
+		t.Fatalf("helperLines() len = %d, want expanded helper area", len(lines))
+	}
+	if !strings.Contains(strings.Join(lines, "\n"), "/model") {
+		t.Fatalf("helperLines() = %q, want additional slash command suggestions", lines)
+	}
+}
+
+func TestRenderAttachmentLineUsesInputBoxStyling(t *testing.T) {
+	editor := &inputEditor{width: 80, padding: 1, contentWidth: 78}
+
+	line := editor.renderAttachmentLine("[Image #1]")
+
+	if !strings.Contains(line, inputBoxBackground) {
+		t.Fatalf("renderAttachmentLine() = %q, should use input box background", line)
+	}
+	if !strings.Contains(line, "[Image #1]") {
+		t.Fatalf("renderAttachmentLine() = %q, want attachment text", line)
 	}
 }
 
@@ -227,6 +525,10 @@ func escapePath(path string) string {
 		sb.WriteRune(r)
 	}
 	return sb.String()
+}
+
+func finderQuotedPath(path string) string {
+	return "'" + strings.ReplaceAll(path, "'", "\\'") + "'"
 }
 
 func sameStrings(got, want []string) bool {

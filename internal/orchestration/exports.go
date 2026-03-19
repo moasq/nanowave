@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/moasq/nanowave/internal/agentruntime"
+	"github.com/moasq/nanowave/internal/integrations"
 	"github.com/moasq/nanowave/internal/mcpregistry"
 	"github.com/moasq/nanowave/internal/terminal"
 )
@@ -90,8 +91,8 @@ func CoreAgenticToolsList() []string {
 }
 
 // NewProgressCallbackExported wraps newProgressCallback for use outside orchestration.
-func NewProgressCallbackExported(progress *terminal.ProgressDisplay, runtimeLabel string) func(agentruntime.StreamEvent) {
-	return newProgressCallback(progress, runtimeLabel)
+func NewProgressCallbackExported(progress *terminal.ProgressDisplay) func(agentruntime.StreamEvent) {
+	return newProgressCallback(progress)
 }
 
 // WriteMCPConfigExternal writes .mcp.json for the project using the standard MCP registry.
@@ -120,4 +121,14 @@ func EnsureProjectConfigsExternal(projectDir string) {
 	mcpregistry.RegisterAll(reg)
 	p := &Pipeline{registry: reg}
 	p.ensureProjectConfigs(projectDir)
+}
+
+// WriteMCPConfigWithIntegrationsExternal writes .mcp.json including integration MCP servers.
+func WriteMCPConfigWithIntegrationsExternal(projectDir string, reg *mcpregistry.Registry, integrationConfigs []integrations.MCPServerConfig) error {
+	return writeMCPConfig(projectDir, reg, integrationConfigs)
+}
+
+// WriteSettingsWithIntegrationsExternal writes .claude/settings.json including integration tool permissions.
+func WriteSettingsWithIntegrationsExternal(projectDir string, reg *mcpregistry.Registry, integrationTools []string) error {
+	return writeSettingsShared(projectDir, reg, integrationTools)
 }

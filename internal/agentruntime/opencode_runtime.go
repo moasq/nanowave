@@ -45,25 +45,7 @@ func (r *OpenCodeRuntime) Generate(ctx context.Context, userMessage string, opts
 
 func (r *OpenCodeRuntime) GenerateStreaming(ctx context.Context, userMessage string, opts GenerateOpts, onEvent func(StreamEvent)) (*Response, error) {
 	prompt := buildPromptWithSystem(userMessage, opts)
-
-	args := []string{"run", "--format", "json"}
-	if onEvent != nil {
-		args = append([]string{"--print-logs"}, args...)
-	}
-	if opts.SessionID != "" {
-		args = append(args, "--session", opts.SessionID)
-	}
-	model := strings.TrimSpace(opts.Model)
-	if model == "" {
-		model = r.DefaultModel(PhaseBuild)
-	}
-	if model != "" {
-		args = append(args, "-m", model)
-	}
-	for _, img := range opts.Images {
-		args = append(args, "-f", img)
-	}
-	args = append(args, prompt)
+	args := buildOpenCodeExecArgs(prompt, opts, r.DefaultModel(PhaseBuild))
 
 	cmd := exec.CommandContext(ctx, r.path, args...)
 	if opts.WorkDir != "" {
@@ -100,9 +82,6 @@ func (r *OpenCodeRuntime) GenerateStreaming(ctx context.Context, userMessage str
 			appendCapturedLine(&stdoutRaw, line)
 			payload := decodeJSONLine([]byte(line))
 			if payload == nil {
-				if onEvent != nil {
-					onEvent(StreamEvent{Type: "assistant", Text: line})
-				}
 				return nil
 			}
 
@@ -132,9 +111,6 @@ func (r *OpenCodeRuntime) GenerateStreaming(ctx context.Context, userMessage str
 		defer wg.Done()
 		stderrErr = streamTextLines(stderr, func(line string) error {
 			appendCapturedLine(&stderrText, line)
-			if onEvent != nil {
-				onEvent(StreamEvent{Type: "assistant", Text: line})
-			}
 			return nil
 		})
 	}()
@@ -168,6 +144,25 @@ func (r *OpenCodeRuntime) GenerateStreaming(ctx context.Context, userMessage str
 		sessionID = opts.SessionID
 	}
 	return &Response{Result: result, SessionID: sessionID}, nil
+}
+
+func buildOpenCodeExecArgs(prompt string, opts GenerateOpts, defaultModel string) []string {
+	args := []string{"run", "--format", "json"}
+	if opts.SessionID != "" {
+		args = append(args, "--session", opts.SessionID)
+	}
+	model := strings.TrimSpace(opts.Model)
+	if model == "" {
+		model = defaultModel
+	}
+	if model != "" {
+		args = append(args, "-m", model)
+	}
+	for _, img := range opts.Images {
+		args = append(args, "-f", img)
+	}
+	args = append(args, prompt)
+	return args
 }
 
 func (r *OpenCodeRuntime) RunInteractive(_ context.Context, _ string, _ InteractiveOpts, _ func(StreamEvent), _ func(question string) string) (*Response, error) {

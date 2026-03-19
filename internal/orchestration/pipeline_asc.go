@@ -330,7 +330,7 @@ Use these flags with xcodebuild: -authenticationKeyPath %s -authenticationKeyID 
 
 	progress := p.newProgressDisplay("asc", 0)
 	progress.Start()
-	progressCb := newProgressCallback(progress, p.progressRuntimeLabel())
+	progressCb := newProgressCallback(progress)
 
 	// textRendered tracks whether assistant text was already streamed to the terminal.
 	// When true, the HITL callback skips re-rendering the question text.
@@ -360,7 +360,7 @@ Use these flags with xcodebuild: -authenticationKeyPath %s -authenticationKeyID 
 				fmt.Printf("\n  %sRunning%s\n", terminal.Bold, terminal.Reset)
 				progress = p.newProgressDisplay("asc", 0)
 				progress.Start()
-				progressCb = newProgressCallback(progress, p.progressRuntimeLabel())
+				progressCb = newProgressCallback(progress)
 				textRendered = false
 			}
 			progressCb(ev)
@@ -456,7 +456,7 @@ Use these flags with xcodebuild: -authenticationKeyPath %s -authenticationKeyID 
 		fmt.Printf("\n  %sRunning%s\n", terminal.Bold, terminal.Reset)
 		progress = p.newProgressDisplay("asc", 0)
 		progress.Start()
-		progressCb = newProgressCallback(progress, p.progressRuntimeLabel())
+		progressCb = newProgressCallback(progress)
 		return userInput
 	})
 	progress.Stop()
@@ -477,8 +477,6 @@ Use these flags with xcodebuild: -authenticationKeyPath %s -authenticationKeyID 
 		fmt.Println()
 		fmt.Print(terminal.RenderMarkdown(summary))
 	}
-
-	showCost(resp)
 
 	return &asc.Result{
 		Summary:      resp.Result,

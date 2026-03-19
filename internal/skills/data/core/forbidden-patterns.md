@@ -62,12 +62,17 @@ To find the correct product name, open the repository's `Package.swift` on GitHu
 - No `NSManagedObject`, no `NSPersistentContainer`
 - No `.xcdatamodeld` files
 
-## Authentication & Cloud — BANNED
-**Why:** Beyond on-device MVP scope.
-- No authentication screens, login flows, or token management
+## Authentication & Cloud — SETUP REQUIRED
+**Why:** Backend services require explicit configuration with API keys and credentials.
 - No CloudKit, no iCloud sync
 - No push notifications
-- No Firebase, no Supabase, no backend services
+- No Firebase
+- **Supabase and RevenueCat** are supported but must be configured first. Check the system prompt's "Backend Integrations" section:
+  - If a provider is listed as **Configured** → use it freely
+  - If a provider is listed as **not configured** → tell the user to type `/supabase` or `/revenuecat` to run the interactive setup
+  - NEVER generate import statements, SDK calls, or SPM packages for an unconfigured provider
+  - NEVER try to configure providers manually by editing config files or running CLI commands
+- No other backend services
 
 ## Hardcoded Styling — BANNED
 **Why:** Centralized tokens ensure consistency, enable theme changes.

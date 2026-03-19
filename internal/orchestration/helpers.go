@@ -383,22 +383,15 @@ func sanitizeToPascalCase(name string) string {
 // newProgressCallback returns a callback that updates a ProgressDisplay based on runtime streaming events.
 // It handles both real-time stream events (tool_use_start, tool_input_delta) and
 // full message events (tool_use, assistant) for maximum visibility.
-func newProgressCallback(progress *terminal.ProgressDisplay, runtimeLabel string) func(agentruntime.StreamEvent) {
+func newProgressCallback(progress *terminal.ProgressDisplay) func(agentruntime.StreamEvent) {
 	var (
 		currentTool    string
 		inputBuf       strings.Builder
 		toolRegistered bool // whether we've added an activity for the current tool
-		runtimeReady   bool
 	)
 
 	return func(ev agentruntime.StreamEvent) {
 		switch ev.Type {
-		case "system":
-			if !runtimeReady {
-				runtimeReady = true
-				progress.AddActivity(runtimeReadyActivityLabel(runtimeLabel))
-			}
-
 		case "tool_use_start":
 			// Real-time: tool is starting, we know the name immediately.
 			// Add a preliminary activity with just the tool name.
@@ -451,63 +444,89 @@ func newProgressCallback(progress *terminal.ProgressDisplay, runtimeLabel string
 
 		case "assistant":
 			if ev.Text != "" {
-				if strings.EqualFold(ev.Subtype, "commentary") {
+				if ev.Subtype == "commentary" {
 					progress.OnAgentCommentary(ev.Text)
 				} else {
-					progress.OnAssistantText(ev.Text)
+					// All agent text goes to OnAgentMessage — the agent's own words
+					// are the most important thing to show. Commentary is handled
+					// separately so runtimes can surface concise progress updates
+					// without rendering them as full assistant replies.
+					progress.OnAgentMessage(ev.Text)
 				}
 			}
 		}
 	}
 }
 
-// showCost displays the total cost of a runtime response.
-func showCost(resp *agentruntime.Response) {
-	if resp != nil && resp.TotalCostUSD > 0 {
-		terminal.Detail("Cost", fmt.Sprintf("$%.4f", resp.TotalCostUSD))
-	}
-}
-
-// extractSpinnerStatus extracts a short status line from assistant text for spinner display.
-func extractSpinnerStatus(text string) string {
-	text = strings.TrimSpace(text)
-	if text == "" {
-		return ""
-	}
-
-	// Find first sentence boundary
-	for i, ch := range text {
-		if ch == '.' || ch == '\n' {
-			text = text[:i]
-			break
-		}
-	}
-
-	text = strings.TrimSpace(text)
-	if text == "" {
-		return ""
-	}
-
-	// Truncate to fit spinner line
-	const maxWidth = 60
-	if len(text) > maxWidth {
-		text = text[:maxWidth] + "..."
-	}
-
-	return text
-}
-
 // extractToolInputString extracts a string field from a tool input JSON.
+// For partial (streaming) JSON that fails to unmarshal, it falls back to
+// a simple regex extraction so we can show meaningful labels early.
 func extractToolInputString(input json.RawMessage, key string) string {
 	if len(input) == 0 {
 		return ""
 	}
 	var m map[string]any
 	if err := json.Unmarshal(input, &m); err != nil {
-		return ""
+		// Partial JSON from streaming — try to extract the value with a simple scan.
+		return extractPartialJSONValue(string(input), key)
 	}
 	if v, ok := m[key].(string); ok {
 		return v
 	}
 	return ""
+}
+
+// extractPartialJSONValue extracts a string value from incomplete JSON.
+// Looks for `"key": "value` patterns and returns the longest complete-looking value.
+// Returns "" if the value appears truncated mid-word or is too short to be useful.
+func extractPartialJSONValue(raw, key string) string {
+	// Look for "key": " or "key":"
+	needle := `"` + key + `"`
+	idx := strings.Index(raw, needle)
+	if idx < 0 {
+		return ""
+	}
+	// Skip past "key" and find the opening quote of the value
+	rest := raw[idx+len(needle):]
+	// Skip colon and whitespace
+	rest = strings.TrimLeft(rest, ": \t\n")
+	if len(rest) == 0 || rest[0] != '"' {
+		return ""
+	}
+	rest = rest[1:] // skip opening quote
+
+	// Find closing quote (respecting escapes)
+	var val strings.Builder
+	escaped := false
+	closed := false
+	for _, ch := range rest {
+		if escaped {
+			val.WriteRune(ch)
+			escaped = false
+			continue
+		}
+		if ch == '\\' {
+			escaped = true
+			continue
+		}
+		if ch == '"' {
+			closed = true
+			break
+		}
+		val.WriteRune(ch)
+	}
+
+	result := val.String()
+	if !closed {
+		// Value is still streaming — only use it if it looks like a usable path or command.
+		// For file paths: only show if we have at least a filename component.
+		if key == "file_path" && !strings.Contains(result, ".") {
+			return "" // path not complete enough to show
+		}
+		if key == "command" && len(result) < 4 {
+			return "" // command too short to be meaningful
+		}
+	}
+
+	return result
 }
