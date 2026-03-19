@@ -1,0 +1,446 @@
+{
+  "year": 2017,
+  "count": 36,
+  "videos": [
+    {
+      "id": "110",
+      "year": 2017,
+      "title": "Convenience for You is Independence for Me",
+      "duration": "41:48",
+      "durationSeconds": 2508,
+      "url": "https://developer.apple.com/videos/play/wwdc2017/110/",
+      "topics": [
+        "Accessibility"
+      ],
+      "category": "accessibility-&-inclusion"
+    },
+    {
+      "id": "819",
+      "year": 2017,
+      "title": "Designing for a Global Audience",
+      "duration": "9:31",
+      "durationSeconds": 571,
+      "url": "https://developer.apple.com/videos/play/wwdc2017/819/",
+      "topics": [
+        "Accessibility"
+      ],
+      "category": "accessibility-&-inclusion"
+    },
+    {
+      "id": "717",
+      "year": 2017,
+      "title": "Developing Wireless CarPlay Systems",
+      "duration": "34:37",
+      "durationSeconds": 2077,
+      "url": "https://developer.apple.com/videos/play/wwdc2017/717/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "820",
+      "year": 2017,
+      "title": "Express Yourself!",
+      "duration": "8:37",
+      "durationSeconds": 517,
+      "url": "https://developer.apple.com/videos/play/wwdc2017/820/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "504",
+      "year": 2017,
+      "title": "Advances in HTTP Live Streaming",
+      "duration": "54:51",
+      "durationSeconds": 3291,
+      "url": "https://developer.apple.com/videos/play/wwdc2017/504/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "719",
+      "year": 2017,
+      "title": "Enabling Your App for CarPlay",
+      "duration": "27:33",
+      "durationSeconds": 1653,
+      "url": "https://developer.apple.com/videos/play/wwdc2017/719/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "514",
+      "year": 2017,
+      "title": "Error Handling Best Practices for HTTP Live Streaming",
+      "duration": "18:41",
+      "durationSeconds": 1121,
+      "url": "https://developer.apple.com/videos/play/wwdc2017/514/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "515",
+      "year": 2017,
+      "title": "HLS Authoring Update",
+      "duration": "9:07",
+      "durationSeconds": 547,
+      "url": "https://developer.apple.com/videos/play/wwdc2017/515/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "605",
+      "year": 2017,
+      "title": "SceneKit in Swift Playgrounds",
+      "duration": "40:09",
+      "durationSeconds": 2409,
+      "url": "https://developer.apple.com/videos/play/wwdc2017/605/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "business-&-education"
+    },
+    {
+      "id": "716",
+      "year": 2017,
+      "title": "iOS Configuration and APIs for Kiosk and Assessment Apps",
+      "duration": "35:48",
+      "durationSeconds": 2148,
+      "url": "https://developer.apple.com/videos/play/wwdc2017/716/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "business-&-education"
+    },
+    {
+      "id": "818",
+      "year": 2017,
+      "title": "60-Second Prototyping",
+      "duration": "10:41",
+      "durationSeconds": 641,
+      "url": "https://developer.apple.com/videos/play/wwdc2017/818/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "822",
+      "year": 2017,
+      "title": "App Icon Design",
+      "duration": "10:31",
+      "durationSeconds": 631,
+      "url": "https://developer.apple.com/videos/play/wwdc2017/822/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "809",
+      "year": 2017,
+      "title": "Communication Between Designers and Engineers",
+      "duration": "9:52",
+      "durationSeconds": 592,
+      "url": "https://developer.apple.com/videos/play/wwdc2017/809/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "823",
+      "year": 2017,
+      "title": "Designing Glyphs",
+      "duration": "11:22",
+      "durationSeconds": 682,
+      "url": "https://developer.apple.com/videos/play/wwdc2017/823/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "803",
+      "year": 2017,
+      "title": "Designing Sound",
+      "duration": "34:48",
+      "durationSeconds": 2088,
+      "url": "https://developer.apple.com/videos/play/wwdc2017/803/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "802",
+      "year": 2017,
+      "title": "Essential Design Principles",
+      "duration": "59:56",
+      "durationSeconds": 3596,
+      "url": "https://developer.apple.com/videos/play/wwdc2017/802/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "821",
+      "year": 2017,
+      "title": "Get Started with Display P3",
+      "duration": "10:06",
+      "durationSeconds": 606,
+      "url": "https://developer.apple.com/videos/play/wwdc2017/821/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "815",
+      "year": 2017,
+      "title": "How to Pick a Custom Font",
+      "duration": "14:50",
+      "durationSeconds": 890,
+      "url": "https://developer.apple.com/videos/play/wwdc2017/815/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "816",
+      "year": 2017,
+      "title": "Love at First Launch",
+      "duration": "10:55",
+      "durationSeconds": 655,
+      "url": "https://developer.apple.com/videos/play/wwdc2017/816/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "813",
+      "year": 2017,
+      "title": "Writing Great Alerts",
+      "duration": "11:09",
+      "durationSeconds": 669,
+      "url": "https://developer.apple.com/videos/play/wwdc2017/813/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "706",
+      "year": 2017,
+      "title": "Modernizing Grand Central Dispatch Usage",
+      "duration": "54:37",
+      "durationSeconds": 3277,
+      "url": "https://developer.apple.com/videos/play/wwdc2017/706/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "604",
+      "year": 2017,
+      "title": "SceneKit: What's New",
+      "duration": "53:52",
+      "durationSeconds": 3232,
+      "url": "https://developer.apple.com/videos/play/wwdc2017/604/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "811",
+      "year": 2017,
+      "title": "Design Tips for Great Games",
+      "duration": "13:53",
+      "durationSeconds": 833,
+      "url": "https://developer.apple.com/videos/play/wwdc2017/811/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "609",
+      "year": 2017,
+      "title": "Going Beyond 2D with SpriteKit",
+      "duration": "32:17",
+      "durationSeconds": 1937,
+      "url": "https://developer.apple.com/videos/play/wwdc2017/609/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "513",
+      "year": 2017,
+      "title": "High Efficiency Image File Format",
+      "duration": "29:05",
+      "durationSeconds": 1745,
+      "url": "https://developer.apple.com/videos/play/wwdc2017/513/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "507",
+      "year": 2017,
+      "title": "Capturing Depth in iPhone Photography",
+      "duration": "58:39",
+      "durationSeconds": 3519,
+      "url": "https://developer.apple.com/videos/play/wwdc2017/507/",
+      "topics": [
+        "General"
+      ],
+      "category": "photos-&-camera"
+    },
+    {
+      "id": "249",
+      "year": 2017,
+      "title": "Filtering Unwanted Messages with Identity Lookup",
+      "duration": "17:34",
+      "durationSeconds": 1054,
+      "url": "https://developer.apple.com/videos/play/wwdc2017/249/",
+      "topics": [
+        "Privacy & Security"
+      ],
+      "category": "privacy-&-security"
+    },
+    {
+      "id": "246",
+      "year": 2017,
+      "title": "Deep Linking on tvOS",
+      "duration": "7:18",
+      "durationSeconds": 438,
+      "url": "https://developer.apple.com/videos/play/wwdc2017/246/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "247",
+      "year": 2017,
+      "title": "Extend Your App's Presence With Sharing",
+      "duration": "4:40",
+      "durationSeconds": 280,
+      "url": "https://developer.apple.com/videos/play/wwdc2017/247/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "250",
+      "year": 2017,
+      "title": "Extend Your App’s Presence with Deep Linking",
+      "duration": "3:46",
+      "durationSeconds": 226,
+      "url": "https://developer.apple.com/videos/play/wwdc2017/250/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "248",
+      "year": 2017,
+      "title": "Localization Best Practices on tvOS",
+      "duration": "13:57",
+      "durationSeconds": 837,
+      "url": "https://developer.apple.com/videos/play/wwdc2017/248/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "251",
+      "year": 2017,
+      "title": "Now Playing and Remote Commands on tvOS",
+      "duration": "14:41",
+      "durationSeconds": 881,
+      "url": "https://developer.apple.com/videos/play/wwdc2017/251/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "817",
+      "year": 2017,
+      "title": "Rich Notifications",
+      "duration": "10:09",
+      "durationSeconds": 609,
+      "url": "https://developer.apple.com/videos/play/wwdc2017/817/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "812",
+      "year": 2017,
+      "title": "Size Classes and Core Components",
+      "duration": "8:41",
+      "durationSeconds": 521,
+      "url": "https://developer.apple.com/videos/play/wwdc2017/812/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "810",
+      "year": 2017,
+      "title": "What’s New in iOS 11",
+      "duration": "8:47",
+      "durationSeconds": 527,
+      "url": "https://developer.apple.com/videos/play/wwdc2017/810/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "718",
+      "year": 2017,
+      "title": "Introducing Core NFC",
+      "duration": "11:15",
+      "durationSeconds": 675,
+      "url": "https://developer.apple.com/videos/play/wwdc2017/718/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "system-services"
+    }
+  ]
+}

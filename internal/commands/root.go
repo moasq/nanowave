@@ -12,7 +12,7 @@ var Version = "0.2.0"
 var rootCmd = &cobra.Command{
 	Use:     "nanowave",
 	Short:   "Autonomous Apple platform app builder",
-	Long:    "Nanowave builds, edits, and fixes Apple platform apps using Claude Code as the AI backend.",
+	Long:    "Nanowave builds, edits, and fixes Apple platform apps using a selectable AI agent runtime.",
 	Version: Version,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runInteractive(cmd)
@@ -37,7 +37,9 @@ var openCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVar(&modelFlag, "model", "", "Claude model to use for code generation (sonnet, opus, haiku)")
+	rootCmd.PersistentFlags().StringVar(&agentFlag, "agent", "", "AI runtime to use (claude, codex, opencode)")
+	rootCmd.PersistentFlags().StringVar(&modelFlag, "model", "", "Model to use for code generation inside the selected runtime")
+	rootCmd.PersistentFlags().BoolVar(&agenticFlag, "agentic", false, "Use agentic mode: LLM drives the build via tool calling")
 
 	rootCmd.AddCommand(fixCmd)
 	rootCmd.AddCommand(runCmd)
@@ -49,12 +51,29 @@ func init() {
 	rootCmd.AddCommand(usageCmd)
 	rootCmd.AddCommand(integrationsCmd)
 	rootCmd.AddCommand(publishCmd)
+	rootCmd.AddCommand(toolCmd)
 }
 
 // modelFlag holds the --model flag value.
 var modelFlag string
 
+// agentFlag holds the --agent flag value.
+var agentFlag string
+
+// agenticFlag holds the --agentic flag value.
+var agenticFlag bool
+
 // ModelFlag returns the current --model flag value.
 func ModelFlag() string {
 	return modelFlag
+}
+
+// AgentFlag returns the current --agent flag value.
+func AgentFlag() string {
+	return agentFlag
+}
+
+// AgenticFlag returns the current --agentic flag value.
+func AgenticFlag() bool {
+	return agenticFlag
 }

@@ -5,12 +5,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"strings"
 	"sync"
+	"time"
 )
 
 // Client wraps the Claude Code CLI for LLM calls.
@@ -66,14 +68,21 @@ type Response struct {
 	Usage        Usage           `json:"usage"`
 }
 
+var errClaudeResultReceived = errors.New("claude result received")
+
+const claudeResultExitGrace = 250 * time.Millisecond
+
 // buildImageContext appends image file references to the user message.
 func buildImageContext(userMessage string, images []string) string {
 	if len(images) == 0 {
 		return userMessage
 	}
 	var sb strings.Builder
-	sb.WriteString(userMessage)
-	sb.WriteString("\n\n[Attached images — read each file to view the image:]\n")
+	if strings.TrimSpace(userMessage) != "" {
+		sb.WriteString(userMessage)
+		sb.WriteString("\n\n")
+	}
+	sb.WriteString("[Attached images — read each file to view the image:]\n")
 	for i, img := range images {
 		sb.WriteString(fmt.Sprintf("- Image %d: %s\n", i+1, img))
 	}
@@ -156,6 +165,7 @@ func (c *Client) Generate(ctx context.Context, userMessage string, opts Generate
 	if opts.WorkDir != "" {
 		cmd.Dir = opts.WorkDir
 	}
+	configureCommandProcess(cmd)
 
 	// Strip CLAUDECODE env var to allow nested sessions
 	cmd.Env = filterEnv(os.Environ(), "CLAUDECODE")
@@ -240,6 +250,7 @@ func (c *Client) GenerateStreaming(ctx context.Context, userMessage string, opts
 	if opts.WorkDir != "" {
 		cmd.Dir = opts.WorkDir
 	}
+	configureCommandProcess(cmd)
 
 	cmd.Env = filterEnv(os.Environ(), "CLAUDECODE")
 	cmd.Stdin = strings.NewReader(userMessage)
@@ -258,6 +269,7 @@ func (c *Client) GenerateStreaming(ctx context.Context, userMessage string, opts
 	var lastResponse *Response
 	var sessionID string
 	var assistantText strings.Builder // accumulate text from assistant events
+	var resultErr error
 
 	streamErr := streamNDJSONLines(stdout, func(line []byte) error {
 		trimmed := bytes.TrimSpace(line)
@@ -299,19 +311,54 @@ func (c *Client) GenerateStreaming(ctx context.Context, userMessage string, opts
 				Usage:        ev.Usage,
 			}
 			if ev.IsError {
-				return fmt.Errorf("claude returned error: %s", ev.Result)
+				errMsg := ev.Result
+				if errMsg == "" {
+					errMsg = assistantText.String()
+				}
+				if errMsg == "" {
+					errMsg = "(no details provided)"
+				}
+				resultErr = fmt.Errorf("claude returned error: %s", errMsg)
 			}
 		}
 
 		if onEvent != nil {
 			onEvent(*ev)
 		}
+		if ev.Type == "result" {
+			return errClaudeResultReceived
+		}
 		return nil
 	})
+	if errors.Is(streamErr, errClaudeResultReceived) {
+		if err := waitForProcessExitOrKill(cmd, claudeResultExitGrace); err != nil && ctx.Err() == nil {
+			if stderrMsg := strings.TrimSpace(stderrBuf.String()); stderrMsg != "" {
+				return nil, fmt.Errorf("claude command failed after result: %w\nstderr: %s", err, stderrMsg)
+			}
+			return nil, fmt.Errorf("claude command failed after result: %w", err)
+		}
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+		if resultErr != nil {
+			return nil, resultErr
+		}
+		if lastResponse != nil {
+			if lastResponse.SessionID == "" {
+				lastResponse.SessionID = sessionID
+			}
+			return lastResponse, nil
+		}
+		return &Response{Result: assistantText.String(), SessionID: sessionID}, nil
+	}
 	if streamErr != nil {
 		_ = cmd.Wait()
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
+		}
+		stderrMsg := strings.TrimSpace(stderrBuf.String())
+		if stderrMsg != "" {
+			return nil, fmt.Errorf("failed to read claude stream: %w\nstderr: %s", streamErr, stderrMsg)
 		}
 		return nil, fmt.Errorf("failed to read claude stream: %w", streamErr)
 	}
@@ -336,6 +383,22 @@ func (c *Client) GenerateStreaming(ctx context.Context, userMessage string, opts
 	// No result event — still return accumulated text if any
 	result := assistantText.String()
 	return &Response{Result: result, SessionID: sessionID}, nil
+}
+
+func waitForProcessExitOrKill(cmd *exec.Cmd, grace time.Duration) error {
+	waitCh := make(chan error, 1)
+	go func() {
+		waitCh <- cmd.Wait()
+	}()
+
+	select {
+	case err := <-waitCh:
+		return err
+	case <-time.After(grace):
+		killCommandProcess(cmd)
+		<-waitCh
+		return nil
+	}
 }
 
 // InteractiveSession represents a running Claude Code subprocess with bidirectional
@@ -456,6 +519,7 @@ func (c *Client) StartInteractiveStreaming(ctx context.Context, userMessage stri
 	if opts.WorkDir != "" {
 		cmd.Dir = opts.WorkDir
 	}
+	configureCommandProcess(cmd)
 	cmd.Env = filterEnv(os.Environ(), "CLAUDECODE")
 
 	stdinPipe, err := cmd.StdinPipe()
@@ -529,7 +593,11 @@ func (c *Client) StartInteractiveStreaming(ctx context.Context, userMessage stri
 					Usage:        ev.Usage,
 				}
 				if ev.IsError {
-					return fmt.Errorf("claude returned error: %s", ev.Result)
+					errMsg := ev.Result
+					if errMsg == "" {
+						errMsg = "(no details provided)"
+					}
+					return fmt.Errorf("claude returned error: %s", errMsg)
 				}
 			}
 
@@ -580,14 +648,15 @@ func parseStreamEvent(line []byte) *StreamEvent {
 	// Claude Code stream-json emits various event shapes.
 	// We parse what we need and ignore the rest.
 	var raw struct {
-		Type      string  `json:"type"`
-		Subtype   string  `json:"subtype"`
-		SessionID string  `json:"session_id"`
-		Result    string  `json:"result"`
-		CostUSD   float64 `json:"cost_usd"`
-		NumTurns  int     `json:"num_turns"`
-		IsError   bool    `json:"is_error"`
-		Usage     Usage   `json:"usage"`
+		Type      string   `json:"type"`
+		Subtype   string   `json:"subtype"`
+		SessionID string   `json:"session_id"`
+		Result    string   `json:"result"`
+		CostUSD   float64  `json:"cost_usd"`
+		NumTurns  int      `json:"num_turns"`
+		IsError   bool     `json:"is_error"`
+		Errors    []string `json:"errors"`
+		Usage     Usage    `json:"usage"`
 
 		// For assistant messages (type: "assistant", message.content[])
 		Message struct {
@@ -619,11 +688,16 @@ func parseStreamEvent(line []byte) *StreamEvent {
 		return nil
 	}
 
+	result := raw.Result
+	if result == "" && len(raw.Errors) > 0 {
+		result = strings.Join(raw.Errors, "; ")
+	}
+
 	ev := &StreamEvent{
 		Type:      raw.Type,
 		Subtype:   raw.Subtype,
 		SessionID: raw.SessionID,
-		Result:    raw.Result,
+		Result:    result,
 		CostUSD:   raw.CostUSD,
 		NumTurns:  raw.NumTurns,
 		IsError:   raw.IsError,
@@ -803,7 +877,11 @@ func extractResultFromEvents(events []json.RawMessage, rawData []byte) (*Respons
 				Usage:        ev.Usage,
 			}
 			if ev.IsError {
-				return nil, fmt.Errorf("claude returned error: %s", ev.Result)
+				errMsg := ev.Result
+				if errMsg == "" {
+					errMsg = "(no details provided)"
+				}
+				return nil, fmt.Errorf("claude returned error: %s", errMsg)
 			}
 		}
 	}

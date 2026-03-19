@@ -1,0 +1,406 @@
+{
+  "name": "Machine Learning & AI",
+  "slug": "machine-learning-ai",
+  "count": 57,
+  "videos": [
+    {
+      "id": "232",
+      "year": 2019,
+      "title": "Advances in Natural Language Framework",
+      "duration": "39:19",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/232/"
+    },
+    {
+      "id": "426",
+      "year": 2019,
+      "title": "Building Activity Classification Models in Create ML",
+      "duration": "15:01",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/426/"
+    },
+    {
+      "id": "803",
+      "year": 2019,
+      "title": "Designing Great ML Experiences",
+      "duration": "57:45",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/803/"
+    },
+    {
+      "id": "234",
+      "year": 2019,
+      "title": "Text Recognition in Vision Framework",
+      "duration": "38:15",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/234/"
+    },
+    {
+      "id": "424",
+      "year": 2019,
+      "title": "Training Object Detection Models in Create ML",
+      "duration": "15:41",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/424/"
+    },
+    {
+      "id": "427",
+      "year": 2019,
+      "title": "Training Recommendation Models in Create ML",
+      "duration": "10:31",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/427/"
+    },
+    {
+      "id": "425",
+      "year": 2019,
+      "title": "Training Sound Classification Models in Create ML",
+      "duration": "20:11",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/425/"
+    },
+    {
+      "id": "428",
+      "year": 2019,
+      "title": "Training Text Classifiers in Create ML",
+      "duration": "12:05",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/428/"
+    },
+    {
+      "id": "10653",
+      "year": 2020,
+      "title": "Detect Body and Hand Pose with Vision",
+      "duration": "24:21",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10653/"
+    },
+    {
+      "id": "10099",
+      "year": 2020,
+      "title": "Explore the Action & Vision app",
+      "duration": "36:27",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10099/"
+    },
+    {
+      "id": "10153",
+      "year": 2020,
+      "title": "Get models on device using Core ML Converters",
+      "duration": "31:16",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10153/"
+    },
+    {
+      "id": "10657",
+      "year": 2020,
+      "title": "Make apps smarter with Natural Language",
+      "duration": "41:04",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10657/"
+    },
+    {
+      "id": "10152",
+      "year": 2021,
+      "title": "Accelerate machine learning with Metal Performance Shaders Graph",
+      "duration": "29:12",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10152/"
+    },
+    {
+      "id": "10040",
+      "year": 2021,
+      "title": "Detect people, faces, and poses using Vision",
+      "duration": "17:58",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10040/"
+    },
+    {
+      "id": "10036",
+      "year": 2021,
+      "title": "Discover built-in sound classification in SoundAnalysis",
+      "duration": "19:16",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10036/"
+    },
+    {
+      "id": "10041",
+      "year": 2021,
+      "title": "Extract document data using Vision",
+      "duration": "19:12",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10041/"
+    },
+    {
+      "id": "10038",
+      "year": 2021,
+      "title": "Tune your Core ML models",
+      "duration": "24:30",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10038/"
+    },
+    {
+      "id": "10233",
+      "year": 2021,
+      "title": "Use Accelerate to improve performance and incorporate encrypted archives",
+      "duration": "14:22",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10233/"
+    },
+    {
+      "id": "10020",
+      "year": 2022,
+      "title": "Compose advanced models with Create ML Components",
+      "duration": "13:25",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10020/"
+    },
+    {
+      "id": "10017",
+      "year": 2022,
+      "title": "Explore the machine learning development experience",
+      "duration": "17:19",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10017/"
+    },
+    {
+      "id": "10019",
+      "year": 2022,
+      "title": "Get to know Create ML Components",
+      "duration": "25:31",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10019/"
+    },
+    {
+      "id": "10027",
+      "year": 2022,
+      "title": "Optimize your Core ML usage",
+      "duration": "23:30",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10027/"
+    },
+    {
+      "id": "110332",
+      "year": 2022,
+      "title": "What's new in Create ML",
+      "duration": "16:46",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/110332/"
+    },
+    {
+      "id": "10101",
+      "year": 2023,
+      "title": "Customize on-device speech recognition",
+      "duration": "7:52",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10101/"
+    },
+    {
+      "id": "10045",
+      "year": 2023,
+      "title": "Detect animal poses in Vision",
+      "duration": "13:47",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10045/"
+    },
+    {
+      "id": "10044",
+      "year": 2023,
+      "title": "Discover machine learning enhancements in Create ML",
+      "duration": "16:50",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10044/"
+    },
+    {
+      "id": "111241",
+      "year": 2023,
+      "title": "Explore 3D body pose and person segmentation in Vision",
+      "duration": "14:38",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/111241/"
+    },
+    {
+      "id": "10042",
+      "year": 2023,
+      "title": "Explore Natural Language multilingual models",
+      "duration": "14:25",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10042/"
+    },
+    {
+      "id": "10049",
+      "year": 2023,
+      "title": "Improve Core ML integration with async prediction",
+      "duration": "23:21",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10049/"
+    },
+    {
+      "id": "10304",
+      "year": 2023,
+      "title": "Integrate with motorized iPhone stands using DockKit",
+      "duration": "17:35",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10304/"
+    },
+    {
+      "id": "10050",
+      "year": 2023,
+      "title": "Optimize machine learning for Metal apps",
+      "duration": "21:15",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10050/"
+    },
+    {
+      "id": "10047",
+      "year": 2023,
+      "title": "Use Core ML Tools for machine learning model compression",
+      "duration": "25:18",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10047/"
+    },
+    {
+      "id": "10048",
+      "year": 2023,
+      "title": "What’s new in VisionKit",
+      "duration": "19:56",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10048/"
+    },
+    {
+      "id": "10159",
+      "year": 2024,
+      "title": "Bring your machine learning and AI models to Apple silicon",
+      "duration": "30:09",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10159/"
+    },
+    {
+      "id": "10204",
+      "year": 2024,
+      "title": "Build a great Lock Screen camera capture experience",
+      "duration": "22:49",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10204/"
+    },
+    {
+      "id": "10161",
+      "year": 2024,
+      "title": "Deploy machine learning and AI models on-device with Core ML",
+      "duration": "18:15",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10161/"
+    },
+    {
+      "id": "10176",
+      "year": 2024,
+      "title": "Design App Intents for system experiences",
+      "duration": "9:19",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10176/"
+    },
+    {
+      "id": "10163",
+      "year": 2024,
+      "title": "Discover Swift enhancements in the Vision framework",
+      "duration": "16:49",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10163/"
+    },
+    {
+      "id": "10223",
+      "year": 2024,
+      "title": "Explore machine learning on Apple platforms",
+      "duration": "17:33",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10223/"
+    },
+    {
+      "id": "10101",
+      "year": 2024,
+      "title": "Explore object tracking for visionOS",
+      "duration": "17:01",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10101/"
+    },
+    {
+      "id": "10168",
+      "year": 2024,
+      "title": "Get started with Writing Tools",
+      "duration": "12:24",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10168/"
+    },
+    {
+      "id": "10162",
+      "year": 2024,
+      "title": "Keep colors consistent across captures",
+      "duration": "23:48",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10162/"
+    },
+    {
+      "id": "10211",
+      "year": 2024,
+      "title": "Support real-time ML inference on the CPU",
+      "duration": "20:03",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10211/"
+    },
+    {
+      "id": "10183",
+      "year": 2024,
+      "title": "What’s new in Create ML",
+      "duration": "11:32",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10183/"
+    },
+    {
+      "id": "10164",
+      "year": 2024,
+      "title": "What’s new in DockKit",
+      "duration": "16:06",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10164/"
+    },
+    {
+      "id": "277",
+      "year": 2025,
+      "title": "Bring advanced speech-to-text to your app with SpeechAnalyzer",
+      "duration": "19:07",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/277/"
+    },
+    {
+      "id": "259",
+      "year": 2025,
+      "title": "Code-along: Bring on-device AI to your app using the Foundation Models framework",
+      "duration": "30:32",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/259/"
+    },
+    {
+      "id": "301",
+      "year": 2025,
+      "title": "Deep dive into the Foundation Models framework",
+      "duration": "25:31",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/301/"
+    },
+    {
+      "id": "281",
+      "year": 2025,
+      "title": "Design interactive snippets",
+      "duration": "7:28",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/281/"
+    },
+    {
+      "id": "260",
+      "year": 2025,
+      "title": "Develop for Shortcuts and Spotlight with App Intents",
+      "duration": "18:56",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/260/"
+    },
+    {
+      "id": "298",
+      "year": 2025,
+      "title": "Explore large language models on Apple silicon with MLX",
+      "duration": "20:08",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/298/"
+    },
+    {
+      "id": "275",
+      "year": 2025,
+      "title": "Explore new advances in App Intents",
+      "duration": "26:49",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/275/"
+    },
+    {
+      "id": "315",
+      "year": 2025,
+      "title": "Get started with MLX for Apple silicon",
+      "duration": "19:29",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/315/"
+    },
+    {
+      "id": "244",
+      "year": 2025,
+      "title": "Get to know App Intents",
+      "duration": "24:36",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/244/"
+    },
+    {
+      "id": "286",
+      "year": 2025,
+      "title": "Meet the Foundation Models framework",
+      "duration": "23:24",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/286/"
+    },
+    {
+      "id": "272",
+      "year": 2025,
+      "title": "Read documents using the Vision framework",
+      "duration": "20:22",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/272/"
+    },
+    {
+      "id": "276",
+      "year": 2025,
+      "title": "What’s new in BNNS Graph",
+      "duration": "23:45",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/276/"
+    }
+  ]
+}

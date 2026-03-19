@@ -1,0 +1,287 @@
+{
+  "name": "Safari & Web",
+  "slug": "safari-web",
+  "count": 40,
+  "videos": [
+    {
+      "id": "504",
+      "year": 2015,
+      "title": "Introducing Safari View Controller",
+      "duration": "31:24",
+      "url": "https://developer.apple.com/videos/play/wwdc2015/504/"
+    },
+    {
+      "id": "514",
+      "year": 2019,
+      "title": "Auditing Web Content with Web Inspector",
+      "duration": "8:15",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/514/"
+    },
+    {
+      "id": "262",
+      "year": 2019,
+      "title": "Embedding and Sharing Visually Rich Links",
+      "duration": "6:43",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/262/"
+    },
+    {
+      "id": "511",
+      "year": 2019,
+      "title": "Supporting Dark Mode in Your Web Content",
+      "duration": "10:39",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/511/"
+    },
+    {
+      "id": "513",
+      "year": 2019,
+      "title": "Understanding CPU Usage with Web Inspector",
+      "duration": "13:23",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/513/"
+    },
+    {
+      "id": "518",
+      "year": 2019,
+      "title": "What's New for Web Developers",
+      "duration": "12:28",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/518/"
+    },
+    {
+      "id": "516",
+      "year": 2019,
+      "title": "What's New in Authentication",
+      "duration": "19:12",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/516/"
+    },
+    {
+      "id": "515",
+      "year": 2019,
+      "title": "What's New in Safari",
+      "duration": "8:34",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/515/"
+    },
+    {
+      "id": "720",
+      "year": 2019,
+      "title": "What's New in Safari Extensions",
+      "duration": "19:53",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/720/"
+    },
+    {
+      "id": "717",
+      "year": 2019,
+      "title": "What's New in Universal Links",
+      "duration": "17:09",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/717/"
+    },
+    {
+      "id": "10146",
+      "year": 2020,
+      "title": "Configure and link your App Clips",
+      "duration": "22:57",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10146/"
+    },
+    {
+      "id": "10188",
+      "year": 2020,
+      "title": "Discover WKWebView enhancements",
+      "duration": "30:09",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10188/"
+    },
+    {
+      "id": "10173",
+      "year": 2020,
+      "title": "Get the most out of Sign in with Apple",
+      "duration": "30:47",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10173/"
+    },
+    {
+      "id": "10670",
+      "year": 2020,
+      "title": "Meet Face ID and Touch ID for the web",
+      "duration": "15:41",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10670/"
+    },
+    {
+      "id": "10100",
+      "year": 2020,
+      "title": "Meet Watch Face Sharing",
+      "duration": "14:25",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10100/"
+    },
+    {
+      "id": "10666",
+      "year": 2020,
+      "title": "One-tap account security upgrades",
+      "duration": "24:06",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10666/"
+    },
+    {
+      "id": "10663",
+      "year": 2020,
+      "title": "What's new for web developers",
+      "duration": "36:05",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10663/"
+    },
+    {
+      "id": "10098",
+      "year": 2020,
+      "title": "What's new in Universal Links",
+      "duration": "23:04",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10098/"
+    },
+    {
+      "id": "10646",
+      "year": 2020,
+      "title": "What's new in Web Inspector",
+      "duration": "28:09",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10646/"
+    },
+    {
+      "id": "10094",
+      "year": 2021,
+      "title": "Accelerate networking with HTTP/3 and QUIC",
+      "duration": "19:51",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10094/"
+    },
+    {
+      "id": "10264",
+      "year": 2021,
+      "title": "Adopt Quick Note",
+      "duration": "14:46",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10264/"
+    },
+    {
+      "id": "10030",
+      "year": 2021,
+      "title": "Develop advanced web content",
+      "duration": "36:32",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10030/"
+    },
+    {
+      "id": "10032",
+      "year": 2021,
+      "title": "Explore WKWebView additions",
+      "duration": "21:44",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10032/"
+    },
+    {
+      "id": "10033",
+      "year": 2021,
+      "title": "Meet privacy-preserving ad attribution",
+      "duration": "22:31",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10033/"
+    },
+    {
+      "id": "10106",
+      "year": 2021,
+      "title": "Move beyond passwords",
+      "duration": "25:21",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10106/"
+    },
+    {
+      "id": "10105",
+      "year": 2021,
+      "title": "Secure login with iCloud Keychain verification codes",
+      "duration": "14:32",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10105/"
+    },
+    {
+      "id": "10100",
+      "year": 2022,
+      "title": "Create Safari Web Inspector Extensions",
+      "duration": "17:38",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10100/"
+    },
+    {
+      "id": "10122",
+      "year": 2022,
+      "title": "Enhance your Sign in with Apple experience",
+      "duration": "23:23",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10122/"
+    },
+    {
+      "id": "10006",
+      "year": 2022,
+      "title": "Meet Apple Maps Server APIs",
+      "duration": "13:18",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10006/"
+    },
+    {
+      "id": "10116",
+      "year": 2022,
+      "title": "Meet CKTool JS",
+      "duration": "15:44",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10116/"
+    },
+    {
+      "id": "10098",
+      "year": 2022,
+      "title": "Meet Web Push for Safari",
+      "duration": "15:00",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10098/"
+    },
+    {
+      "id": "10092",
+      "year": 2022,
+      "title": "Meet passkeys",
+      "duration": "33:27",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10092/"
+    },
+    {
+      "id": "10048",
+      "year": 2022,
+      "title": "What's new in Safari and WebKit",
+      "duration": "31:39",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10048/"
+    },
+    {
+      "id": "10099",
+      "year": 2022,
+      "title": "What’s new in Safari Web Extensions",
+      "duration": "23:07",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10099/"
+    },
+    {
+      "id": "10122",
+      "year": 2023,
+      "title": "Explore media formats for the web",
+      "duration": "21:58",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10122/"
+    },
+    {
+      "id": "10121",
+      "year": 2023,
+      "title": "What’s new in CSS",
+      "duration": "35:06",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10121/"
+    },
+    {
+      "id": "10119",
+      "year": 2023,
+      "title": "What’s new in Safari extensions",
+      "duration": "12:12",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10119/"
+    },
+    {
+      "id": "10120",
+      "year": 2023,
+      "title": "What’s new in web apps",
+      "duration": "15:55",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10120/"
+    },
+    {
+      "id": "235",
+      "year": 2025,
+      "title": "Learn more about Declarative Web Push",
+      "duration": "19:27",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/235/"
+    },
+    {
+      "id": "231",
+      "year": 2025,
+      "title": "Meet WebKit for SwiftUI",
+      "duration": "21:59",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/231/"
+    }
+  ]
+}

@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/moasq/nanowave/internal/agentruntime"
 	"github.com/moasq/nanowave/internal/config"
 	"github.com/moasq/nanowave/internal/terminal"
 	"github.com/spf13/cobra"
@@ -23,13 +24,31 @@ var setupCmd = &cobra.Command{
 
 // needsSetup returns true if any critical dependency is missing.
 func needsSetup() bool {
-	return !config.CheckClaude() || !config.CheckXcodegen() || !config.CheckXcode() || !config.CheckSimulator()
+	cfg, err := config.Load()
+	if err != nil {
+		return true
+	}
+	return needsSetupForRuntime(cfg.RuntimeKind)
+}
+
+func needsSetupForRuntime(kind agentruntime.Kind) bool {
+	return !config.CheckRuntime(kind) || !config.CheckXcodegen() || !config.CheckXcode() || !config.CheckSimulator()
 }
 
 // runSetup checks and installs all prerequisites. Returns nil on success.
 func runSetup() error {
 	terminal.Header("Nanowave Setup")
 	fmt.Println()
+
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+	runtimeKind := cfg.RuntimeKind
+	if AgentFlag() != "" {
+		runtimeKind = agentruntime.NormalizeKind(AgentFlag())
+	}
+	desc := agentruntime.DescriptorForKind(runtimeKind)
 
 	allGood := true
 	reader := bufio.NewReader(os.Stdin)
@@ -80,35 +99,55 @@ func runSetup() error {
 		allGood = false
 	}
 
-	// ── 4. Claude Code CLI (native install) ────────────────────
-	fmt.Print("  Checking Claude Code CLI... ")
-	if config.CheckClaude() {
-		cfg, _ := config.Load()
-		if cfg != nil {
-			version := config.ClaudeVersion(cfg.ClaudePath)
-			terminal.Success(fmt.Sprintf("installed (v%s)", version))
+	// ── 4. Selected AI runtime ─────────────────────────────────
+	fmt.Printf("  Checking %s... ", desc.DisplayName)
+	runtimePath, err := agentruntime.FindBinary(runtimeKind)
+	if err == nil && runtimePath != "" {
+		version := config.RuntimeVersion(runtimeKind, runtimePath)
+		if version != "" {
+			terminal.Success(fmt.Sprintf("installed (%s)", version))
 		} else {
 			terminal.Success("installed")
 		}
 	} else {
 		terminal.Warning("not found")
-		if askConfirm(reader, "    Install Claude Code CLI?") {
-			fmt.Println("    Installing Claude Code CLI...")
-			installCmd := exec.Command("/bin/bash", "-c",
-				`curl -fsSL https://claude.ai/install.sh | bash`)
-			installCmd.Stdin = os.Stdin
-			installCmd.Stdout = os.Stdout
-			installCmd.Stderr = os.Stderr
-			if err := installCmd.Run(); err != nil {
-				terminal.Error(fmt.Sprintf("failed: %v", err))
-				terminal.Detail("Install manually", "curl -fsSL https://claude.ai/install.sh | bash")
+		if askConfirm(reader, fmt.Sprintf("    Install %s?", desc.DisplayName)) {
+			fmt.Printf("    Installing %s...\n", desc.DisplayName)
+			if err := runRuntimeInstall(runtimeKind); err != nil {
+				terminal.Error(err.Error())
+				terminal.Detail("Install manually", desc.InstallCommand)
 				allGood = false
 			} else {
-				terminal.Success("Claude Code CLI installed")
+				runtimePath, _ = agentruntime.FindBinary(runtimeKind)
+				if runtimePath == "" {
+					terminal.Warning(desc.DisplayName + " installed but not found in the current shell PATH")
+					terminal.Detail("Retry", "Restart the shell or run `hash -r`, then re-run `nanowave setup`")
+					allGood = false
+				} else {
+					terminal.Success(desc.DisplayName + " installed")
+				}
 			}
 		} else {
-			terminal.Detail("Install manually", "curl -fsSL https://claude.ai/install.sh | bash")
+			terminal.Detail("Install manually", desc.InstallCommand)
 			allGood = false
+		}
+	}
+
+	if runtimePath == "" {
+		runtimePath, _ = agentruntime.FindBinary(runtimeKind)
+	}
+	if runtimePath != "" {
+		auth := config.RuntimeAuthStatus(runtimeKind, runtimePath)
+		if auth != nil && !auth.LoggedIn {
+			terminal.Warning(desc.DisplayName + " is not authenticated")
+			switch runtimeKind {
+			case agentruntime.KindClaude:
+				terminal.Detail("Login", "claude auth login")
+			case agentruntime.KindCodex:
+				terminal.Detail("Login", "codex login")
+			case agentruntime.KindOpenCode:
+				terminal.Detail("Login", "opencode auth login")
+			}
 		}
 	}
 
@@ -176,8 +215,8 @@ func runSetup() error {
 		}
 	}
 
-	// ── 7. MCP Servers (only if Claude Code is available) ──────
-	if config.CheckClaude() {
+	// ── 7. Runtime-specific configuration ──────────────────────
+	if runtimeKind == agentruntime.KindClaude && config.CheckRuntime(agentruntime.KindClaude) {
 		fmt.Println()
 		terminal.Info("Configuring MCP servers...")
 
@@ -193,6 +232,40 @@ func runSetup() error {
 		} else {
 			terminal.Success("configured")
 		}
+	}
+
+	var discoveredModels []agentruntime.ModelOption
+	if runtimePath != "" {
+		if runtimeClient, err := agentruntime.New(runtimeKind, runtimePath); err == nil {
+			discoveredModels = runtimeClient.SuggestedModels()
+		}
+	}
+	models := cfg.RuntimeModelOptions(runtimeKind, discoveredModels)
+	if len(models) > 0 {
+		fmt.Println()
+		modelOptions := make([]terminal.PickerOption, 0, len(models))
+		for _, model := range models {
+			modelOptions = append(modelOptions, terminal.PickerOption{
+				Label: model.ID,
+				Desc:  model.Description,
+			})
+		}
+		selected := cfg.DefaultModelForRuntime(runtimeKind)
+		if selected == "" {
+			selected = runtimeKindDefaultModel(runtimeKind, runtimePath)
+		}
+		if selected == "" {
+			selected = models[0].ID
+		}
+		picked := terminal.Pick("Default model", modelOptions, selected)
+		if picked != "" {
+			if err := cfg.SaveRuntimePreferences(runtimeKind, picked); err == nil {
+				terminal.Success(fmt.Sprintf("Default runtime/model saved: %s / %s", desc.DisplayName, picked))
+			}
+		}
+	} else {
+		fmt.Println()
+		terminal.Detail("Models", "No models discovered yet. Set one later with `/model <id>` or add `runtime_models` in ~/nanowave/config.json")
 	}
 
 	// ── Summary ────────────────────────────────────────────────
@@ -214,4 +287,15 @@ func askConfirm(reader *bufio.Reader, prompt string) bool {
 	}
 	input = strings.TrimSpace(strings.ToLower(input))
 	return input == "" || input == "y" || input == "yes"
+}
+
+func runtimeKindDefaultModel(kind agentruntime.Kind, runtimePath string) string {
+	if runtimePath == "" {
+		return ""
+	}
+	runtimeClient, err := agentruntime.New(kind, runtimePath)
+	if err != nil {
+		return ""
+	}
+	return runtimeClient.DefaultModel(agentruntime.PhaseBuild)
 }

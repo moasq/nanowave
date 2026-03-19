@@ -171,9 +171,49 @@ func streamLogReader(r io.Reader, isErr bool, wg *sync.WaitGroup) {
 			continue
 		}
 		if isErr {
-			fmt.Printf("  %s[sim-log]%s %s\n", terminal.Dim, terminal.Reset, line)
+			terminal.OutputLine(fmt.Sprintf("  %s[sim-log]%s %s", terminal.Dim, terminal.Reset, line))
 			continue
 		}
-		fmt.Printf("  %s[sim-log]%s %s\n", terminal.Dim, terminal.Reset, line)
+		terminal.OutputLine(fmt.Sprintf("  %s[sim-log]%s %s", terminal.Dim, terminal.Reset, line))
 	}
+}
+
+func (s *Service) stopBackgroundLogStreaming() {
+	s.logWatchMu.Lock()
+	cancel := s.logWatchCancel
+	s.logWatchCancel = nil
+	s.logWatchMu.Unlock()
+
+	if cancel != nil {
+		cancel()
+	}
+}
+
+func (s *Service) startBackgroundLogStreaming(stream func(context.Context, string, string, time.Duration) error, processName, bundleID string, duration time.Duration) {
+	s.stopBackgroundLogStreaming()
+
+	if duration == 0 {
+		return
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	s.logWatchMu.Lock()
+	s.logWatchSeq++
+	seq := s.logWatchSeq
+	s.logWatchCancel = cancel
+	s.logWatchMu.Unlock()
+
+	go func() {
+		err := stream(ctx, processName, bundleID, duration)
+
+		s.logWatchMu.Lock()
+		if s.logWatchSeq == seq {
+			s.logWatchCancel = nil
+		}
+		s.logWatchMu.Unlock()
+
+		if err != nil && ctx.Err() == nil {
+			terminal.Warning(fmt.Sprintf("Log streaming unavailable: %v", err))
+		}
+	}()
 }

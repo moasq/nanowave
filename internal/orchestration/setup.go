@@ -1,54 +1,16 @@
 package orchestration
 
 import (
-	"embed"
 	"fmt"
-	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
+
+	"github.com/moasq/nanowave/internal/skills"
 )
 
-//go:embed skills
-var skillsFS embed.FS
-
-// setupWorkspace creates the project directory and .claude/ structure.
-func setupWorkspace(projectDir string) error {
-	dirs := []string{
-		projectDir,
-		filepath.Join(projectDir, ".claude", "rules"),
-		filepath.Join(projectDir, ".claude", "skills"),
-		filepath.Join(projectDir, ".claude", "memory"),
-		filepath.Join(projectDir, ".claude", "commands"),
-		filepath.Join(projectDir, ".claude", "agents"),
-		filepath.Join(projectDir, "scripts", "claude"),
-		filepath.Join(projectDir, "docs"),
-		filepath.Join(projectDir, ".github", "workflows"),
-	}
-	for _, d := range dirs {
-		if err := os.MkdirAll(d, 0o755); err != nil {
-			return fmt.Errorf("failed to create directory %s: %w", d, err)
-		}
-	}
-	return nil
-}
-
-// writeInitialCLAUDEMD writes the CLAUDE.md with project-specific info only (before plan exists).
-// CLAUDE.md is a thin index that imports shared project memory modules and core rules.
-func writeInitialCLAUDEMD(projectDir, appName, platform, deviceFamily string) error {
-	if err := writeClaudeMemoryFiles(projectDir, appName, platform, deviceFamily, nil); err != nil {
-		return err
-	}
-	return writeCLAUDEMDIndex(projectDir, appName)
-}
-
-// enrichCLAUDEMD updates memory modules with plan-specific details after Phase 3.
-func enrichCLAUDEMD(projectDir string, plan *PlannerResult, appName string) error {
-	if err := writeClaudeMemoryFiles(projectDir, appName, plan.GetPlatform(), plan.GetDeviceFamily(), plan); err != nil {
-		return err
-	}
-	return writeCLAUDEMDIndex(projectDir, appName)
-}
+// skillsFS aliases the skills package FS for backward compatibility within orchestration.
+var skillsFS = skills.FS
 
 func platformSummary(platform, deviceFamily string) string {
 	if IsWatchOS(platform) {
@@ -73,10 +35,29 @@ func platformSummary(platform, deviceFamily string) string {
 	}
 }
 
+// canonicalBuildDestinationForShape returns the generic device destination for a platform.
 func canonicalBuildDestinationForShape(platform, watchProjectShape string) string {
 	if IsWatchOS(platform) {
-		// Paired iPhone+Watch projects use an iOS app scheme as the primary executable.
-		// Building against an iOS simulator destination avoids watch-only destination errors.
+		if watchProjectShape == WatchShapePaired {
+			return "generic/platform=iOS"
+		}
+		return "generic/platform=watchOS"
+	}
+	if IsTvOS(platform) {
+		return "generic/platform=tvOS"
+	}
+	if IsVisionOS(platform) {
+		return "generic/platform=visionOS"
+	}
+	if IsMacOS(platform) {
+		return "generic/platform=macOS"
+	}
+	return "generic/platform=iOS"
+}
+
+// canonicalSimulatorBuildDestination returns the generic simulator destination for a platform.
+func canonicalSimulatorBuildDestination(platform, watchProjectShape string) string {
+	if IsWatchOS(platform) {
 		if watchProjectShape == WatchShapePaired {
 			return "generic/platform=iOS Simulator"
 		}
@@ -96,41 +77,69 @@ func canonicalBuildDestinationForShape(platform, watchProjectShape string) strin
 
 func canonicalBuildCommandForShape(appName, platform, watchProjectShape string) string {
 	destination := canonicalBuildDestinationForShape(platform, watchProjectShape)
-	return fmt.Sprintf("xcodebuild -project %s.xcodeproj -scheme %s -destination '%s' -quiet build", appName, appName, destination)
+	if IsMacOS(platform) {
+		return fmt.Sprintf("xcodebuild -project %s.xcodeproj -scheme %s -destination '%s' -quiet build", appName, appName, destination)
+	}
+	return fmt.Sprintf("xcodebuild -project %s.xcodeproj -scheme %s -destination '%s' CODE_SIGNING_ALLOWED=NO -quiet build", appName, appName, destination)
 }
 
 func canonicalBuildCommand(appName, platform string) string {
 	return canonicalBuildCommandForShape(appName, platform, "")
 }
 
-// multiPlatformBuildCommands returns build commands for each platform scheme.
+// multiPlatformBuildCommands returns device build commands for each platform scheme.
 func multiPlatformBuildCommands(appName string, platforms []string) []string {
+	var cmds []string
+	for _, plat := range platforms {
+		var scheme string
+		switch plat {
+		case PlatformTvOS:
+			scheme = appName + "TV"
+		case PlatformVisionOS:
+			scheme = appName + "Vision"
+		case PlatformMacOS:
+			scheme = appName + "Mac"
+		case PlatformWatchOS:
+			continue
+		default:
+			scheme = appName
+		}
+		destination := PlatformBuildDestination(plat)
+		if plat == PlatformMacOS {
+			cmds = append(cmds, fmt.Sprintf("xcodebuild -project %s.xcodeproj -scheme %s -destination '%s' -quiet build", appName, scheme, destination))
+		} else {
+			cmds = append(cmds, fmt.Sprintf("xcodebuild -project %s.xcodeproj -scheme %s -destination '%s' CODE_SIGNING_ALLOWED=NO -quiet build", appName, scheme, destination))
+		}
+	}
+	return cmds
+}
+
+// multiPlatformSimulatorBuildCommands returns simulator build commands for each platform scheme.
+func multiPlatformSimulatorBuildCommands(appName string, platforms []string) []string {
 	var cmds []string
 	for _, plat := range platforms {
 		var scheme, destination string
 		switch plat {
 		case PlatformTvOS:
 			scheme = appName + "TV"
-			destination = PlatformBuildDestination(PlatformTvOS)
+			destination = PlatformSimulatorDestination(PlatformTvOS)
 		case PlatformVisionOS:
 			scheme = appName + "Vision"
-			destination = PlatformBuildDestination(PlatformVisionOS)
+			destination = PlatformSimulatorDestination(PlatformVisionOS)
 		case PlatformMacOS:
-			scheme = appName + "Mac"
-			destination = PlatformBuildDestination(PlatformMacOS)
+			continue
 		case PlatformWatchOS:
-			// In multi-platform, watchOS is built via the iOS scheme (paired)
 			continue
 		default:
 			scheme = appName
-			destination = PlatformBuildDestination(PlatformIOS)
+			destination = PlatformSimulatorDestination(PlatformIOS)
 		}
 		cmds = append(cmds, fmt.Sprintf("xcodebuild -project %s.xcodeproj -scheme %s -destination '%s' -quiet build", appName, scheme, destination))
 	}
 	return cmds
 }
 
-func writeTextFile(path, content string, mode fs.FileMode) error {
+func writeTextFile(path, content string, mode os.FileMode) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}

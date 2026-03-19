@@ -228,8 +228,26 @@ func HasPlatform(platforms []string, platform string) bool {
 	return false
 }
 
-// PlatformBuildDestination returns the Xcode build destination for a single platform.
+// PlatformBuildDestination returns the device build destination for a single platform.
+// Device builds are the default — they catch entitlement, architecture, and API issues.
 func PlatformBuildDestination(platform string) string {
+	switch platform {
+	case PlatformWatchOS:
+		return "generic/platform=watchOS"
+	case PlatformTvOS:
+		return "generic/platform=tvOS"
+	case PlatformVisionOS:
+		return "generic/platform=visionOS"
+	case PlatformMacOS:
+		return "generic/platform=macOS"
+	default:
+		return "generic/platform=iOS"
+	}
+}
+
+// PlatformSimulatorDestination returns the simulator build destination for a single platform.
+// Used for Run() launching and secondary validation.
+func PlatformSimulatorDestination(platform string) string {
 	switch platform {
 	case PlatformWatchOS:
 		return "generic/platform=watchOS Simulator"

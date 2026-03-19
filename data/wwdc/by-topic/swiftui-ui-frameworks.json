@@ -1,0 +1,1001 @@
+{
+  "name": "SwiftUI & UI Frameworks",
+  "slug": "swiftui-ui-frameworks",
+  "count": 142,
+  "videos": [
+    {
+      "id": "725",
+      "year": 2016,
+      "title": "Deploying AirPrint in Enterprise",
+      "duration": "16:02",
+      "url": "https://developer.apple.com/videos/play/wwdc2016/725/"
+    },
+    {
+      "id": "230",
+      "year": 2016,
+      "title": "Enhancing VoIP Apps with CallKit",
+      "duration": "35:53",
+      "url": "https://developer.apple.com/videos/play/wwdc2016/230/"
+    },
+    {
+      "id": "246",
+      "year": 2017,
+      "title": "Deep Linking on tvOS",
+      "duration": "7:18",
+      "url": "https://developer.apple.com/videos/play/wwdc2017/246/"
+    },
+    {
+      "id": "247",
+      "year": 2017,
+      "title": "Extend Your App's Presence With Sharing",
+      "duration": "4:40",
+      "url": "https://developer.apple.com/videos/play/wwdc2017/247/"
+    },
+    {
+      "id": "250",
+      "year": 2017,
+      "title": "Extend Your App’s Presence with Deep Linking",
+      "duration": "3:46",
+      "url": "https://developer.apple.com/videos/play/wwdc2017/250/"
+    },
+    {
+      "id": "248",
+      "year": 2017,
+      "title": "Localization Best Practices on tvOS",
+      "duration": "13:57",
+      "url": "https://developer.apple.com/videos/play/wwdc2017/248/"
+    },
+    {
+      "id": "251",
+      "year": 2017,
+      "title": "Now Playing and Remote Commands on tvOS",
+      "duration": "14:41",
+      "url": "https://developer.apple.com/videos/play/wwdc2017/251/"
+    },
+    {
+      "id": "817",
+      "year": 2017,
+      "title": "Rich Notifications",
+      "duration": "10:09",
+      "url": "https://developer.apple.com/videos/play/wwdc2017/817/"
+    },
+    {
+      "id": "812",
+      "year": 2017,
+      "title": "Size Classes and Core Components",
+      "duration": "8:41",
+      "url": "https://developer.apple.com/videos/play/wwdc2017/812/"
+    },
+    {
+      "id": "810",
+      "year": 2017,
+      "title": "What’s New in iOS 11",
+      "duration": "8:47",
+      "url": "https://developer.apple.com/videos/play/wwdc2017/810/"
+    },
+    {
+      "id": "213",
+      "year": 2018,
+      "title": "CarPlay Audio and Navigation Apps",
+      "duration": "38:33",
+      "url": "https://developer.apple.com/videos/play/wwdc2018/213/"
+    },
+    {
+      "id": "211",
+      "year": 2018,
+      "title": "Introduction to Siri Shortcuts",
+      "duration": "48:46",
+      "url": "https://developer.apple.com/videos/play/wwdc2018/211/"
+    },
+    {
+      "id": "227",
+      "year": 2018,
+      "title": "Optimizing App Assets",
+      "duration": "46:45",
+      "url": "https://developer.apple.com/videos/play/wwdc2018/227/"
+    },
+    {
+      "id": "238",
+      "year": 2019,
+      "title": "Accessibility in SwiftUI",
+      "duration": "38:06",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/238/"
+    },
+    {
+      "id": "215",
+      "year": 2019,
+      "title": "Advances in Collection View Layout",
+      "duration": "50:13",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/215/"
+    },
+    {
+      "id": "258",
+      "year": 2019,
+      "title": "Architecting Your App for Multiple Windows",
+      "duration": "15:29",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/258/"
+    },
+    {
+      "id": "237",
+      "year": 2019,
+      "title": "Building Custom Views with SwiftUI",
+      "duration": "40:11",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/237/"
+    },
+    {
+      "id": "715",
+      "year": 2019,
+      "title": "Core NFC Enhancements",
+      "duration": "30:43",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/715/"
+    },
+    {
+      "id": "208",
+      "year": 2019,
+      "title": "Creating Independent Watch Apps",
+      "duration": "28:03",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/208/"
+    },
+    {
+      "id": "248",
+      "year": 2019,
+      "title": "Creating an Accessible Reading Experience",
+      "duration": "8:47",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/248/"
+    },
+    {
+      "id": "226",
+      "year": 2019,
+      "title": "Data Flow Through SwiftUI",
+      "duration": "37:20",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/226/"
+    },
+    {
+      "id": "253",
+      "year": 2019,
+      "title": "Exploring Tinted Graphic Complications",
+      "duration": "7:08",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/253/"
+    },
+    {
+      "id": "227",
+      "year": 2019,
+      "title": "Font Management and Text Scaling",
+      "duration": "39:45",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/227/"
+    },
+    {
+      "id": "214",
+      "year": 2019,
+      "title": "Implementing Dark Mode on iOS",
+      "duration": "38:58",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/214/"
+    },
+    {
+      "id": "231",
+      "year": 2019,
+      "title": "Integrating SwiftUI",
+      "duration": "38:22",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/231/"
+    },
+    {
+      "id": "203",
+      "year": 2019,
+      "title": "Introducing Desktop-class Browsing on iPad",
+      "duration": "49:44",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/203/"
+    },
+    {
+      "id": "212",
+      "year": 2019,
+      "title": "Introducing Multiple Windows on iPad",
+      "duration": "42:12",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/212/"
+    },
+    {
+      "id": "221",
+      "year": 2019,
+      "title": "Introducing PencilKit",
+      "duration": "34:51",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/221/"
+    },
+    {
+      "id": "204",
+      "year": 2019,
+      "title": "Introducing SwiftUI: Building Your First App",
+      "duration": "54:16",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/204/"
+    },
+    {
+      "id": "205",
+      "year": 2019,
+      "title": "Introducing iPad Apps for Mac",
+      "duration": "41:27",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/205/"
+    },
+    {
+      "id": "261",
+      "year": 2019,
+      "title": "Large Content Viewer - Ensuring Readability for Everyone",
+      "duration": "13:08",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/261/"
+    },
+    {
+      "id": "250",
+      "year": 2019,
+      "title": "Making Apps More Accessible With Custom Actions",
+      "duration": "9:25",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/250/"
+    },
+    {
+      "id": "230",
+      "year": 2019,
+      "title": "Making Apps with Core Data",
+      "duration": "33:11",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/230/"
+    },
+    {
+      "id": "224",
+      "year": 2019,
+      "title": "Modernizing Your UI for iOS 13",
+      "duration": "50:21",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/224/"
+    },
+    {
+      "id": "217",
+      "year": 2019,
+      "title": "ResearchKit and CareKit Reimagined",
+      "duration": "50:39",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/217/"
+    },
+    {
+      "id": "216",
+      "year": 2019,
+      "title": "SwiftUI Essentials",
+      "duration": "58:28",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/216/"
+    },
+    {
+      "id": "240",
+      "year": 2019,
+      "title": "SwiftUI On All Devices",
+      "duration": "45:05",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/240/"
+    },
+    {
+      "id": "219",
+      "year": 2019,
+      "title": "SwiftUI on watchOS",
+      "duration": "30:53",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/219/"
+    },
+    {
+      "id": "235",
+      "year": 2019,
+      "title": "Taking iPad Apps for Mac to the Next Level",
+      "duration": "54:08",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/235/"
+    },
+    {
+      "id": "259",
+      "year": 2019,
+      "title": "Targeting Content with Multiple Windows",
+      "duration": "11:11",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/259/"
+    },
+    {
+      "id": "202",
+      "year": 2019,
+      "title": "Using Core Data With CloudKit",
+      "duration": "31:49",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/202/"
+    },
+    {
+      "id": "210",
+      "year": 2019,
+      "title": "What’s New in AppKit for macOS",
+      "duration": "37:02",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/210/"
+    },
+    {
+      "id": "719",
+      "year": 2019,
+      "title": "What’s New in File Management and Quick Look",
+      "duration": "23:55",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/719/"
+    },
+    {
+      "id": "246",
+      "year": 2019,
+      "title": "Window Management in Your Multitasking App",
+      "duration": "13:38",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/246/"
+    },
+    {
+      "id": "254",
+      "year": 2019,
+      "title": "Writing Great Accessibility Labels",
+      "duration": "10:23",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/254/"
+    },
+    {
+      "id": "10117",
+      "year": 2020,
+      "title": "Accessibility design for Mac Catalyst",
+      "duration": "21:30",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10117/"
+    },
+    {
+      "id": "10104",
+      "year": 2020,
+      "title": "Adopt the new look of macOS",
+      "duration": "28:43",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10104/"
+    },
+    {
+      "id": "10097",
+      "year": 2020,
+      "title": "Advances in UICollectionView",
+      "duration": "9:55",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10097/"
+    },
+    {
+      "id": "10045",
+      "year": 2020,
+      "title": "Advances in diffable data sources",
+      "duration": "11:55",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10045/"
+    },
+    {
+      "id": "10115",
+      "year": 2020,
+      "title": "AutoFill everywhere",
+      "duration": "10:13",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10115/"
+    },
+    {
+      "id": "10617",
+      "year": 2020,
+      "title": "Bring keyboard and mouse gaming to iPad",
+      "duration": "14:04",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10617/"
+    },
+    {
+      "id": "10042",
+      "year": 2020,
+      "title": "Build SwiftUI apps for tvOS",
+      "duration": "14:30",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10042/"
+    },
+    {
+      "id": "10048",
+      "year": 2020,
+      "title": "Build complications in SwiftUI",
+      "duration": "22:52",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10048/"
+    },
+    {
+      "id": "10105",
+      "year": 2020,
+      "title": "Build for iPad",
+      "duration": "23:46",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10105/"
+    },
+    {
+      "id": "10052",
+      "year": 2020,
+      "title": "Build with iOS pickers, menus and actions",
+      "duration": "20:21",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10052/"
+    },
+    {
+      "id": "10118",
+      "year": 2020,
+      "title": "Create App Clips for other businesses",
+      "duration": "19:02",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10118/"
+    },
+    {
+      "id": "10046",
+      "year": 2020,
+      "title": "Create complications for Apple Watch",
+      "duration": "20:08",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10046/"
+    },
+    {
+      "id": "10640",
+      "year": 2020,
+      "title": "Design for the iPadOS pointer",
+      "duration": "41:34",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10640/"
+    },
+    {
+      "id": "10205",
+      "year": 2020,
+      "title": "Design with iOS pickers, menus and actions",
+      "duration": "14:54",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10205/"
+    },
+    {
+      "id": "10634",
+      "year": 2020,
+      "title": "Discover search suggestions for Apple TV",
+      "duration": "11:18",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10634/"
+    },
+    {
+      "id": "10174",
+      "year": 2020,
+      "title": "Explore App Clips",
+      "duration": "19:46",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10174/"
+    },
+    {
+      "id": "10094",
+      "year": 2020,
+      "title": "Handle trackpad and mouse input",
+      "duration": "24:05",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10094/"
+    },
+    {
+      "id": "10148",
+      "year": 2020,
+      "title": "Inspect, modify, and construct PencilKit drawings",
+      "duration": "16:04",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10148/"
+    },
+    {
+      "id": "10049",
+      "year": 2020,
+      "title": "Keep your complications up to date",
+      "duration": "21:50",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10049/"
+    },
+    {
+      "id": "10026",
+      "year": 2020,
+      "title": "Lists in UICollectionView",
+      "duration": "16:54",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10026/"
+    },
+    {
+      "id": "10176",
+      "year": 2020,
+      "title": "Master Picture in Picture on tvOS",
+      "duration": "18:33",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10176/"
+    },
+    {
+      "id": "10665",
+      "year": 2020,
+      "title": "Meet Safari Web Extensions",
+      "duration": "27:47",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10665/"
+    },
+    {
+      "id": "10106",
+      "year": 2020,
+      "title": "Meet Scribble for iPad",
+      "duration": "14:13",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10106/"
+    },
+    {
+      "id": "10027",
+      "year": 2020,
+      "title": "Modern cell configuration",
+      "duration": "29:40",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10027/"
+    },
+    {
+      "id": "10207",
+      "year": 2020,
+      "title": "SF Symbols 2",
+      "duration": "18:54",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10207/"
+    },
+    {
+      "id": "10120",
+      "year": 2020,
+      "title": "Streamline your App Clip",
+      "duration": "20:15",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10120/"
+    },
+    {
+      "id": "10109",
+      "year": 2020,
+      "title": "Support hardware keyboards in your app",
+      "duration": "11:34",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10109/"
+    },
+    {
+      "id": "10650",
+      "year": 2020,
+      "title": "Sync a Core Data store with the CloudKit public database",
+      "duration": "18:18",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10650/"
+    },
+    {
+      "id": "10209",
+      "year": 2020,
+      "title": "What's new in Core NFC",
+      "duration": "5:51",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10209/"
+    },
+    {
+      "id": "10107",
+      "year": 2020,
+      "title": "What's new in PencilKit",
+      "duration": "10:26",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10107/"
+    },
+    {
+      "id": "10049",
+      "year": 2021,
+      "title": "Add intelligence to your widgets",
+      "duration": "19:24",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10049/"
+    },
+    {
+      "id": "10009",
+      "year": 2021,
+      "title": "Build a workout app for Apple Watch",
+      "duration": "54:09",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10009/"
+    },
+    {
+      "id": "10015",
+      "year": 2021,
+      "title": "Build apps that share data through CloudKit and Core Data",
+      "duration": "24:35",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10015/"
+    },
+    {
+      "id": "10176",
+      "year": 2021,
+      "title": "Craft search experiences in SwiftUI",
+      "duration": "11:42",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10176/"
+    },
+    {
+      "id": "10223",
+      "year": 2021,
+      "title": "Create accessible experiences for watchOS",
+      "duration": "23:26",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10223/"
+    },
+    {
+      "id": "10063",
+      "year": 2021,
+      "title": "Customize and resize sheets in UIKit",
+      "duration": "12:12",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10063/"
+    },
+    {
+      "id": "10191",
+      "year": 2021,
+      "title": "Deliver a great playback experience on tvOS",
+      "duration": "10:35",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10191/"
+    },
+    {
+      "id": "10022",
+      "year": 2021,
+      "title": "Demystify SwiftUI",
+      "duration": "40:17",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10022/"
+    },
+    {
+      "id": "10023",
+      "year": 2021,
+      "title": "Direct and reflect focus in SwiftUI",
+      "duration": "11:10",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10023/"
+    },
+    {
+      "id": "10260",
+      "year": 2021,
+      "title": "Focus on iPad keyboard navigation",
+      "duration": "20:23",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10260/"
+    },
+    {
+      "id": "10252",
+      "year": 2021,
+      "title": "Make blazing fast lists and collection views",
+      "duration": "22:30",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10252/"
+    },
+    {
+      "id": "10061",
+      "year": 2021,
+      "title": "Meet TextKit 2",
+      "duration": "41:04",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10061/"
+    },
+    {
+      "id": "10349",
+      "year": 2021,
+      "title": "SF Symbols in SwiftUI",
+      "duration": "10:57",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10349/"
+    },
+    {
+      "id": "10251",
+      "year": 2021,
+      "title": "SF Symbols in UIKit and AppKit",
+      "duration": "15:06",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10251/"
+    },
+    {
+      "id": "10098",
+      "year": 2021,
+      "title": "Showcase app data in Spotlight",
+      "duration": "16:33",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10098/"
+    },
+    {
+      "id": "10119",
+      "year": 2021,
+      "title": "SwiftUI Accessibility: Beyond the basics",
+      "duration": "28:10",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10119/"
+    },
+    {
+      "id": "10158",
+      "year": 2022,
+      "title": "Adopt Variable Color in SF Symbols",
+      "duration": "17:13",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10158/"
+    },
+    {
+      "id": "10071",
+      "year": 2022,
+      "title": "Adopt desktop-class editing interactions",
+      "duration": "20:59",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10071/"
+    },
+    {
+      "id": "10061",
+      "year": 2022,
+      "title": "Bring multiple windows to your SwiftUI app",
+      "duration": "13:53",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10061/"
+    },
+    {
+      "id": "10070",
+      "year": 2022,
+      "title": "Build a desktop-class iPad app",
+      "duration": "20:18",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10070/"
+    },
+    {
+      "id": "10056",
+      "year": 2022,
+      "title": "Compose custom layouts with SwiftUI",
+      "duration": "27:01",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10056/"
+    },
+    {
+      "id": "10016",
+      "year": 2022,
+      "title": "Get more mileage out of your app with CarPlay",
+      "duration": "20:54",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10016/"
+    },
+    {
+      "id": "10051",
+      "year": 2022,
+      "title": "Go further with Complications in WidgetKit",
+      "duration": "10:38",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10051/"
+    },
+    {
+      "id": "10069",
+      "year": 2022,
+      "title": "Meet desktop-class iPad",
+      "duration": "16:11",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10069/"
+    },
+    {
+      "id": "110381",
+      "year": 2022,
+      "title": "Meet the expanded San Francisco font family",
+      "duration": "18:29",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/110381/"
+    },
+    {
+      "id": "110343",
+      "year": 2022,
+      "title": "SwiftUI on iPad: Add toolbars, titles, and more",
+      "duration": "13:22",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/110343/"
+    },
+    {
+      "id": "10058",
+      "year": 2022,
+      "title": "SwiftUI on iPad: Organize your interface",
+      "duration": "18:20",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10058/"
+    },
+    {
+      "id": "10059",
+      "year": 2022,
+      "title": "The craft of SwiftUI API design: Progressive disclosure",
+      "duration": "15:07",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10059/"
+    },
+    {
+      "id": "10074",
+      "year": 2022,
+      "title": "What's new in AppKit",
+      "duration": "22:56",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10074/"
+    },
+    {
+      "id": "10052",
+      "year": 2022,
+      "title": "What's new in SwiftUI",
+      "duration": "33:45",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10052/"
+    },
+    {
+      "id": "10068",
+      "year": 2022,
+      "title": "What's new in UIKit",
+      "duration": "24:14",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10068/"
+    },
+    {
+      "id": "10158",
+      "year": 2023,
+      "title": "Animate with springs",
+      "duration": "22:52",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10158/"
+    },
+    {
+      "id": "10159",
+      "year": 2023,
+      "title": "Beyond scroll views",
+      "duration": "14:46",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10159/"
+    },
+    {
+      "id": "10027",
+      "year": 2023,
+      "title": "Bring widgets to new places",
+      "duration": "7:18",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10027/"
+    },
+    {
+      "id": "10029",
+      "year": 2023,
+      "title": "Build widgets for the Smart Stack on Apple Watch",
+      "duration": "24:08",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10029/"
+    },
+    {
+      "id": "10160",
+      "year": 2023,
+      "title": "Demystify SwiftUI performance",
+      "duration": "21:48",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10160/"
+    },
+    {
+      "id": "10138",
+      "year": 2023,
+      "title": "Design and build apps for watchOS 10",
+      "duration": "19:20",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10138/"
+    },
+    {
+      "id": "10309",
+      "year": 2023,
+      "title": "Design widgets for the Smart Stack on Apple Watch",
+      "duration": "12:26",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10309/"
+    },
+    {
+      "id": "10149",
+      "year": 2023,
+      "title": "Discover Observation in SwiftUI",
+      "duration": "12:51",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10149/"
+    },
+    {
+      "id": "10091",
+      "year": 2023,
+      "title": "Evolve your ARKit app for spatial experiences",
+      "duration": "27:41",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10091/"
+    },
+    {
+      "id": "10156",
+      "year": 2023,
+      "title": "Explore SwiftUI animation",
+      "duration": "30:01",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10156/"
+    },
+    {
+      "id": "10037",
+      "year": 2023,
+      "title": "Explore pie charts and interactivity in Swift Charts",
+      "duration": "10:14",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10037/"
+    },
+    {
+      "id": "10162",
+      "year": 2023,
+      "title": "The SwiftUI cookbook for focus",
+      "duration": "23:17",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10162/"
+    },
+    {
+      "id": "10031",
+      "year": 2023,
+      "title": "Update your app for watchOS 10",
+      "duration": "13:35",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10031/"
+    },
+    {
+      "id": "10197",
+      "year": 2023,
+      "title": "What’s new in SF Symbols 5",
+      "duration": "18:53",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10197/"
+    },
+    {
+      "id": "10157",
+      "year": 2023,
+      "title": "Wind your way through advanced animations in SwiftUI",
+      "duration": "18:11",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10157/"
+    },
+    {
+      "id": "10220",
+      "year": 2024,
+      "title": "Bring expression to your app with Genmoji",
+      "duration": "11:17",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10220/"
+    },
+    {
+      "id": "10073",
+      "year": 2024,
+      "title": "Catch up on accessibility in SwiftUI",
+      "duration": "21:19",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10073/"
+    },
+    {
+      "id": "10146",
+      "year": 2024,
+      "title": "Demystify SwiftUI containers",
+      "duration": "18:12",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10146/"
+    },
+    {
+      "id": "10132",
+      "year": 2024,
+      "title": "Evolve your document launch experience",
+      "duration": "10:08",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10132/"
+    },
+    {
+      "id": "10157",
+      "year": 2024,
+      "title": "Extend your app’s controls across the system",
+      "duration": "18:09",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10157/"
+    },
+    {
+      "id": "10074",
+      "year": 2024,
+      "title": "Get started with Dynamic Type",
+      "duration": "15:30",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10074/"
+    },
+    {
+      "id": "10121",
+      "year": 2024,
+      "title": "Meet the Contact Access Button",
+      "duration": "15:43",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10121/"
+    },
+    {
+      "id": "10148",
+      "year": 2024,
+      "title": "Tailor macOS windows with SwiftUI",
+      "duration": "10:56",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10148/"
+    },
+    {
+      "id": "10188",
+      "year": 2024,
+      "title": "What’s new in SF Symbols 6",
+      "duration": "17:19",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10188/"
+    },
+    {
+      "id": "313",
+      "year": 2025,
+      "title": "Bring Swift Charts to the third dimension",
+      "duration": "11:17",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/313/"
+    },
+    {
+      "id": "310",
+      "year": 2025,
+      "title": "Build an AppKit app with the new design",
+      "duration": "22:28",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/310/"
+    },
+    {
+      "id": "361",
+      "year": 2025,
+      "title": "Create icons with Icon Composer",
+      "duration": "14:33",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/361/"
+    },
+    {
+      "id": "208",
+      "year": 2025,
+      "title": "Elevate the design of your iPad app",
+      "duration": "15:20",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/208/"
+    },
+    {
+      "id": "222",
+      "year": 2025,
+      "title": "Enhance your app’s multilingual experience",
+      "duration": "20:38",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/222/"
+    },
+    {
+      "id": "266",
+      "year": 2025,
+      "title": "Explore concurrency in SwiftUI",
+      "duration": "24:55",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/266/"
+    },
+    {
+      "id": "356",
+      "year": 2025,
+      "title": "Get to know the new design system",
+      "duration": "18:14",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/356/"
+    },
+    {
+      "id": "282",
+      "year": 2025,
+      "title": "Make your UIKit app more flexible",
+      "duration": "16:43",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/282/"
+    },
+    {
+      "id": "219",
+      "year": 2025,
+      "title": "Meet Liquid Glass",
+      "duration": "19:33",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/219/"
+    },
+    {
+      "id": "220",
+      "year": 2025,
+      "title": "Say hello to the new look of app icons",
+      "duration": "11:54",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/220/"
+    },
+    {
+      "id": "337",
+      "year": 2025,
+      "title": "What’s new in SF Symbols 7",
+      "duration": "22:52",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/337/"
+    },
+    {
+      "id": "278",
+      "year": 2025,
+      "title": "What’s new in widgets",
+      "duration": "24:28",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/278/"
+    }
+  ]
+}

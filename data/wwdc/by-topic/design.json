@@ -1,0 +1,469 @@
+{
+  "name": "Design",
+  "slug": "design",
+  "count": 66,
+  "videos": [
+    {
+      "id": "602",
+      "year": 2014,
+      "title": "Ingredients of Great Games",
+      "duration": "56:33",
+      "url": "https://developer.apple.com/videos/play/wwdc2014/602/"
+    },
+    {
+      "id": "223",
+      "year": 2014,
+      "title": "Prototyping: Fake It Till You Make It",
+      "duration": "57:50",
+      "url": "https://developer.apple.com/videos/play/wwdc2014/223/"
+    },
+    {
+      "id": "805",
+      "year": 2015,
+      "title": "Apple Watch Design Tips and Tricks",
+      "duration": "51:54",
+      "url": "https://developer.apple.com/videos/play/wwdc2015/805/"
+    },
+    {
+      "id": "802",
+      "year": 2015,
+      "title": "Designing for Apple Watch",
+      "duration": "54:48",
+      "url": "https://developer.apple.com/videos/play/wwdc2015/802/"
+    },
+    {
+      "id": "805",
+      "year": 2016,
+      "title": "Iterative UI Design",
+      "duration": "41:35",
+      "url": "https://developer.apple.com/videos/play/wwdc2016/805/"
+    },
+    {
+      "id": "818",
+      "year": 2017,
+      "title": "60-Second Prototyping",
+      "duration": "10:41",
+      "url": "https://developer.apple.com/videos/play/wwdc2017/818/"
+    },
+    {
+      "id": "822",
+      "year": 2017,
+      "title": "App Icon Design",
+      "duration": "10:31",
+      "url": "https://developer.apple.com/videos/play/wwdc2017/822/"
+    },
+    {
+      "id": "809",
+      "year": 2017,
+      "title": "Communication Between Designers and Engineers",
+      "duration": "9:52",
+      "url": "https://developer.apple.com/videos/play/wwdc2017/809/"
+    },
+    {
+      "id": "823",
+      "year": 2017,
+      "title": "Designing Glyphs",
+      "duration": "11:22",
+      "url": "https://developer.apple.com/videos/play/wwdc2017/823/"
+    },
+    {
+      "id": "803",
+      "year": 2017,
+      "title": "Designing Sound",
+      "duration": "34:48",
+      "url": "https://developer.apple.com/videos/play/wwdc2017/803/"
+    },
+    {
+      "id": "802",
+      "year": 2017,
+      "title": "Essential Design Principles",
+      "duration": "59:56",
+      "url": "https://developer.apple.com/videos/play/wwdc2017/802/"
+    },
+    {
+      "id": "821",
+      "year": 2017,
+      "title": "Get Started with Display P3",
+      "duration": "10:06",
+      "url": "https://developer.apple.com/videos/play/wwdc2017/821/"
+    },
+    {
+      "id": "815",
+      "year": 2017,
+      "title": "How to Pick a Custom Font",
+      "duration": "14:50",
+      "url": "https://developer.apple.com/videos/play/wwdc2017/815/"
+    },
+    {
+      "id": "816",
+      "year": 2017,
+      "title": "Love at First Launch",
+      "duration": "10:55",
+      "url": "https://developer.apple.com/videos/play/wwdc2017/816/"
+    },
+    {
+      "id": "813",
+      "year": 2017,
+      "title": "Writing Great Alerts",
+      "duration": "11:09",
+      "url": "https://developer.apple.com/videos/play/wwdc2017/813/"
+    },
+    {
+      "id": "803",
+      "year": 2018,
+      "title": "Designing Fluid Interfaces",
+      "duration": "64:41",
+      "url": "https://developer.apple.com/videos/play/wwdc2018/803/"
+    },
+    {
+      "id": "802",
+      "year": 2018,
+      "title": "Intentional Design",
+      "duration": "40:04",
+      "url": "https://developer.apple.com/videos/play/wwdc2018/802/"
+    },
+    {
+      "id": "801",
+      "year": 2018,
+      "title": "The Qualities of Great Design",
+      "duration": "53:22",
+      "url": "https://developer.apple.com/videos/play/wwdc2018/801/"
+    },
+    {
+      "id": "104",
+      "year": 2019,
+      "title": "Apple Design Awards",
+      "duration": "49:15",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/104/"
+    },
+    {
+      "id": "805",
+      "year": 2019,
+      "title": "Building Great Shortcuts",
+      "duration": "11:51",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/805/"
+    },
+    {
+      "id": "810",
+      "year": 2019,
+      "title": "Designing Audio-Haptic Experiences",
+      "duration": "26:02",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/810/"
+    },
+    {
+      "id": "809",
+      "year": 2019,
+      "title": "Designing iPad Apps for Mac",
+      "duration": "30:18",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/809/"
+    },
+    {
+      "id": "239",
+      "year": 2019,
+      "title": "Great Developer Habits",
+      "duration": "34:34",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/239/"
+    },
+    {
+      "id": "520",
+      "year": 2019,
+      "title": "Introducing Core Haptics",
+      "duration": "29:03",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/520/"
+    },
+    {
+      "id": "206",
+      "year": 2019,
+      "title": "Introducing SF Symbols",
+      "duration": "39:32",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/206/"
+    },
+    {
+      "id": "244",
+      "year": 2019,
+      "title": "Visual Design and Accessibility",
+      "duration": "10:13",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/244/"
+    },
+    {
+      "id": "808",
+      "year": 2019,
+      "title": "What's New in iOS Design",
+      "duration": "27:28",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/808/"
+    },
+    {
+      "id": "10019",
+      "year": 2020,
+      "title": "App accessibility for Switch Control",
+      "duration": "14:43",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10019/"
+    },
+    {
+      "id": "10093",
+      "year": 2020,
+      "title": "Build for the iPadOS pointer",
+      "duration": "22:50",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10093/"
+    },
+    {
+      "id": "10172",
+      "year": 2020,
+      "title": "Design great App Clips",
+      "duration": "21:43",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10172/"
+    },
+    {
+      "id": "10103",
+      "year": 2020,
+      "title": "Design great widgets",
+      "duration": "16:04",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10103/"
+    },
+    {
+      "id": "10206",
+      "year": 2020,
+      "title": "Designed for iPad",
+      "duration": "29:06",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10206/"
+    },
+    {
+      "id": "10071",
+      "year": 2020,
+      "title": "Evaluate and optimize voice interaction for your app",
+      "duration": "10:07",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10071/"
+    },
+    {
+      "id": "10020",
+      "year": 2020,
+      "title": "Make your app visually accessible",
+      "duration": "16:04",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10020/"
+    },
+    {
+      "id": "10175",
+      "year": 2020,
+      "title": "The details of UI typography",
+      "duration": "30:33",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10175/"
+    },
+    {
+      "id": "20022",
+      "year": 2020,
+      "title": "The winners of the 2020 Apple Design Awards",
+      "duration": "2:46",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/20022/"
+    },
+    {
+      "id": "10171",
+      "year": 2020,
+      "title": "What's new in watchOS design",
+      "duration": "16:38",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10171/"
+    },
+    {
+      "id": "110142",
+      "year": 2021,
+      "title": "Accessibility by design: An Apple Watch for everyone (ASL)",
+      "duration": "10:12",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/110142/"
+    },
+    {
+      "id": "10250",
+      "year": 2021,
+      "title": "Create custom symbols",
+      "duration": "25:47",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10250/"
+    },
+    {
+      "id": "10029",
+      "year": 2021,
+      "title": "Design for Safari 15",
+      "duration": "33:32",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10029/"
+    },
+    {
+      "id": "10317",
+      "year": 2021,
+      "title": "Out of this world... on to Mars",
+      "duration": "16:32",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10317/"
+    },
+    {
+      "id": "10278",
+      "year": 2021,
+      "title": "Practice audio haptic design",
+      "duration": "16:00",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10278/"
+    },
+    {
+      "id": "10081",
+      "year": 2021,
+      "title": "Tap into virtual and physical game controllers",
+      "duration": "15:00",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10081/"
+    },
+    {
+      "id": "113",
+      "year": 2021,
+      "title": "WWDC21 Apple Design Awards (ASL)",
+      "duration": "19:41",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/113/"
+    },
+    {
+      "id": "103",
+      "year": 2022,
+      "title": "Apple Design Awards",
+      "duration": "18:37",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/103/"
+    },
+    {
+      "id": "113",
+      "year": 2022,
+      "title": "Apple Design Awards (ASL)",
+      "duration": "18:37",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/113/"
+    },
+    {
+      "id": "10009",
+      "year": 2022,
+      "title": "What’s new in iPad app design",
+      "duration": "18:08",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10009/"
+    },
+    {
+      "id": "10193",
+      "year": 2023,
+      "title": "Design Shortcuts for Spotlight",
+      "duration": "9:39",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10193/"
+    },
+    {
+      "id": "10194",
+      "year": 2023,
+      "title": "Design dynamic Live Activities",
+      "duration": "15:00",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10194/"
+    },
+    {
+      "id": "10229",
+      "year": 2023,
+      "title": "Make features discoverable with TipKit",
+      "duration": "14:45",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10229/"
+    },
+    {
+      "id": "10140",
+      "year": 2024,
+      "title": "Add personality to your app through UX writing",
+      "duration": "20:49",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10140/"
+    },
+    {
+      "id": "10152",
+      "year": 2024,
+      "title": "Create custom hover effects in visionOS",
+      "duration": "16:40",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10152/"
+    },
+    {
+      "id": "10151",
+      "year": 2024,
+      "title": "Create custom visual effects with SwiftUI",
+      "duration": "26:06",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10151/"
+    },
+    {
+      "id": "10147",
+      "year": 2024,
+      "title": "Elevate your tab and sidebar experience in iPadOS",
+      "duration": "15:46",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10147/"
+    },
+    {
+      "id": "10145",
+      "year": 2024,
+      "title": "Enhance your UI animations and transitions",
+      "duration": "14:14",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10145/"
+    },
+    {
+      "id": "10094",
+      "year": 2024,
+      "title": "Explore game input in visionOS",
+      "duration": "16:22",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10094/"
+    },
+    {
+      "id": "10116",
+      "year": 2024,
+      "title": "Explore multiview video playback in visionOS",
+      "duration": "14:02",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10116/"
+    },
+    {
+      "id": "274",
+      "year": 2025,
+      "title": "Better together: SwiftUI and RealityKit",
+      "duration": "30:25",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/274/"
+    },
+    {
+      "id": "323",
+      "year": 2025,
+      "title": "Build a SwiftUI app with the new design",
+      "duration": "22:17",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/323/"
+    },
+    {
+      "id": "284",
+      "year": 2025,
+      "title": "Build a UIKit app with the new design",
+      "duration": "25:52",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/284/"
+    },
+    {
+      "id": "248",
+      "year": 2025,
+      "title": "Explore prompt design & safety for on-device foundation models",
+      "duration": "22:11",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/248/"
+    },
+    {
+      "id": "404",
+      "year": 2025,
+      "title": "Make a big impact with small writing changes",
+      "duration": "16:01",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/404/"
+    },
+    {
+      "id": "273",
+      "year": 2025,
+      "title": "Meet SwiftUI spatial layout",
+      "duration": "20:21",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/273/"
+    },
+    {
+      "id": "305",
+      "year": 2025,
+      "title": "Optimize your custom environments for visionOS",
+      "duration": "32:46",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/305/"
+    },
+    {
+      "id": "290",
+      "year": 2025,
+      "title": "Set the scene with SwiftUI in visionOS",
+      "duration": "24:51",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/290/"
+    },
+    {
+      "id": "247",
+      "year": 2025,
+      "title": "What’s new in Xcode 26",
+      "duration": "36:56",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/247/"
+    }
+  ]
+}

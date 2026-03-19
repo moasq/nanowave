@@ -1,0 +1,2544 @@
+{
+  "year": 2020,
+  "count": 209,
+  "videos": [
+    {
+      "id": "10970",
+      "year": 2020,
+      "title": "A conversation with Lisa Jackson and former Attorney General Eric Holder",
+      "duration": "22:48",
+      "durationSeconds": 1368,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10970/",
+      "topics": [
+        "Accessibility"
+      ],
+      "category": "accessibility-&-inclusion"
+    },
+    {
+      "id": "10140",
+      "year": 2020,
+      "title": "Build location-aware enterprise apps",
+      "duration": "14:16",
+      "durationSeconds": 856,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10140/",
+      "topics": [
+        "Accessibility"
+      ],
+      "category": "accessibility-&-inclusion"
+    },
+    {
+      "id": "10022",
+      "year": 2020,
+      "title": "Create a seamless speech experience in your apps",
+      "duration": "8:39",
+      "durationSeconds": 519,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10022/",
+      "topics": [
+        "Accessibility"
+      ],
+      "category": "accessibility-&-inclusion"
+    },
+    {
+      "id": "10160",
+      "year": 2020,
+      "title": "Formatters: Make data human-friendly",
+      "duration": "15:18",
+      "durationSeconds": 918,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10160/",
+      "topics": [
+        "Accessibility"
+      ],
+      "category": "accessibility-&-inclusion"
+    },
+    {
+      "id": "10681",
+      "year": 2020,
+      "title": "Swan's Quest, Chapter 1: Voices in the dark",
+      "duration": "14:43",
+      "durationSeconds": 883,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10681/",
+      "topics": [
+        "Accessibility"
+      ],
+      "category": "accessibility-&-inclusion"
+    },
+    {
+      "id": "10169",
+      "year": 2020,
+      "title": "Swift packages: Resources and localization",
+      "duration": "15:43",
+      "durationSeconds": 943,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10169/",
+      "topics": [
+        "Accessibility"
+      ],
+      "category": "accessibility-&-inclusion"
+    },
+    {
+      "id": "10116",
+      "year": 2020,
+      "title": "VoiceOver efficiency with custom rotors",
+      "duration": "10:52",
+      "durationSeconds": 652,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10116/",
+      "topics": [
+        "Accessibility"
+      ],
+      "category": "accessibility-&-inclusion"
+    },
+    {
+      "id": "10635",
+      "year": 2020,
+      "title": "Accelerate your app with CarPlay",
+      "duration": "26:19",
+      "durationSeconds": 1579,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10635/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10194",
+      "year": 2020,
+      "title": "Add configuration and intelligence to your widgets",
+      "duration": "27:32",
+      "durationSeconds": 1652,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10194/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10033",
+      "year": 2020,
+      "title": "Build SwiftUI views for widgets",
+      "duration": "20:22",
+      "durationSeconds": 1222,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10033/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10190",
+      "year": 2020,
+      "title": "Create quick interactions with Shortcuts on watchOS",
+      "duration": "11:36",
+      "durationSeconds": 696,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10190/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10086",
+      "year": 2020,
+      "title": "Design for intelligence: Apps, evolved",
+      "duration": "7:04",
+      "durationSeconds": 424,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10086/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10088",
+      "year": 2020,
+      "title": "Design for intelligence: Discover new opportunities",
+      "duration": "5:11",
+      "durationSeconds": 311,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10088/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10087",
+      "year": 2020,
+      "title": "Design for intelligence: Make friends with \"The System\"",
+      "duration": "19:36",
+      "durationSeconds": 1176,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10087/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10200",
+      "year": 2020,
+      "title": "Design for intelligence: Meet people where they are",
+      "duration": "5:53",
+      "durationSeconds": 353,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10200/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10060",
+      "year": 2020,
+      "title": "Design high quality Siri media interactions",
+      "duration": "22:44",
+      "durationSeconds": 1364,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10060/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10073",
+      "year": 2020,
+      "title": "Empower your intents",
+      "duration": "20:19",
+      "durationSeconds": 1219,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10073/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10061",
+      "year": 2020,
+      "title": "Expand your SiriKit Media Intents to more platforms",
+      "duration": "11:26",
+      "durationSeconds": 686,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10061/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10084",
+      "year": 2020,
+      "title": "Feature your actions in the Shortcuts app",
+      "duration": "10:09",
+      "durationSeconds": 609,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10084/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10604",
+      "year": 2020,
+      "title": "Shop online with AR Quick Look",
+      "duration": "18:38",
+      "durationSeconds": 1118,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10604/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10068",
+      "year": 2020,
+      "title": "What's new in SiriKit and Shortcuts",
+      "duration": "12:15",
+      "durationSeconds": 735,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10068/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10662",
+      "year": 2020,
+      "title": "What's new in Wallet and Apple Pay",
+      "duration": "14:57",
+      "durationSeconds": 897,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10662/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10036",
+      "year": 2020,
+      "title": "Widgets Code-along, part 3: Advancing timelines",
+      "duration": "9:06",
+      "durationSeconds": 546,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10036/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10671",
+      "year": 2020,
+      "title": "Architecting for subscriptions",
+      "duration": "23:21",
+      "durationSeconds": 1401,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10671/",
+      "topics": [
+        "App Store & Distribution"
+      ],
+      "category": "app-store,-distribution-&-marketing"
+    },
+    {
+      "id": "10223",
+      "year": 2020,
+      "title": "Deploy Apple devices using zero-touch",
+      "duration": "17:07",
+      "durationSeconds": 1027,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10223/",
+      "topics": [
+        "App Store & Distribution"
+      ],
+      "category": "app-store,-distribution-&-marketing"
+    },
+    {
+      "id": "10138",
+      "year": 2020,
+      "title": "Discover AppleSeed for IT and Managed Software Updates",
+      "duration": "23:13",
+      "durationSeconds": 1393,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10138/",
+      "topics": [
+        "App Store & Distribution"
+      ],
+      "category": "app-store,-distribution-&-marketing"
+    },
+    {
+      "id": "10004",
+      "year": 2020,
+      "title": "Expanding automation with the App Store Connect API",
+      "duration": "25:40",
+      "durationSeconds": 1540,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10004/",
+      "topics": [
+        "App Store & Distribution"
+      ],
+      "category": "app-store,-distribution-&-marketing"
+    },
+    {
+      "id": "10659",
+      "year": 2020,
+      "title": "Introducing StoreKit Testing in Xcode",
+      "duration": "24:52",
+      "durationSeconds": 1492,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10659/",
+      "topics": [
+        "App Store & Distribution"
+      ],
+      "category": "app-store,-distribution-&-marketing"
+    },
+    {
+      "id": "10139",
+      "year": 2020,
+      "title": "Leverage enterprise identity and authentication",
+      "duration": "35:06",
+      "durationSeconds": 2106,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10139/",
+      "topics": [
+        "App Store & Distribution"
+      ],
+      "category": "app-store,-distribution-&-marketing"
+    },
+    {
+      "id": "10621",
+      "year": 2020,
+      "title": "Support performance-intensive apps and games",
+      "duration": "5:42",
+      "durationSeconds": 342,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10621/",
+      "topics": [
+        "App Store & Distribution"
+      ],
+      "category": "app-store,-distribution-&-marketing"
+    },
+    {
+      "id": "10651",
+      "year": 2020,
+      "title": "What's new in App Store Connect",
+      "duration": "22:12",
+      "durationSeconds": 1332,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10651/",
+      "topics": [
+        "App Store & Distribution"
+      ],
+      "category": "app-store,-distribution-&-marketing"
+    },
+    {
+      "id": "10143",
+      "year": 2020,
+      "title": "What's new in Mac Catalyst",
+      "duration": "15:27",
+      "durationSeconds": 927,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10143/",
+      "topics": [
+        "App Store & Distribution"
+      ],
+      "category": "app-store,-distribution-&-marketing"
+    },
+    {
+      "id": "10639",
+      "year": 2020,
+      "title": "What's new in managing Apple devices",
+      "duration": "23:38",
+      "durationSeconds": 1418,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10639/",
+      "topics": [
+        "App Store & Distribution"
+      ],
+      "category": "app-store,-distribution-&-marketing"
+    },
+    {
+      "id": "10661",
+      "year": 2020,
+      "title": "What’s new with in-app purchase",
+      "duration": "45:53",
+      "durationSeconds": 2753,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10661/",
+      "topics": [
+        "App Store & Distribution"
+      ],
+      "category": "app-store,-distribution-&-marketing"
+    },
+    {
+      "id": "10232",
+      "year": 2020,
+      "title": "Adapt ad insertion to Low-Latency HLS",
+      "duration": "9:39",
+      "durationSeconds": 579,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10232/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "10011",
+      "year": 2020,
+      "title": "Author fragmented MPEG-4 content with AVAssetWriter",
+      "duration": "22:11",
+      "durationSeconds": 1331,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10011/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "10021",
+      "year": 2020,
+      "title": "Build Metal-based Core Image kernels with Xcode",
+      "duration": "6:12",
+      "durationSeconds": 372,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10021/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "10158",
+      "year": 2020,
+      "title": "Deliver a better HLS audio experience",
+      "duration": "19:57",
+      "durationSeconds": 1197,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10158/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "10089",
+      "year": 2020,
+      "title": "Discover Core Image debugging techniques",
+      "duration": "7:16",
+      "durationSeconds": 436,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10089/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "10229",
+      "year": 2020,
+      "title": "Discover HLS Blocking Preload Hints",
+      "duration": "9:27",
+      "durationSeconds": 567,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10229/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "10655",
+      "year": 2020,
+      "title": "Discover how to download and play HLS offline",
+      "duration": "17:08",
+      "durationSeconds": 1028,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10655/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "10225",
+      "year": 2020,
+      "title": "Improve stream authoring with HLS Tools",
+      "duration": "10:41",
+      "durationSeconds": 641,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10225/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "10224",
+      "year": 2020,
+      "title": "Meet Audio Workgroups",
+      "duration": "10:52",
+      "durationSeconds": 652,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10224/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "10230",
+      "year": 2020,
+      "title": "Optimize live streams with HLS Playlist Delta Updates",
+      "duration": "7:34",
+      "durationSeconds": 454,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10230/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "10226",
+      "year": 2020,
+      "title": "Record stereo audio with AVAudioSession",
+      "duration": "9:37",
+      "durationSeconds": 577,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10226/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "10231",
+      "year": 2020,
+      "title": "Reduce latency with HLS Blocking Playlist Reload",
+      "duration": "8:40",
+      "durationSeconds": 520,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10231/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "10645",
+      "year": 2020,
+      "title": "Support multiple users in your tvOS app",
+      "duration": "8:46",
+      "durationSeconds": 526,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10645/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "10228",
+      "year": 2020,
+      "title": "What's new in Low-Latency HLS",
+      "duration": "5:54",
+      "durationSeconds": 354,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10228/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "10636",
+      "year": 2020,
+      "title": "What's new in streaming audio for Apple Watch",
+      "duration": "7:12",
+      "durationSeconds": 432,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10636/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "10142",
+      "year": 2020,
+      "title": "Build scalable enterprise app suites",
+      "duration": "15:16",
+      "durationSeconds": 916,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10142/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "business-&-education"
+    },
+    {
+      "id": "10222",
+      "year": 2020,
+      "title": "Create custom apps for employees",
+      "duration": "14:50",
+      "durationSeconds": 890,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10222/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "business-&-education"
+    },
+    {
+      "id": "10667",
+      "year": 2020,
+      "title": "Custom app distribution with Apple Business Manager",
+      "duration": "21:01",
+      "durationSeconds": 1261,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10667/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "business-&-education"
+    },
+    {
+      "id": "10684",
+      "year": 2020,
+      "title": "Swan's Quest, Chapter 4: The sequence completes",
+      "duration": "8:08",
+      "durationSeconds": 488,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10684/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "business-&-education"
+    },
+    {
+      "id": "10672",
+      "year": 2020,
+      "title": "What's new in ClassKit",
+      "duration": "24:48",
+      "durationSeconds": 1488,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10672/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "business-&-education"
+    },
+    {
+      "id": "10658",
+      "year": 2020,
+      "title": "What's new in education",
+      "duration": "11:01",
+      "durationSeconds": 661,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10658/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "business-&-education"
+    },
+    {
+      "id": "10019",
+      "year": 2020,
+      "title": "App accessibility for Switch Control",
+      "duration": "14:43",
+      "durationSeconds": 883,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10019/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "10093",
+      "year": 2020,
+      "title": "Build for the iPadOS pointer",
+      "duration": "22:50",
+      "durationSeconds": 1370,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10093/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "10172",
+      "year": 2020,
+      "title": "Design great App Clips",
+      "duration": "21:43",
+      "durationSeconds": 1303,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10172/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "10103",
+      "year": 2020,
+      "title": "Design great widgets",
+      "duration": "16:04",
+      "durationSeconds": 964,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10103/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "10206",
+      "year": 2020,
+      "title": "Designed for iPad",
+      "duration": "29:06",
+      "durationSeconds": 1746,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10206/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "10071",
+      "year": 2020,
+      "title": "Evaluate and optimize voice interaction for your app",
+      "duration": "10:07",
+      "durationSeconds": 607,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10071/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "10020",
+      "year": 2020,
+      "title": "Make your app visually accessible",
+      "duration": "16:04",
+      "durationSeconds": 964,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10020/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "10175",
+      "year": 2020,
+      "title": "The details of UI typography",
+      "duration": "30:33",
+      "durationSeconds": 1833,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10175/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "20022",
+      "year": 2020,
+      "title": "The winners of the 2020 Apple Design Awards",
+      "duration": "2:46",
+      "durationSeconds": 166,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/20022/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "10171",
+      "year": 2020,
+      "title": "What's new in watchOS design",
+      "duration": "16:38",
+      "durationSeconds": 998,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10171/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "10649",
+      "year": 2020,
+      "title": "Add custom views and modifiers to the Xcode Library",
+      "duration": "13:11",
+      "durationSeconds": 791,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10649/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10163",
+      "year": 2020,
+      "title": "Advancements in the Objective-C runtime",
+      "duration": "23:05",
+      "durationSeconds": 1385,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10163/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10647",
+      "year": 2020,
+      "title": "Become a Simulator expert",
+      "duration": "20:14",
+      "durationSeconds": 1214,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10647/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10197",
+      "year": 2020,
+      "title": "Broaden your reach with Siri Event Suggestions",
+      "duration": "29:30",
+      "durationSeconds": 1770,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10197/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10615",
+      "year": 2020,
+      "title": "Build GPU binaries with Metal",
+      "duration": "36:16",
+      "durationSeconds": 2176,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10615/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10642",
+      "year": 2020,
+      "title": "Build Image and Video Style Transfer models in Create ML",
+      "duration": "11:48",
+      "durationSeconds": 708,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10642/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10043",
+      "year": 2020,
+      "title": "Build an Action Classifier with Create ML",
+      "duration": "26:06",
+      "durationSeconds": 1566,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10043/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10219",
+      "year": 2020,
+      "title": "Build localization-friendly layouts using Xcode",
+      "duration": "15:00",
+      "durationSeconds": 900,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10219/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10017",
+      "year": 2020,
+      "title": "Core Data: Sundries and maxims",
+      "duration": "17:27",
+      "durationSeconds": 1047,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10017/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10616",
+      "year": 2020,
+      "title": "Debug GPU-side errors in Metal",
+      "duration": "20:56",
+      "durationSeconds": 1256,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10616/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10074",
+      "year": 2020,
+      "title": "Decipher and deal with common Siri errors",
+      "duration": "2:09",
+      "durationSeconds": 129,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10074/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10090",
+      "year": 2020,
+      "title": "Decode ProRes with AVFoundation and VideoToolbox",
+      "duration": "23:40",
+      "durationSeconds": 1420,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10090/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10076",
+      "year": 2020,
+      "title": "Diagnose performance issues with the Xcode Organizer",
+      "duration": "11:07",
+      "durationSeconds": 667,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10076/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10009",
+      "year": 2020,
+      "title": "Edit and play back HDR video with AVFoundation",
+      "duration": "24:02",
+      "durationSeconds": 1442,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10009/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10077",
+      "year": 2020,
+      "title": "Eliminate animation hitches with XCTest",
+      "duration": "13:45",
+      "durationSeconds": 825,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10077/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10686",
+      "year": 2020,
+      "title": "Explore the new system architecture of Apple silicon Macs",
+      "duration": "23:16",
+      "durationSeconds": 1396,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10686/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10010",
+      "year": 2020,
+      "title": "Export HDR media in your app with AVFoundation",
+      "duration": "23:15",
+      "durationSeconds": 1395,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10010/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10605",
+      "year": 2020,
+      "title": "Gain insights into your Metal app with Xcode 12",
+      "duration": "14:17",
+      "durationSeconds": 857,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10605/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10057",
+      "year": 2020,
+      "title": "Identify trends with the Power and Performance API",
+      "duration": "15:12",
+      "durationSeconds": 912,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10057/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10119",
+      "year": 2020,
+      "title": "Introduction to SwiftUI",
+      "duration": "54:38",
+      "durationSeconds": 3278,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10119/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10008",
+      "year": 2020,
+      "title": "Optimize the Core Image pipeline for your video app",
+      "duration": "8:37",
+      "durationSeconds": 517,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10008/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10056",
+      "year": 2020,
+      "title": "Optimize the interface of your Mac Catalyst app",
+      "duration": "37:32",
+      "durationSeconds": 2252,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10056/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10214",
+      "year": 2020,
+      "title": "Port your Mac app to Apple silicon",
+      "duration": "40:44",
+      "durationSeconds": 2444,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10214/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10680",
+      "year": 2020,
+      "title": "Refine Objective-C frameworks for Swift",
+      "duration": "42:42",
+      "durationSeconds": 2562,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10680/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10149",
+      "year": 2020,
+      "title": "Structure your app for SwiftUI previews",
+      "duration": "33:42",
+      "durationSeconds": 2022,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10149/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10644",
+      "year": 2020,
+      "title": "Use Swift on AWS Lambda with Xcode",
+      "duration": "12:23",
+      "durationSeconds": 743,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10644/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10152",
+      "year": 2020,
+      "title": "Use model deployment and security with Core ML",
+      "duration": "24:42",
+      "durationSeconds": 1482,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10152/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10185",
+      "year": 2020,
+      "title": "Visually edit SwiftUI views",
+      "duration": "5:06",
+      "durationSeconds": 306,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10185/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10081",
+      "year": 2020,
+      "title": "What's new in MetricKit",
+      "duration": "13:45",
+      "durationSeconds": 825,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10081/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10164",
+      "year": 2020,
+      "title": "XCTSkip your tests",
+      "duration": "6:35",
+      "durationSeconds": 395,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10164/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10114",
+      "year": 2020,
+      "title": "iPad and iPhone apps on Apple silicon Macs",
+      "duration": "17:29",
+      "durationSeconds": 1049,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10114/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10969",
+      "year": 2020,
+      "title": "A conversation with the cast and creators of Mythic Quest: Raven’s Banquet",
+      "duration": "26:00",
+      "durationSeconds": 1560,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10969/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "101",
+      "year": 2020,
+      "title": "Keynote",
+      "duration": "108:51",
+      "durationSeconds": 6531,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/101/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "102",
+      "year": 2020,
+      "title": "Platforms State of the Union",
+      "duration": "88:16",
+      "durationSeconds": 5296,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/102/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "10631",
+      "year": 2020,
+      "title": "Bring your Metal app to Apple silicon Macs",
+      "duration": "33:52",
+      "durationSeconds": 2032,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10631/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "10677",
+      "year": 2020,
+      "title": "Build customized ML models with the Metal Performance Shaders Graph",
+      "duration": "39:35",
+      "durationSeconds": 2375,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10677/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "10633",
+      "year": 2020,
+      "title": "Capture and stream apps on the Mac with ReplayKit",
+      "duration": "23:58",
+      "durationSeconds": 1438,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10633/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "10145",
+      "year": 2020,
+      "title": "Design for Game Center",
+      "duration": "18:07",
+      "durationSeconds": 1087,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10145/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "10012",
+      "year": 2020,
+      "title": "Discover ray tracing with Metal",
+      "duration": "21:05",
+      "durationSeconds": 1265,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10012/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "10611",
+      "year": 2020,
+      "title": "Explore ARKit 4",
+      "duration": "27:38",
+      "durationSeconds": 1658,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10611/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "10013",
+      "year": 2020,
+      "title": "Get to know Metal function pointers",
+      "duration": "20:31",
+      "durationSeconds": 1231,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10013/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "10602",
+      "year": 2020,
+      "title": "Harness Apple GPUs with Metal",
+      "duration": "24:23",
+      "durationSeconds": 1463,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10602/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "10632",
+      "year": 2020,
+      "title": "Optimize Metal Performance for Apple silicon Macs",
+      "duration": "45:22",
+      "durationSeconds": 2722,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10632/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "10603",
+      "year": 2020,
+      "title": "Optimize Metal apps and games with GPU counters",
+      "duration": "32:50",
+      "durationSeconds": 1970,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10603/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "10618",
+      "year": 2020,
+      "title": "Tap into Game Center: Dashboard, Access Point, and Profile",
+      "duration": "23:32",
+      "durationSeconds": 1412,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10618/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "10619",
+      "year": 2020,
+      "title": "Tap into Game Center: Leaderboards, Achievements, and Multiplayer",
+      "duration": "24:54",
+      "durationSeconds": 1494,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10619/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "10601",
+      "year": 2020,
+      "title": "The artist’s AR toolkit",
+      "duration": "28:18",
+      "durationSeconds": 1698,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10601/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "10612",
+      "year": 2020,
+      "title": "What's new in RealityKit",
+      "duration": "25:15",
+      "durationSeconds": 1515,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10612/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "10613",
+      "year": 2020,
+      "title": "What's new in USD",
+      "duration": "24:41",
+      "durationSeconds": 1481,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10613/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "10656",
+      "year": 2020,
+      "title": "Beyond counting steps",
+      "duration": "21:05",
+      "durationSeconds": 1265,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10656/",
+      "topics": [
+        "Health & Fitness"
+      ],
+      "category": "health-&-fitness"
+    },
+    {
+      "id": "10664",
+      "year": 2020,
+      "title": "Getting started with HealthKit",
+      "duration": "32:12",
+      "durationSeconds": 1932,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10664/",
+      "topics": [
+        "Health & Fitness"
+      ],
+      "category": "health-&-fitness"
+    },
+    {
+      "id": "10669",
+      "year": 2020,
+      "title": "Handling FHIR without getting burned",
+      "duration": "8:07",
+      "durationSeconds": 487,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10669/",
+      "topics": [
+        "Health & Fitness"
+      ],
+      "category": "health-&-fitness"
+    },
+    {
+      "id": "10083",
+      "year": 2020,
+      "title": "Integrate your app with Wind Down",
+      "duration": "10:59",
+      "durationSeconds": 659,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10083/",
+      "topics": [
+        "Health & Fitness"
+      ],
+      "category": "health-&-fitness"
+    },
+    {
+      "id": "10184",
+      "year": 2020,
+      "title": "Synchronize health data with HealthKit",
+      "duration": "22:22",
+      "durationSeconds": 1342,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10184/",
+      "topics": [
+        "Health & Fitness"
+      ],
+      "category": "health-&-fitness"
+    },
+    {
+      "id": "10151",
+      "year": 2020,
+      "title": "What's new in CareKit",
+      "duration": "35:37",
+      "durationSeconds": 2137,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10151/",
+      "topics": [
+        "Health & Fitness"
+      ],
+      "category": "health-&-fitness"
+    },
+    {
+      "id": "10182",
+      "year": 2020,
+      "title": "What's new in HealthKit",
+      "duration": "6:09",
+      "durationSeconds": 369,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10182/",
+      "topics": [
+        "Health & Fitness"
+      ],
+      "category": "health-&-fitness"
+    },
+    {
+      "id": "10216",
+      "year": 2020,
+      "title": "What's new in ResearchKit",
+      "duration": "30:49",
+      "durationSeconds": 1849,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10216/",
+      "topics": [
+        "Health & Fitness"
+      ],
+      "category": "health-&-fitness"
+    },
+    {
+      "id": "10653",
+      "year": 2020,
+      "title": "Detect Body and Hand Pose with Vision",
+      "duration": "24:21",
+      "durationSeconds": 1461,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10653/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "10099",
+      "year": 2020,
+      "title": "Explore the Action & Vision app",
+      "duration": "36:27",
+      "durationSeconds": 2187,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10099/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "10153",
+      "year": 2020,
+      "title": "Get models on device using Core ML Converters",
+      "duration": "31:16",
+      "durationSeconds": 1876,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10153/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "10657",
+      "year": 2020,
+      "title": "Make apps smarter with Natural Language",
+      "duration": "41:04",
+      "durationSeconds": 2464,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10657/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "10162",
+      "year": 2020,
+      "title": "Design for location privacy",
+      "duration": "7:30",
+      "durationSeconds": 450,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10162/",
+      "topics": [
+        "Maps & Location"
+      ],
+      "category": "maps-&-location"
+    },
+    {
+      "id": "10668",
+      "year": 2020,
+      "title": "Meet Nearby Interaction",
+      "duration": "15:32",
+      "durationSeconds": 932,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10668/",
+      "topics": [
+        "Maps & Location"
+      ],
+      "category": "maps-&-location"
+    },
+    {
+      "id": "10673",
+      "year": 2020,
+      "title": "Explore Computer Vision APIs",
+      "duration": "24:35",
+      "durationSeconds": 1475,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10673/",
+      "topics": [
+        "General"
+      ],
+      "category": "photos-&-camera"
+    },
+    {
+      "id": "10159",
+      "year": 2020,
+      "title": "Build an Endpoint Security app",
+      "duration": "41:35",
+      "durationSeconds": 2495,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10159/",
+      "topics": [
+        "Privacy & Security"
+      ],
+      "category": "privacy-&-security"
+    },
+    {
+      "id": "10676",
+      "year": 2020,
+      "title": "Build trust through better privacy",
+      "duration": "36:04",
+      "durationSeconds": 2164,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10676/",
+      "topics": [
+        "Privacy & Security"
+      ],
+      "category": "privacy-&-security"
+    },
+    {
+      "id": "10168",
+      "year": 2020,
+      "title": "Explore logging in Swift",
+      "duration": "17:23",
+      "durationSeconds": 1043,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10168/",
+      "topics": [
+        "Privacy & Security"
+      ],
+      "category": "privacy-&-security"
+    },
+    {
+      "id": "10641",
+      "year": 2020,
+      "title": "Handle the Limited Photos Library in your app",
+      "duration": "14:17",
+      "durationSeconds": 857,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10641/",
+      "topics": [
+        "Privacy & Security"
+      ],
+      "category": "privacy-&-security"
+    },
+    {
+      "id": "10006",
+      "year": 2020,
+      "title": "Introducing Car Keys",
+      "duration": "21:32",
+      "durationSeconds": 1292,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10006/",
+      "topics": [
+        "Privacy & Security"
+      ],
+      "category": "privacy-&-security"
+    },
+    {
+      "id": "10652",
+      "year": 2020,
+      "title": "Meet the new Photos picker",
+      "duration": "14:33",
+      "durationSeconds": 873,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10652/",
+      "topics": [
+        "Privacy & Security"
+      ],
+      "category": "privacy-&-security"
+    },
+    {
+      "id": "10189",
+      "year": 2020,
+      "title": "Secure your app: threat modeling and anti-patterns",
+      "duration": "38:09",
+      "durationSeconds": 2289,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10189/",
+      "topics": [
+        "Privacy & Security"
+      ],
+      "category": "privacy-&-security"
+    },
+    {
+      "id": "10005",
+      "year": 2020,
+      "title": "What's new in assessment",
+      "duration": "12:47",
+      "durationSeconds": 767,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10005/",
+      "topics": [
+        "Privacy & Security"
+      ],
+      "category": "privacy-&-security"
+    },
+    {
+      "id": "10660",
+      "year": 2020,
+      "title": "What's new in location",
+      "duration": "26:34",
+      "durationSeconds": 1594,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10660/",
+      "topics": [
+        "Privacy & Security"
+      ],
+      "category": "privacy-&-security"
+    },
+    {
+      "id": "10146",
+      "year": 2020,
+      "title": "Configure and link your App Clips",
+      "duration": "22:57",
+      "durationSeconds": 1377,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10146/",
+      "topics": [
+        "Safari & Web"
+      ],
+      "category": "safari-&-web"
+    },
+    {
+      "id": "10188",
+      "year": 2020,
+      "title": "Discover WKWebView enhancements",
+      "duration": "30:09",
+      "durationSeconds": 1809,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10188/",
+      "topics": [
+        "Safari & Web"
+      ],
+      "category": "safari-&-web"
+    },
+    {
+      "id": "10173",
+      "year": 2020,
+      "title": "Get the most out of Sign in with Apple",
+      "duration": "30:47",
+      "durationSeconds": 1847,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10173/",
+      "topics": [
+        "Safari & Web"
+      ],
+      "category": "safari-&-web"
+    },
+    {
+      "id": "10670",
+      "year": 2020,
+      "title": "Meet Face ID and Touch ID for the web",
+      "duration": "15:41",
+      "durationSeconds": 941,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10670/",
+      "topics": [
+        "Safari & Web"
+      ],
+      "category": "safari-&-web"
+    },
+    {
+      "id": "10100",
+      "year": 2020,
+      "title": "Meet Watch Face Sharing",
+      "duration": "14:25",
+      "durationSeconds": 865,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10100/",
+      "topics": [
+        "Safari & Web"
+      ],
+      "category": "safari-&-web"
+    },
+    {
+      "id": "10666",
+      "year": 2020,
+      "title": "One-tap account security upgrades",
+      "duration": "24:06",
+      "durationSeconds": 1446,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10666/",
+      "topics": [
+        "Safari & Web"
+      ],
+      "category": "safari-&-web"
+    },
+    {
+      "id": "10663",
+      "year": 2020,
+      "title": "What's new for web developers",
+      "duration": "36:05",
+      "durationSeconds": 2165,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10663/",
+      "topics": [
+        "Safari & Web"
+      ],
+      "category": "safari-&-web"
+    },
+    {
+      "id": "10098",
+      "year": 2020,
+      "title": "What's new in Universal Links",
+      "duration": "23:04",
+      "durationSeconds": 1384,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10098/",
+      "topics": [
+        "Safari & Web"
+      ],
+      "category": "safari-&-web"
+    },
+    {
+      "id": "10646",
+      "year": 2020,
+      "title": "What's new in Web Inspector",
+      "duration": "28:09",
+      "durationSeconds": 1689,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10646/",
+      "topics": [
+        "Safari & Web"
+      ],
+      "category": "safari-&-web"
+    },
+    {
+      "id": "10037",
+      "year": 2020,
+      "title": "App essentials in SwiftUI",
+      "duration": "15:29",
+      "durationSeconds": 929,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10037/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "10643",
+      "year": 2020,
+      "title": "Build a SwiftUI view in Swift Playgrounds",
+      "duration": "14:14",
+      "durationSeconds": 854,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10643/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "10039",
+      "year": 2020,
+      "title": "Build document-based apps in SwiftUI",
+      "duration": "12:02",
+      "durationSeconds": 722,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10039/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "10156",
+      "year": 2020,
+      "title": "Control training in Create ML with Swift",
+      "duration": "18:39",
+      "durationSeconds": 1119,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10156/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "10654",
+      "year": 2020,
+      "title": "Create Swift Playgrounds content for iPad and Mac",
+      "duration": "8:29",
+      "durationSeconds": 509,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10654/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "10040",
+      "year": 2020,
+      "title": "Data Essentials in SwiftUI",
+      "duration": "36:15",
+      "durationSeconds": 2175,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10040/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "10147",
+      "year": 2020,
+      "title": "Distribute binary frameworks as Swift packages",
+      "duration": "7:47",
+      "durationSeconds": 467,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10147/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "10165",
+      "year": 2020,
+      "title": "Embrace Swift type inference",
+      "duration": "20:53",
+      "durationSeconds": 1253,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10165/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "10096",
+      "year": 2020,
+      "title": "Explore Packages and Projects with Xcode Playgrounds",
+      "duration": "14:51",
+      "durationSeconds": 891,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10096/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "10217",
+      "year": 2020,
+      "title": "Explore numerical computing in Swift",
+      "duration": "15:24",
+      "durationSeconds": 924,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10217/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "10221",
+      "year": 2020,
+      "title": "Get your test results faster",
+      "duration": "16:24",
+      "durationSeconds": 984,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10221/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "10220",
+      "year": 2020,
+      "title": "Handle interruptions and alerts in UI tests",
+      "duration": "11:43",
+      "durationSeconds": 703,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10220/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "10028",
+      "year": 2020,
+      "title": "Meet WidgetKit",
+      "duration": "23:12",
+      "durationSeconds": 1392,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10028/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "10167",
+      "year": 2020,
+      "title": "Safely manage pointers in Swift",
+      "duration": "27:31",
+      "durationSeconds": 1651,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10167/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "10031",
+      "year": 2020,
+      "title": "Stacks, Grids, and Outlines in SwiftUI",
+      "duration": "19:08",
+      "durationSeconds": 1148,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10031/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "10682",
+      "year": 2020,
+      "title": "Swan's Quest, Chapter 2: A time for tones",
+      "duration": "5:18",
+      "durationSeconds": 318,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10682/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "10683",
+      "year": 2020,
+      "title": "Swan's Quest, Chapter 3: The notable scroll",
+      "duration": "5:59",
+      "durationSeconds": 359,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10683/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "10687",
+      "year": 2020,
+      "title": "Triage test failures with XCTIssue",
+      "duration": "12:38",
+      "durationSeconds": 758,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10687/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "10648",
+      "year": 2020,
+      "title": "Unsafe Swift",
+      "duration": "22:50",
+      "durationSeconds": 1370,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10648/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "10170",
+      "year": 2020,
+      "title": "What's new in Swift",
+      "duration": "32:19",
+      "durationSeconds": 1939,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10170/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "10041",
+      "year": 2020,
+      "title": "What's new in SwiftUI",
+      "duration": "27:44",
+      "durationSeconds": 1664,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10041/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "10034",
+      "year": 2020,
+      "title": "Widgets Code-along, part 1: The adventure begins",
+      "duration": "9:05",
+      "durationSeconds": 545,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10034/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "10035",
+      "year": 2020,
+      "title": "Widgets Code-along, part 2: Alternate timelines",
+      "duration": "15:18",
+      "durationSeconds": 918,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10035/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "10091",
+      "year": 2020,
+      "title": "Write tests to fail",
+      "duration": "17:55",
+      "durationSeconds": 1075,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10091/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "10117",
+      "year": 2020,
+      "title": "Accessibility design for Mac Catalyst",
+      "duration": "21:30",
+      "durationSeconds": 1290,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10117/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10104",
+      "year": 2020,
+      "title": "Adopt the new look of macOS",
+      "duration": "28:43",
+      "durationSeconds": 1723,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10104/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10097",
+      "year": 2020,
+      "title": "Advances in UICollectionView",
+      "duration": "9:55",
+      "durationSeconds": 595,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10097/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10045",
+      "year": 2020,
+      "title": "Advances in diffable data sources",
+      "duration": "11:55",
+      "durationSeconds": 715,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10045/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10115",
+      "year": 2020,
+      "title": "AutoFill everywhere",
+      "duration": "10:13",
+      "durationSeconds": 613,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10115/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10617",
+      "year": 2020,
+      "title": "Bring keyboard and mouse gaming to iPad",
+      "duration": "14:04",
+      "durationSeconds": 844,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10617/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10042",
+      "year": 2020,
+      "title": "Build SwiftUI apps for tvOS",
+      "duration": "14:30",
+      "durationSeconds": 870,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10042/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10048",
+      "year": 2020,
+      "title": "Build complications in SwiftUI",
+      "duration": "22:52",
+      "durationSeconds": 1372,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10048/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10105",
+      "year": 2020,
+      "title": "Build for iPad",
+      "duration": "23:46",
+      "durationSeconds": 1426,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10105/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10052",
+      "year": 2020,
+      "title": "Build with iOS pickers, menus and actions",
+      "duration": "20:21",
+      "durationSeconds": 1221,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10052/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10118",
+      "year": 2020,
+      "title": "Create App Clips for other businesses",
+      "duration": "19:02",
+      "durationSeconds": 1142,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10118/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10046",
+      "year": 2020,
+      "title": "Create complications for Apple Watch",
+      "duration": "20:08",
+      "durationSeconds": 1208,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10046/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10640",
+      "year": 2020,
+      "title": "Design for the iPadOS pointer",
+      "duration": "41:34",
+      "durationSeconds": 2494,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10640/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10205",
+      "year": 2020,
+      "title": "Design with iOS pickers, menus and actions",
+      "duration": "14:54",
+      "durationSeconds": 894,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10205/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10634",
+      "year": 2020,
+      "title": "Discover search suggestions for Apple TV",
+      "duration": "11:18",
+      "durationSeconds": 678,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10634/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10174",
+      "year": 2020,
+      "title": "Explore App Clips",
+      "duration": "19:46",
+      "durationSeconds": 1186,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10174/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10094",
+      "year": 2020,
+      "title": "Handle trackpad and mouse input",
+      "duration": "24:05",
+      "durationSeconds": 1445,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10094/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10148",
+      "year": 2020,
+      "title": "Inspect, modify, and construct PencilKit drawings",
+      "duration": "16:04",
+      "durationSeconds": 964,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10148/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10049",
+      "year": 2020,
+      "title": "Keep your complications up to date",
+      "duration": "21:50",
+      "durationSeconds": 1310,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10049/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10026",
+      "year": 2020,
+      "title": "Lists in UICollectionView",
+      "duration": "16:54",
+      "durationSeconds": 1014,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10026/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10176",
+      "year": 2020,
+      "title": "Master Picture in Picture on tvOS",
+      "duration": "18:33",
+      "durationSeconds": 1113,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10176/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10665",
+      "year": 2020,
+      "title": "Meet Safari Web Extensions",
+      "duration": "27:47",
+      "durationSeconds": 1667,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10665/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10106",
+      "year": 2020,
+      "title": "Meet Scribble for iPad",
+      "duration": "14:13",
+      "durationSeconds": 853,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10106/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10027",
+      "year": 2020,
+      "title": "Modern cell configuration",
+      "duration": "29:40",
+      "durationSeconds": 1780,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10027/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10207",
+      "year": 2020,
+      "title": "SF Symbols 2",
+      "duration": "18:54",
+      "durationSeconds": 1134,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10207/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10120",
+      "year": 2020,
+      "title": "Streamline your App Clip",
+      "duration": "20:15",
+      "durationSeconds": 1215,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10120/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10109",
+      "year": 2020,
+      "title": "Support hardware keyboards in your app",
+      "duration": "11:34",
+      "durationSeconds": 694,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10109/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10650",
+      "year": 2020,
+      "title": "Sync a Core Data store with the CloudKit public database",
+      "duration": "18:18",
+      "durationSeconds": 1098,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10650/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10209",
+      "year": 2020,
+      "title": "What's new in Core NFC",
+      "duration": "5:51",
+      "durationSeconds": 351,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10209/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10107",
+      "year": 2020,
+      "title": "What's new in PencilKit",
+      "duration": "10:26",
+      "durationSeconds": 626,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10107/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10614",
+      "year": 2020,
+      "title": "Advancements in Game Controllers",
+      "duration": "24:59",
+      "durationSeconds": 1499,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10614/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "system-services"
+    },
+    {
+      "id": "10111",
+      "year": 2020,
+      "title": "Boost performance and security with modern networking",
+      "duration": "13:42",
+      "durationSeconds": 822,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10111/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "system-services"
+    },
+    {
+      "id": "10113",
+      "year": 2020,
+      "title": "Build local push connectivity for restricted networks",
+      "duration": "13:46",
+      "durationSeconds": 826,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10113/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "system-services"
+    },
+    {
+      "id": "10204",
+      "year": 2020,
+      "title": "Create great enterprise apps: A chat with Box's Aaron Levie",
+      "duration": "21:27",
+      "durationSeconds": 1287,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10204/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "system-services"
+    },
+    {
+      "id": "10047",
+      "year": 2020,
+      "title": "Enable encrypted DNS",
+      "duration": "13:16",
+      "durationSeconds": 796,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10047/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "system-services"
+    },
+    {
+      "id": "10210",
+      "year": 2020,
+      "title": "Modernize PCI and SCSI drivers with DriverKit",
+      "duration": "36:53",
+      "durationSeconds": 2213,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10210/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "system-services"
+    },
+    {
+      "id": "10110",
+      "year": 2020,
+      "title": "Support local network privacy in your app",
+      "duration": "12:16",
+      "durationSeconds": 736,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10110/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "system-services"
+    },
+    {
+      "id": "10095",
+      "year": 2020,
+      "title": "The Push Notifications primer",
+      "duration": "11:46",
+      "durationSeconds": 706,
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10095/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "system-services"
+    }
+  ]
+}

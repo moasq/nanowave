@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"strconv"
@@ -15,7 +14,13 @@ import (
 	"syscall"
 	"time"
 
+	"bufio"
+
+	"github.com/moasq/nanowave/internal/agentruntime"
 	"github.com/moasq/nanowave/internal/config"
+	"github.com/moasq/nanowave/internal/integrations"
+	"github.com/moasq/nanowave/internal/mcpregistry"
+	"github.com/moasq/nanowave/internal/orchestration"
 	"github.com/moasq/nanowave/internal/service"
 	"github.com/moasq/nanowave/internal/storage"
 	"github.com/moasq/nanowave/internal/terminal"
@@ -157,33 +162,34 @@ func runInteractive(cmd *cobra.Command) error {
 		updateCh <- update.Check("moasq", "nanowave", Version)
 	}()
 
-	// Print tool status
-	var claudeVersion string
-	var claudePath string
-	if config.CheckClaude() {
-		claudePath, _ = exec.LookPath("claude")
-		if claudePath != "" {
-			claudeVersion = config.ClaudeVersion(claudePath)
-		}
+	cfg, err := config.Load()
+	if err != nil {
+		return err
 	}
+	cfg.Agentic = AgenticFlag()
 
-	// Check auth status
-	var authStatus *config.ClaudeAuthStatus
-	if claudePath != "" {
-		authStatus = config.CheckClaudeAuth(claudePath)
+	runtimeKind := cfg.RuntimeKind
+	if AgentFlag() != "" {
+		runtimeKind = agentruntime.NormalizeKind(AgentFlag())
 	}
+	runtimePath := cfg.RuntimePath
+	if runtimeKind != cfg.RuntimeKind || strings.TrimSpace(runtimePath) == "" {
+		runtimePath, _ = agentruntime.FindBinary(runtimeKind)
+	}
+	runtimeVersion := config.RuntimeVersion(runtimeKind, runtimePath)
+	authStatus := config.RuntimeAuthStatus(runtimeKind, runtimePath)
 
 	toolOpts := terminal.ToolStatusOpts{
-		ClaudeVersion: claudeVersion,
-		HasXcode:      config.CheckXcode(),
-		HasXcodeCLT:   config.CheckXcodeCLT(),
-		HasSimulator:  config.CheckSimulator(),
-		HasXcodegen:   config.CheckXcodegen(),
+		RuntimeVersion: runtimeVersion,
+		HasXcode:       config.CheckXcode(),
+		HasSimulator:   config.CheckSimulator(),
+		HasXcodegen:    config.CheckXcodegen(),
 	}
 	if authStatus != nil {
 		toolOpts.AuthLoggedIn = authStatus.LoggedIn
 		toolOpts.AuthEmail = authStatus.Email
-		toolOpts.AuthPlan = authStatus.SubscriptionType
+		toolOpts.AuthPlan = authStatus.Plan
+		toolOpts.AuthDetail = authStatus.Detail
 	}
 	terminal.ToolStatus(toolOpts)
 
@@ -199,23 +205,16 @@ func runInteractive(cmd *cobra.Command) error {
 	}
 
 	// Auto-run setup on first launch if critical dependencies are missing
-	if needsSetup() {
+	if needsSetupForRuntime(runtimeKind) {
 		if err := runSetup(); err != nil {
 			return err
 		}
 		fmt.Println()
 		// Re-check after setup — if still missing, exit
-		if needsSetup() {
+		if needsSetupForRuntime(runtimeKind) {
 			terminal.Error("Some dependencies are still missing. Please install them and try again.")
 			return fmt.Errorf("setup incomplete")
 		}
-	}
-
-	cfg, err := config.Load()
-	if err != nil {
-		terminal.Error("Claude Code CLI is not installed.")
-		terminal.Info("Run `nanowave setup` to install all prerequisites.")
-		return err
 	}
 
 	// Project selection flow
@@ -234,7 +233,10 @@ func runInteractive(cmd *cobra.Command) error {
 		fmt.Println()
 	}
 
-	svc, err := service.NewService(cfg, service.ServiceOpts{Model: ModelFlag()})
+	svc, err := service.NewService(cfg, service.ServiceOpts{
+		Runtime: AgentFlag(),
+		Model:   ModelFlag(),
+	})
 	if err != nil {
 		return err
 	}
@@ -256,7 +258,7 @@ func runInteractive(cmd *cobra.Command) error {
 		fmt.Println()
 	}
 
-	fmt.Printf("  %sPress Enter to submit. Esc+Enter for newline. Ctrl+V to paste image. Drag images to attach.%s\n\n", terminal.Dim, terminal.Reset)
+	fmt.Printf("  %sPress Enter to submit. Pasted multiline text stays intact. Ctrl+V attaches clipboard images on macOS. Drag images or paste Finder image files to attach.%s\n\n", terminal.Dim, terminal.Reset)
 
 	// Set up signal handling for Ctrl+C
 	sigChan := make(chan os.Signal, 1)
@@ -290,17 +292,18 @@ func runInteractive(cmd *cobra.Command) error {
 	for {
 		result := terminal.ReadInput()
 		input := result.Text
-		if input == "" && len(result.Images) == 0 {
+		trimmedInput := strings.TrimSpace(input)
+		if trimmedInput == "" && len(result.Images) == 0 {
 			continue
 		}
 
 		// Handle slash commands
-		if strings.HasPrefix(input, "/") && len(result.Images) == 0 {
-			if input == "/clear" && imgCache != nil {
+		if !strings.Contains(input, "\n") && strings.HasPrefix(trimmedInput, "/") && len(result.Images) == 0 {
+			if trimmedInput == "/clear" && imgCache != nil {
 				imgCache.clear()
 			}
 			// Handle /projects specially since it needs to modify cfg/svc
-			if input == "/projects" {
+			if trimmedInput == "/projects" {
 				projects := cfg.ListProjects()
 				if len(projects) == 0 {
 					terminal.Info("No projects yet. Describe the app you want to build.")
@@ -329,32 +332,49 @@ func runInteractive(cmd *cobra.Command) error {
 				}
 				continue
 			}
-			handled := handleSlashCommand(input, cfg, svc, cmd, authStatus)
+			handled := handleSlashCommand(trimmedInput, cfg, svc, cmd)
 			if handled {
 				continue
 			}
 		}
 
 		// Handle quit/exit text
-		if input == "quit" || input == "exit" {
+		if !strings.Contains(input, "\n") && (trimmedInput == "quit" || trimmedInput == "exit") {
 			terminal.Info("Goodbye!")
 			break
 		}
 
-		// Handle image-only input (no text)
-		if input == "" && len(result.Images) > 0 {
-			for _, img := range result.Images {
-				terminal.Detail("Image attached", filepath.Base(img))
-			}
-			terminal.Info("Attached image(s). Type your prompt and press Enter.")
-			continue
+		displayInput := result.DisplayText
+		if displayInput == "" {
+			displayInput = input
 		}
+		terminal.EchoInput(displayInput, nil)
+
+		currentRuntime := svc.CurrentRuntime()
+		currentRuntimePath, _ := agentruntime.FindBinary(currentRuntime)
+		currentAuth := config.RuntimeAuthStatus(currentRuntime, currentRuntimePath)
 
 		// Check auth before sending
-		if authStatus == nil || !authStatus.LoggedIn {
-			terminal.Warning("Not signed in to Claude. Run `claude auth login` to authenticate.")
-			fmt.Println()
-			continue
+		if currentAuth == nil || !currentAuth.LoggedIn {
+			desc := agentruntime.DescriptorForKind(currentRuntime)
+			switch currentRuntime {
+			case agentruntime.KindClaude:
+				terminal.Warning("Not signed in to Claude Code. Run `claude auth login` to authenticate.")
+				fmt.Println()
+				continue
+			case agentruntime.KindCodex:
+				terminal.Warning("Not signed in to Codex. Run `codex login` to authenticate.")
+				fmt.Println()
+				continue
+			case agentruntime.KindOpenCode:
+				terminal.Warning("OpenCode credentials are not configured. Run `opencode auth login` to authenticate.")
+				fmt.Println()
+				continue
+			default:
+				terminal.Warning(fmt.Sprintf("%s is not authenticated.", desc.DisplayName))
+				fmt.Println()
+				continue
+			}
 		}
 
 		// Cache any attached images
@@ -362,7 +382,7 @@ func runInteractive(cmd *cobra.Command) error {
 		if imgCache != nil && len(result.Images) > 0 {
 			cachedImages = imgCache.addAll(result.Images)
 			for _, img := range result.Images {
-				terminal.Detail("Image", filepath.Base(img))
+				terminal.Detail("Attached", filepath.Base(img))
 			}
 		}
 
@@ -370,24 +390,10 @@ func runInteractive(cmd *cobra.Command) error {
 		ctx, cancel := context.WithCancel(cmd.Context())
 		activeCancel.Set(cancel)
 
-		// Capture usage before operation for delta
-		usageBefore := svc.Usage()
-
 		// Unified send — auto-routes build vs edit
 		if err := svc.Send(ctx, input, cachedImages); err != nil {
 			if ctx.Err() == nil {
 				terminal.Error(fmt.Sprintf("Failed: %v", err))
-			}
-		} else {
-			// Show post-operation cost summary
-			usageAfter := svc.Usage()
-			if usageAfter.Requests > usageBefore.Requests {
-				costDelta := usageAfter.TotalCostUSD - usageBefore.TotalCostUSD
-				tokenDelta := (usageAfter.InputTokens + usageAfter.OutputTokens) - (usageBefore.InputTokens + usageBefore.OutputTokens)
-				if costDelta > 0 || tokenDelta > 0 {
-					fmt.Printf("  %s$%.2f  ·  %s tokens%s\n",
-						terminal.Dim, costDelta, storage.FormatTokenCount(tokenDelta), terminal.Reset)
-				}
 			}
 		}
 
@@ -424,13 +430,15 @@ func runInteractive(cmd *cobra.Command) error {
 }
 
 // handleSlashCommand processes slash commands. Returns true if the input was handled.
-func handleSlashCommand(input string, cfg *config.Config, svc *service.Service, cmd *cobra.Command, authStatus *config.ClaudeAuthStatus) bool {
+func handleSlashCommand(input string, cfg *config.Config, svc *service.Service, cmd *cobra.Command) bool {
 	parts := strings.SplitN(input, " ", 2)
 	command := strings.ToLower(parts[0])
 	arg := ""
 	if len(parts) > 1 {
 		arg = strings.TrimSpace(parts[1])
 	}
+	runtimePath, _ := agentruntime.FindBinary(svc.CurrentRuntime())
+	authStatus := config.RuntimeAuthStatus(svc.CurrentRuntime(), runtimePath)
 
 	switch command {
 	case "/quit", "/exit":
@@ -442,13 +450,61 @@ func handleSlashCommand(input string, cfg *config.Config, svc *service.Service, 
 		printHelp()
 		return true
 
+	case "/agent":
+		if arg == "" {
+			descs := agentruntime.AllDescriptors()
+			options := make([]terminal.PickerOption, 0, len(descs))
+			for _, desc := range descs {
+				options = append(options, terminal.PickerOption{
+					Label: string(desc.Kind),
+					Desc:  desc.DisplayName,
+				})
+			}
+			picked := terminal.Pick("AI Runtime", options, string(svc.CurrentRuntime()))
+			if picked != "" {
+				if err := setRuntimeWithInstallPrompt(svc, picked); err != nil {
+					if err == errRuntimeInstallDeclined {
+						terminal.Info("Runtime switch cancelled.")
+					} else {
+						terminal.Error(err.Error())
+					}
+				} else {
+					terminal.Success("Runtime updated")
+				}
+			}
+			fmt.Println()
+		} else {
+			if err := setRuntimeWithInstallPrompt(svc, arg); err != nil {
+				if err == errRuntimeInstallDeclined {
+					terminal.Info("Runtime switch cancelled.")
+				} else {
+					terminal.Error(err.Error())
+				}
+			} else {
+				terminal.Success("Runtime updated")
+			}
+			fmt.Println()
+		}
+		return true
+
 	case "/model":
 		if arg == "" {
-			picked := terminal.Pick("Models", []terminal.PickerOption{
-				{Label: "sonnet", Desc: "Claude Sonnet 4.6 — fast, great for most tasks (default)"},
-				{Label: "opus", Desc: "Claude Opus 4.6 — most capable, slower"},
-				{Label: "haiku", Desc: "Claude Haiku 4.5 — fastest, lightweight tasks"},
-			}, svc.CurrentModel())
+			models := svc.RuntimeModels()
+			if len(models) == 0 {
+				terminal.Warning("No models discovered for the active runtime yet.")
+				terminal.Detail("Set manually", "/model <id>")
+				terminal.Detail("Configure", "~/nanowave/config.json → runtime_models")
+				fmt.Println()
+				return true
+			}
+			options := make([]terminal.PickerOption, 0, len(models))
+			for _, model := range models {
+				options = append(options, terminal.PickerOption{
+					Label: model.ID,
+					Desc:  model.Description,
+				})
+			}
+			picked := terminal.Pick("Models", options, svc.CurrentModel())
 			if picked != "" {
 				svc.SetModel(picked)
 				terminal.Success(fmt.Sprintf("Model set to %s", picked))
@@ -485,8 +541,7 @@ func handleSlashCommand(input string, cfg *config.Config, svc *service.Service, 
 		if !requireProjectForSlashCommand(cfg) {
 			return true
 		}
-		fixPrompt := "Build the project, read any compilation errors, and fix all of them. Rebuild and repeat until the build succeeds."
-		if err := svc.Send(cmd.Context(), fixPrompt, nil); err != nil {
+		if err := runWithSlashCommandContext(cmd, svc.Fix); err != nil {
 			terminal.Error(fmt.Sprintf("Fix failed: %v", err))
 		}
 		fmt.Println()
@@ -518,17 +573,10 @@ func handleSlashCommand(input string, cfg *config.Config, svc *service.Service, 
 			fmt.Println()
 			return true
 		}
-		usageBefore := svc.Usage()
 		if err := runWithSlashCommandContext(cmd, func(ctx context.Context) error {
 			return svc.Ask(ctx, arg)
 		}); err != nil {
 			terminal.Error(fmt.Sprintf("Ask failed: %v", err))
-		} else {
-			usageAfter := svc.Usage()
-			if usageAfter.Requests > usageBefore.Requests {
-				costDelta := usageAfter.TotalCostUSD - usageBefore.TotalCostUSD
-				fmt.Printf("  %s$%.4f%s\n", terminal.Dim, costDelta, terminal.Reset)
-			}
 		}
 		fmt.Println()
 		return true
@@ -550,13 +598,19 @@ func handleSlashCommand(input string, cfg *config.Config, svc *service.Service, 
 	case "/info":
 		svc.Info()
 		// Append auth + usage info
-		if authStatus != nil && authStatus.LoggedIn && authStatus.Email != "" {
-			planLabel := authStatus.SubscriptionType
-			if planLabel != "" {
-				planLabel = strings.ToUpper(planLabel[:1]) + planLabel[1:] + " plan"
-				terminal.Detail("Claude", fmt.Sprintf("%s (%s)", authStatus.Email, planLabel))
+		if authStatus != nil && authStatus.LoggedIn {
+			if authStatus.Email != "" {
+				planLabel := authStatus.Plan
+				if planLabel != "" {
+					planLabel = strings.ToUpper(planLabel[:1]) + planLabel[1:] + " plan"
+					terminal.Detail("Account", fmt.Sprintf("%s (%s)", authStatus.Email, planLabel))
+				} else {
+					terminal.Detail("Account", authStatus.Email)
+				}
+			} else if authStatus.Detail != "" {
+				terminal.Detail("Account", authStatus.Detail)
 			} else {
-				terminal.Detail("Claude", authStatus.Email)
+				terminal.Detail("Account", "Signed in")
 			}
 		}
 		usage := svc.Usage()
@@ -580,11 +634,45 @@ func handleSlashCommand(input string, cfg *config.Config, svc *service.Service, 
 		RunIntegrationsInteractive()
 		return true
 
+	case "/revenuecat":
+		if !requireProjectForSlashCommand(cfg) {
+			return true
+		}
+		runProviderSetupAndSync("revenuecat", svc)
+		fmt.Println()
+		return true
+
+	case "/supabase":
+		if !requireProjectForSlashCommand(cfg) {
+			return true
+		}
+		runProviderSetupAndSync("supabase", svc)
+		fmt.Println()
+		return true
+
 	default:
+		// Try prefix matching: /sup → /supabase, /rev → /revenuecat, etc.
+		if resolved := resolveSlashCommand(command); resolved != "" {
+			// Re-dispatch with the resolved command
+			return handleSlashCommand(resolved+" "+arg, cfg, svc, cmd)
+		}
 		terminal.Warning(fmt.Sprintf("Unknown command: %s. Type /help for available commands.", command))
 		fmt.Println()
 		return true
 	}
+}
+
+func setRuntimeWithInstallPrompt(svc *service.Service, rawKind string) error {
+	kind := agentruntime.NormalizeKind(rawKind)
+	if kind == "" {
+		return fmt.Errorf("unsupported runtime: %s", rawKind)
+	}
+	if _, err := agentruntime.FindBinary(kind); err != nil {
+		if err := promptInstallRuntime(kind); err != nil {
+			return err
+		}
+	}
+	return svc.SetRuntime(string(kind))
 }
 
 func requireProjectForSlashCommand(cfg *config.Config) bool {
@@ -749,7 +837,8 @@ func printHelp() {
 	terminal.Header("Commands")
 	fmt.Printf("  %s/run%s              Build and launch in simulator%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
 	fmt.Printf("  %s/simulator [name]%s Select simulator device%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
-	fmt.Printf("  %s/model [name]%s     Show or switch model (sonnet, opus, haiku)%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
+	fmt.Printf("  %s/agent [name]%s     Show or switch AI runtime (claude, codex, opencode)%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
+	fmt.Printf("  %s/model [name]%s     Show or switch the active runtime model%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
 	fmt.Printf("  %s/fix%s              Auto-fix build errors%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
 	fmt.Printf("  %s/connect <action>%s App Store Connect (publish, TestFlight)%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
 	fmt.Printf("  %s/ask <question>%s  Ask about your project (cheap, read-only)%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
@@ -759,11 +848,148 @@ func printHelp() {
 	fmt.Printf("  %s/usage%s            Show token usage and costs%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
 	fmt.Printf("  %s/clear%s            Clear conversation session%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
 	fmt.Printf("  %s/setup%s            Install prerequisites%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
-	fmt.Printf("  %s/integrations%s    Manage backend integrations%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
+	fmt.Printf("  %s/supabase%s         Connect Supabase backend%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
+	fmt.Printf("  %s/revenuecat%s       Connect RevenueCat payments%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
+	fmt.Printf("  %s/integrations%s    Manage all integrations%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
 	fmt.Printf("  %s/help%s             Show this help%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
 	fmt.Printf("  %s/quit%s             Exit session%s\n", terminal.Bold, terminal.Reset+terminal.Dim, terminal.Reset)
 	fmt.Println()
 	fmt.Printf("  %sJust type a description and press Enter to submit.%s\n", terminal.Dim, terminal.Reset)
 	fmt.Printf("  %sEsc+Enter for newline. Ctrl+V to paste image. Drag images to attach.%s\n", terminal.Dim, terminal.Reset)
 	fmt.Println()
+}
+
+// resolveSlashCommand finds the best matching slash command for a prefix.
+// Returns the full command name if there's exactly one match, empty string otherwise.
+func resolveSlashCommand(prefix string) string {
+	if !strings.HasPrefix(prefix, "/") || len(prefix) < 2 {
+		return ""
+	}
+	var matches []string
+	for _, cmd := range terminal.SlashCommands {
+		if strings.HasPrefix(cmd.Name, prefix) {
+			matches = append(matches, cmd.Name)
+		}
+	}
+	if len(matches) == 1 {
+		return matches[0]
+	}
+	return ""
+}
+
+// runProviderSetupAndSync runs the interactive setup for a provider,
+// then syncs MCP config and settings to the active project so the agent
+// immediately has access to the integration tools on the next call.
+func runProviderSetupAndSync(providerID string, svc *service.Service) {
+	m := newCmdManager()
+	p, ok := m.GetProvider(integrations.ProviderID(providerID))
+	if !ok {
+		terminal.Error(fmt.Sprintf("Unknown provider: %s", providerID))
+		return
+	}
+	sc, ok := p.(integrations.SetupCapable)
+	if !ok {
+		terminal.Error(fmt.Sprintf("%s does not support setup", providerID))
+		return
+	}
+
+	appName := svc.CurrentAppName()
+	if appName == "" {
+		appName = resolveCurrentAppName()
+	}
+
+	// Check if already configured — look by app name first, then any config for this provider
+	existing := m.Store()
+	cfg, _ := existing.GetProvider(integrations.ProviderID(providerID), appName)
+	if cfg == nil {
+		// Try all known app names for this provider
+		for _, name := range existing.AllAppNames(integrations.ProviderID(providerID)) {
+			if c, _ := existing.GetProvider(integrations.ProviderID(providerID), name); c != nil {
+				cfg = c
+				appName = name // use the stored app name
+				break
+			}
+		}
+	}
+	if cfg != nil && (cfg.AnonKey != "" || cfg.PAT != "") {
+		terminal.Success(fmt.Sprintf("%s is already configured", p.Meta().Name))
+		if cfg.ProjectURL != "" {
+			terminal.Detail("Project", cfg.ProjectURL)
+		}
+		fmt.Println()
+
+		action := terminal.Pick("Action", []terminal.PickerOption{
+			{Label: "Keep current", Desc: "No changes"},
+			{Label: "Reconfigure", Desc: "Set up again with new credentials"},
+			{Label: "Remove", Desc: fmt.Sprintf("Disconnect %s", p.Meta().Name)},
+		}, "")
+
+		switch action {
+		case "Keep current":
+			return
+		case "Remove":
+			_ = sc.Remove(context.Background(), existing, appName)
+			terminal.Success(fmt.Sprintf("%s disconnected", p.Meta().Name))
+			syncProjectIntegrations(svc)
+			return
+		case "Reconfigure":
+			// Fall through to setup
+		default:
+			return
+		}
+	}
+
+	fmt.Println()
+
+	readLineFn := func(label string) string {
+		fmt.Printf("  %s: ", label)
+		reader := bufio.NewReader(os.Stdin)
+		line, _ := reader.ReadString('\n')
+		return strings.TrimSpace(line)
+	}
+
+	if err := sc.Setup(context.Background(), integrations.SetupRequest{
+		Store:      m.Store(),
+		AppName:    appName,
+		ReadLineFn: readLineFn,
+		PrintFn:    terminalPrintFn,
+		PickFn:     terminalPickFn,
+	}); err != nil {
+		terminal.Error(err.Error())
+		return
+	}
+
+	// Sync: update MCP config and settings in the active project
+	syncProjectIntegrations(svc)
+}
+
+// syncProjectIntegrations writes updated MCP config and settings.json
+// to the active project so the agent picks up new integration tools.
+func syncProjectIntegrations(svc *service.Service) {
+	projectDir := ""
+	if project, err := svc.ProjectStore().Load(); err == nil && project != nil {
+		projectDir = project.ProjectPath
+	}
+	if projectDir == "" {
+		return
+	}
+
+	// Re-write project configs (MCP + settings) with current integrations
+	orchestration.EnsureProjectConfigsExternal(projectDir)
+
+	// Also write integration-specific MCP configs
+	m := newCmdManager()
+	appName := svc.CurrentAppName()
+	active := m.ResolveExisting(appName)
+	if len(active) > 0 {
+		ctx := context.Background()
+		mcpConfigs, _ := m.MCPConfigs(ctx, active)
+		mcpReg := mcpregistry.New()
+		mcpregistry.RegisterAll(mcpReg)
+		_ = orchestration.WriteMCPConfigWithIntegrationsExternal(projectDir, mcpReg, mcpConfigs)
+		mcpTools := m.MCPToolAllowlist(active)
+		_ = orchestration.WriteSettingsWithIntegrationsExternal(projectDir, mcpReg, mcpTools)
+	}
+
+	terminal.Success("Project synced — integration tools are now available")
 }

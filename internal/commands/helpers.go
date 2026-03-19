@@ -15,6 +15,7 @@ func loadConfigWithProject() (*config.Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	cfg.Agentic = AgenticFlag()
 
 	projects := cfg.ListProjects()
 	if len(projects) == 0 {
@@ -30,6 +31,12 @@ func loadProjectService(opts ...service.ServiceOpts) (*service.Service, error) {
 	cfg, err := loadConfigWithProject()
 	if err != nil {
 		return nil, err
+	}
+	if len(opts) == 0 {
+		opts = append(opts, service.ServiceOpts{
+			Runtime: AgentFlag(),
+			Model:   ModelFlag(),
+		})
 	}
 	return service.NewService(cfg, opts...)
 }

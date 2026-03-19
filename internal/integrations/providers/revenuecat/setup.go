@@ -22,29 +22,21 @@ func (r *revenuecatProvider) Setup(_ context.Context, req integrations.SetupRequ
 }
 
 func (r *revenuecatProvider) setupGuided(req integrations.SetupRequest) error {
-	req.PrintFn("header", "RevenueCat Setup (guided)")
-	req.PrintFn("info", "")
-	req.PrintFn("info", "We need a v2 secret API key (starts with sk_) from your RevenueCat dashboard.")
-	req.PrintFn("info", "")
-	req.PrintFn("detail", "1. Open your project in the RevenueCat dashboard")
-	req.PrintFn("detail", "2. Click 'API Keys' in the left sidebar")
-	req.PrintFn("detail", "3. Scroll to 'Secret API keys' and click '+ New secret API key'")
-	req.PrintFn("detail", "4. Name it (e.g. 'nanowave'), select version 'V2', enable write access")
-	req.PrintFn("detail", "5. Click 'Generate' and copy the key (starts with sk_)")
-	req.PrintFn("info", "")
+	req.PrintFn("header", "RevenueCat Setup")
+	req.PrintFn("info", "We need your secret API key from the RevenueCat dashboard.")
+	req.PrintFn("detail", "1. Go to app.revenuecat.com → your project → API Keys")
+	req.PrintFn("detail", "2. Create a new secret key (V2, with write access)")
+	req.PrintFn("detail", "3. Copy the key (starts with sk_)")
 
-	// Let the user read the instructions, then open the dashboard on Enter.
-	// If the user already has the key, they can paste it directly here.
-	input := strings.TrimSpace(req.ReadLineFn("▶ Press Enter to open RevenueCat dashboard, or paste your sk_ key now"))
+	// User can paste key directly or press Enter to open the dashboard
+	input := strings.TrimSpace(req.ReadLineFn("Paste your sk_ key (or Enter to open dashboard)"))
 
 	var secretKey string
 	if strings.HasPrefix(input, "sk_") {
-		// User pasted the key directly — skip opening the browser
 		secretKey = input
 	} else {
-		// Open the dashboard and wait for the key
 		_ = exec.Command("open", rcDashboardURL).Start()
-		req.PrintFn("info", "Dashboard opened — follow the steps above, then paste the key here")
+		req.PrintFn("info", "Opening RevenueCat dashboard...")
 		secretKey = strings.TrimSpace(req.ReadLineFn("Paste your secret API key (sk_...)"))
 	}
 	if secretKey == "" {
@@ -66,7 +58,7 @@ func (r *revenuecatProvider) setupGuided(req integrations.SetupRequest) error {
 	if len(projects) == 0 {
 		return fmt.Errorf("no projects found — create a project at %s first", rcDashboardURL)
 	}
-	req.PrintFn("success", "Key valid — found your account")
+	req.PrintFn("success", "Key valid")
 
 	// Auto-select project if only one, otherwise let user pick
 	var selectedProject rcProject

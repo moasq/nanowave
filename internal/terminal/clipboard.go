@@ -17,8 +17,46 @@ var clipboardState struct {
 	counter int      // monotonic counter for unique filenames
 }
 
-// hasClipboardImage checks if the macOS clipboard contains image data.
-func hasClipboardImage() bool {
+func ensureClipboardTempDir() (string, bool) {
+	clipboardState.mu.Lock()
+	defer clipboardState.mu.Unlock()
+
+	if clipboardState.tempDir == "" {
+		dir, err := os.MkdirTemp("", "nanowave-clipboard-*")
+		if err != nil {
+			return "", false
+		}
+		clipboardState.tempDir = dir
+	}
+	return clipboardState.tempDir, true
+}
+
+func nextClipboardFilename(ext string) (string, string, bool) {
+	tempDir, ok := ensureClipboardTempDir()
+	if !ok {
+		return "", "", false
+	}
+
+	clipboardState.mu.Lock()
+	clipboardState.counter++
+	counter := clipboardState.counter
+	clipboardState.mu.Unlock()
+
+	filename := fmt.Sprintf("paste_%d%s", counter, ext)
+	return filename, filepath.Join(tempDir, filename), true
+}
+
+func appendClipboardImages(paths []string) {
+	if len(paths) == 0 {
+		return
+	}
+
+	clipboardState.mu.Lock()
+	clipboardState.images = append(clipboardState.images, paths...)
+	clipboardState.mu.Unlock()
+}
+
+func hasClipboardRasterImage() bool {
 	cmd := exec.Command("osascript", "-e", `try
   the clipboard as «class PNGf»
   return "yes"
@@ -32,8 +70,40 @@ end try`)
 	return strings.TrimSpace(string(out)) == "yes"
 }
 
+func clipboardImageFilePaths() []string {
+	cmd := exec.Command("osascript", "-e", `set AppleScript's text item delimiters to linefeed
+try
+  set outputLines to {}
+  set clipboardItems to the clipboard as alias list
+  repeat with itemRef in clipboardItems
+    set end of outputLines to POSIX path of itemRef
+  end repeat
+  return outputLines as text
+on error
+  try
+    return POSIX path of (the clipboard as alias)
+  on error
+    return ""
+  end try
+end try`)
+	out, err := cmd.Output()
+	if err != nil {
+		return nil
+	}
+
+	var images []string
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || !isImagePath(line) {
+			continue
+		}
+		images = append(images, resolveImagePath(line))
+	}
+	return uniqueStrings(images)
+}
+
 // saveClipboardImageToFile extracts clipboard image data and writes it to destPath.
-func saveClipboardImageToFile(destPath string) error {
+func saveClipboardRasterImage(destPath string) error {
 	script := fmt.Sprintf(`set theFile to POSIX file %q
 try
   set theImage to the clipboard as «class PNGf»
@@ -60,47 +130,43 @@ end try`, destPath)
 	return nil
 }
 
-// pasteClipboardImage attempts to read an image from the clipboard,
-// saves it to a temp file, and records it for the current input.
-// Returns true if an image was pasted.
-func pasteClipboardImage() bool {
-	if !hasClipboardImage() {
-		return false
+func pasteClipboardRasterImage() (string, bool) {
+	if !hasClipboardRasterImage() {
+		return "", false
 	}
 
-	clipboardState.mu.Lock()
-	if clipboardState.tempDir == "" {
-		dir, err := os.MkdirTemp("", "nanowave-clipboard-*")
-		if err != nil {
-			clipboardState.mu.Unlock()
-			return false
-		}
-		clipboardState.tempDir = dir
+	_, destPath, ok := nextClipboardFilename(".png")
+	if !ok {
+		return "", false
 	}
-	clipboardState.counter++
-	counter := clipboardState.counter
-	tempDir := clipboardState.tempDir
-	clipboardState.mu.Unlock()
-
-	filename := fmt.Sprintf("paste_%d.png", counter)
-	destPath := filepath.Join(tempDir, filename)
-
-	if err := saveClipboardImageToFile(destPath); err != nil {
-		return false
+	if err := saveClipboardRasterImage(destPath); err != nil {
+		return "", false
 	}
 
 	// Verify the file was actually written
 	info, err := os.Stat(destPath)
 	if err != nil || info.Size() < 8 {
 		os.Remove(destPath)
-		return false
+		return "", false
 	}
 
-	clipboardState.mu.Lock()
-	clipboardState.images = append(clipboardState.images, destPath)
-	clipboardState.mu.Unlock()
+	return destPath, true
+}
 
-	return true
+// pasteClipboardImages attaches Finder image files first, then falls back to
+// raster image data from the clipboard. It returns newly attached image paths.
+func pasteClipboardImages() []string {
+	if images := clipboardImageFilePaths(); len(images) > 0 {
+		appendClipboardImages(images)
+		return images
+	}
+
+	imagePath, ok := pasteClipboardRasterImage()
+	if !ok {
+		return nil
+	}
+	appendClipboardImages([]string{imagePath})
+	return []string{imagePath}
 }
 
 // takeClipboardImages returns and clears any images pasted during the current input.

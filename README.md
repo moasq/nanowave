@@ -12,7 +12,7 @@ From idea to App Store — entirely from your terminal.
 
 [![Go](https://img.shields.io/badge/Go-1.26-00ADD8?style=flat&logo=go&logoColor=white)](https://go.dev)
 [![Swift](https://img.shields.io/badge/Swift-6-FA7343?style=flat&logo=swift&logoColor=white)](https://swift.org)
-[![Powered by Claude](https://img.shields.io/badge/Powered%20by-Claude%20Code-7C3AED?style=flat&logo=anthropic&logoColor=white)](https://docs.anthropic.com/en/docs/claude-code)
+[![Runtime Selectable](https://img.shields.io/badge/AI%20Runtime-Claude%20%7C%20Codex%20%7C%20OpenCode-0F172A?style=flat)](#supported-ai-runtimes)
 [![macOS](https://img.shields.io/badge/macOS-only-000000?style=flat&logo=apple&logoColor=white)](https://developer.apple.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat)](LICENSE)
 
@@ -32,9 +32,36 @@ $ nanowave
   ✓ FitTrack is ready!
 ```
 
-One sentence in, a compiled Xcode project out. Nanowave plans the architecture, generates SwiftUI code, and auto-fixes until it builds. Runs on your [Claude Pro/Max subscription](https://claude.ai) through Claude Code.
+One sentence in, a compiled Xcode project out. Nanowave plans the architecture, generates SwiftUI code, and auto-fixes until it builds. Choose the AI runtime and model that fit your workflow.
 
 <br>
+
+## Supported AI Runtimes
+
+Nanowave supports these runtimes today:
+
+<table>
+<tr>
+<td align="center" width="33%">
+<img src="assets/readme/claude-code.png" width="40" alt="Claude Code"><br>
+<b>Claude Code</b><br>
+<sub>Best for long interactive build/edit sessions</sub><br><br>
+<code>--agent claude</code>
+</td>
+<td align="center" width="33%">
+<img src="assets/readme/codex.png" width="40" alt="Codex"><br>
+<b>Codex</b><br>
+<sub>OpenAI Codex CLI support for fast edit and build loops</sub><br><br>
+<code>--agent codex</code>
+</td>
+<td align="center" width="33%">
+<img src="https://opencode.ai/favicon.ico" width="40" alt="OpenCode"><br>
+<b>OpenCode</b><br>
+<sub>Bring your provider and model through OpenCode</sub><br><br>
+<code>--agent opencode</code>
+</td>
+</tr>
+</table>
 
 ## Install
 
@@ -75,6 +102,14 @@ Select an existing project to edit it:
 > Add a dark mode toggle to the settings screen
 
   ✓ Changes applied!
+```
+
+Select a runtime and model explicitly when needed:
+
+```bash
+nanowave --agent claude --model sonnet
+nanowave --agent codex --model gpt-5-codex
+nanowave --agent opencode --model openai/gpt-5-codex
 ```
 
 ## Platforms
@@ -119,9 +154,9 @@ Ship to the App Store and TestFlight without leaving the terminal.
 
 Nanowave handles code signing, metadata, screenshots (automatic simulator capture or browser upload), privacy declarations, and submission — with confirmation before any destructive action.
 
-## Integrations
+## Available Integrations
 
-Mention authentication, a database, or a paid feature — Nanowave connects the backend automatically.
+These are the integrations available now:
 
 <table>
 <tr>
@@ -129,6 +164,8 @@ Mention authentication, a database, or a paid feature — Nanowave connects the 
 <td align="center"><a href="https://www.revenuecat.com"><img src="https://cdn.simpleicons.org/revenuecat/F25A5A" width="40"><br><b>RevenueCat</b></a><br><sub>Subscriptions & paywalls</sub></td>
 </tr>
 </table>
+
+Mention authentication, a database, or a paid feature, and Nanowave wires up the supported backend automatically.
 
 ## Frameworks
 
@@ -198,9 +235,15 @@ nanowave --version    # print version
 
 </details>
 
-## Cost
+## Runtime Selection
 
-Runs on your existing [Claude Pro or Max](https://claude.ai) subscription through [Claude Code](https://docs.anthropic.com/en/docs/claude-code). No additional API charges.
+Use `nanowave setup` to install or verify the runtime you want, then select it with `--agent`. Models can be chosen with `--model` or `/model`.
+
+| Runtime | Install | Login | Example |
+|---|---|---|---|
+| Claude Code | `curl -fsSL https://claude.ai/install.sh \| bash` | `claude auth login` | `nanowave --agent claude --model sonnet` |
+| Codex | `npm install -g @openai/codex` | `codex login` | `nanowave --agent codex --model gpt-5-codex` |
+| OpenCode | `curl -fsSL https://opencode.ai/install \| bash` | `opencode auth login` | `nanowave --agent opencode --model openai/gpt-5-codex` |
 
 ## Development
 
@@ -215,6 +258,7 @@ make test    # run tests
 ```
 cmd/nanowave/           # CLI entry point (cobra)
 internal/
+├── agentruntime/      # Runtime adapters (Claude, Codex, OpenCode)
 ├── claude/             # Claude Code client
 ├── commands/           # Cobra commands
 ├── config/             # Environment detection

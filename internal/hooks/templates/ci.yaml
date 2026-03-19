@@ -1,0 +1,53 @@
+# Nanowave - Hooks Configuration (CI/CD)
+# See: nanowave hooks --help
+
+version: 1
+
+notifiers:
+  slack:
+    enabled: true
+    webhook_url_env: "SLACK_WEBHOOK_URL"
+
+defaults:
+  timeout: "120s"
+  continue_on_error: true
+  log_dir: "~/.nanowave/hook-logs/"
+
+hooks:
+  build.start:
+    - name: "ci-build-start"
+      run: "echo \"CI build started: {{.APP_NAME}} at $(date)\" >> /tmp/nanowave-ci.log"
+      when: always
+
+  build.done:
+    - name: "ci-build-notify"
+      notify: slack
+      template: "CI Build {{.STATUS}}: {{.APP_NAME}} ({{.DURATION_SEC}}s) - {{.COMMIT}}"
+      when: always
+    - name: "ci-build-log"
+      run: "echo \"CI build {{.STATUS}}: {{.APP_NAME}} at $(date)\" >> /tmp/nanowave-ci.log"
+      when: always
+
+  store.upload.done:
+    - name: "ci-upload-notify"
+      notify: slack
+      template: "CI Upload: {{.APP_NAME}} build {{.BUILD_NUMBER}} uploaded"
+      when: success
+
+  store.submit.done:
+    - name: "ci-submit-notify"
+      notify: slack
+      template: "CI Submit: {{.APP_NAME}} v{{.VERSION}} submitted for review"
+      when: success
+
+  store.release:
+    - name: "ci-release-notify"
+      notify: slack
+      template: "CI Release: {{.APP_NAME}} v{{.VERSION}} is live"
+      when: success
+
+  workflow.done:
+    - name: "ci-workflow-notify"
+      notify: slack
+      template: "Workflow {{.STATUS}}: {{.WORKFLOW_NAME}} ({{.DURATION_SEC}}s)"
+      when: always

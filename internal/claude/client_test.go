@@ -2,11 +2,34 @@ package claude
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
+
+func TestBuildImageContextAllowsImageOnlyPrompts(t *testing.T) {
+	got := buildImageContext("", []string{"/tmp/example.png"})
+
+	if strings.HasPrefix(got, "\n") {
+		t.Fatalf("buildImageContext() added leading newline: %q", got)
+	}
+	if !strings.Contains(got, "Image 1: /tmp/example.png") {
+		t.Fatalf("buildImageContext() missing image path: %q", got)
+	}
+}
+
+func TestBuildImageContextKeepsPromptAndImages(t *testing.T) {
+	got := buildImageContext("Inspect this", []string{"/tmp/example.png"})
+
+	if !strings.HasPrefix(got, "Inspect this\n\n[Attached images") {
+		t.Fatalf("buildImageContext() = %q", got)
+	}
+}
 
 func TestStreamNDJSONLinesHandlesLargeLine(t *testing.T) {
 	large := strings.Repeat("a", 1024*1024+128)
@@ -90,3 +113,39 @@ func (r *failingReader) Read(p []byte) (int, error) {
 }
 
 var _ io.Reader = (*failingReader)(nil)
+
+func TestGenerateStreamingReturnsAfterResultEvenIfProcessLingers(t *testing.T) {
+	dir := t.TempDir()
+	script := filepath.Join(dir, "fake-claude.sh")
+	body := `#!/bin/sh
+/bin/echo '{"type":"system","subtype":"init","session_id":"sess-123"}'
+/bin/echo '{"type":"assistant","message":{"content":[{"type":"text","text":"done"}]}}'
+/bin/echo '{"type":"result","result":"done","session_id":"sess-123","cost_usd":1.5,"num_turns":2}'
+sleep 5
+`
+	if err := os.WriteFile(script, []byte(body), 0o755); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	client := NewClient(script)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	start := time.Now()
+	resp, err := client.GenerateStreaming(ctx, "hello", GenerateOpts{}, nil)
+	if err != nil {
+		t.Fatalf("GenerateStreaming() error = %v", err)
+	}
+	if elapsed := time.Since(start); elapsed >= 2*time.Second {
+		t.Fatalf("GenerateStreaming() took %v, want it to finish before context timeout", elapsed)
+	}
+	if resp == nil {
+		t.Fatal("GenerateStreaming() response = nil")
+	}
+	if got, want := resp.Result, "done"; got != want {
+		t.Fatalf("GenerateStreaming() result = %q, want %q", got, want)
+	}
+	if got, want := resp.SessionID, "sess-123"; got != want {
+		t.Fatalf("GenerateStreaming() sessionID = %q, want %q", got, want)
+	}
+}

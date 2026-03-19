@@ -1,0 +1,651 @@
+{
+  "name": "System Services",
+  "slug": "system-services",
+  "count": 92,
+  "videos": [
+    {
+      "id": "719",
+      "year": 2015,
+      "title": "Your App and Next Generation Networks",
+      "duration": "52:41",
+      "url": "https://developer.apple.com/videos/play/wwdc2015/719/"
+    },
+    {
+      "id": "722",
+      "year": 2016,
+      "title": "Developing CarPlay Systems, Part 1",
+      "duration": "30:02",
+      "url": "https://developer.apple.com/videos/play/wwdc2016/722/"
+    },
+    {
+      "id": "724",
+      "year": 2016,
+      "title": "What's New in the Apple Push Notification Service",
+      "duration": "14:45",
+      "url": "https://developer.apple.com/videos/play/wwdc2016/724/"
+    },
+    {
+      "id": "605",
+      "year": 2017,
+      "title": "SceneKit in Swift Playgrounds",
+      "duration": "40:09",
+      "url": "https://developer.apple.com/videos/play/wwdc2017/605/"
+    },
+    {
+      "id": "716",
+      "year": 2017,
+      "title": "iOS Configuration and APIs for Kiosk and Assessment Apps",
+      "duration": "35:48",
+      "url": "https://developer.apple.com/videos/play/wwdc2017/716/"
+    },
+    {
+      "id": "718",
+      "year": 2017,
+      "title": "Introducing Core NFC",
+      "duration": "11:15",
+      "url": "https://developer.apple.com/videos/play/wwdc2017/718/"
+    },
+    {
+      "id": "715",
+      "year": 2018,
+      "title": "Introducing Network.framework: A modern alternative to Sockets",
+      "duration": "61:43",
+      "url": "https://developer.apple.com/videos/play/wwdc2018/715/"
+    },
+    {
+      "id": "241",
+      "year": 2019,
+      "title": "Adding Indoor Maps to your App and Website",
+      "duration": "52:46",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/241/"
+    },
+    {
+      "id": "245",
+      "year": 2019,
+      "title": "Introducing the Indoor Maps Program",
+      "duration": "26:17",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/245/"
+    },
+    {
+      "id": "247",
+      "year": 2019,
+      "title": "What’s New in ClassKit",
+      "duration": "28:02",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/247/"
+    },
+    {
+      "id": "236",
+      "year": 2019,
+      "title": "What’s New in MapKit and MapKit JS",
+      "duration": "51:08",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/236/"
+    },
+    {
+      "id": "723",
+      "year": 2019,
+      "title": "Advances in Foundation",
+      "duration": "15:54",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/723/"
+    },
+    {
+      "id": "712",
+      "year": 2019,
+      "title": "Advances in Networking, Part 1",
+      "duration": "56:58",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/712/"
+    },
+    {
+      "id": "713",
+      "year": 2019,
+      "title": "Advances in Networking, Part 2",
+      "duration": "61:25",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/713/"
+    },
+    {
+      "id": "220",
+      "year": 2019,
+      "title": "Advances in UI Data Sources",
+      "duration": "36:15",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/220/"
+    },
+    {
+      "id": "721",
+      "year": 2019,
+      "title": "Combine in Practice",
+      "duration": "34:41",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/721/"
+    },
+    {
+      "id": "718",
+      "year": 2019,
+      "title": "Introducing Accelerate for Swift",
+      "duration": "20:59",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/718/"
+    },
+    {
+      "id": "722",
+      "year": 2019,
+      "title": "Introducing Combine",
+      "duration": "18:52",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/722/"
+    },
+    {
+      "id": "714",
+      "year": 2019,
+      "title": "Network Extensions for the Modern Mac",
+      "duration": "39:19",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/714/"
+    },
+    {
+      "id": "716",
+      "year": 2019,
+      "title": "Streaming Audio on watchOS 6",
+      "duration": "8:54",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/716/"
+    },
+    {
+      "id": "616",
+      "year": 2019,
+      "title": "Supporting New Game Controllers",
+      "duration": "17:00",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/616/"
+    },
+    {
+      "id": "702",
+      "year": 2019,
+      "title": "System Extensions and DriverKit",
+      "duration": "37:01",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/702/"
+    },
+    {
+      "id": "710",
+      "year": 2019,
+      "title": "What's New in Apple File Systems",
+      "duration": "34:07",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/710/"
+    },
+    {
+      "id": "901",
+      "year": 2019,
+      "title": "What's New in Core Bluetooth",
+      "duration": "31:15",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/901/"
+    },
+    {
+      "id": "10142",
+      "year": 2020,
+      "title": "Build scalable enterprise app suites",
+      "duration": "15:16",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10142/"
+    },
+    {
+      "id": "10222",
+      "year": 2020,
+      "title": "Create custom apps for employees",
+      "duration": "14:50",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10222/"
+    },
+    {
+      "id": "10667",
+      "year": 2020,
+      "title": "Custom app distribution with Apple Business Manager",
+      "duration": "21:01",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10667/"
+    },
+    {
+      "id": "10684",
+      "year": 2020,
+      "title": "Swan's Quest, Chapter 4: The sequence completes",
+      "duration": "8:08",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10684/"
+    },
+    {
+      "id": "10672",
+      "year": 2020,
+      "title": "What's new in ClassKit",
+      "duration": "24:48",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10672/"
+    },
+    {
+      "id": "10658",
+      "year": 2020,
+      "title": "What's new in education",
+      "duration": "11:01",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10658/"
+    },
+    {
+      "id": "10614",
+      "year": 2020,
+      "title": "Advancements in Game Controllers",
+      "duration": "24:59",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10614/"
+    },
+    {
+      "id": "10111",
+      "year": 2020,
+      "title": "Boost performance and security with modern networking",
+      "duration": "13:42",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10111/"
+    },
+    {
+      "id": "10113",
+      "year": 2020,
+      "title": "Build local push connectivity for restricted networks",
+      "duration": "13:46",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10113/"
+    },
+    {
+      "id": "10204",
+      "year": 2020,
+      "title": "Create great enterprise apps: A chat with Box's Aaron Levie",
+      "duration": "21:27",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10204/"
+    },
+    {
+      "id": "10047",
+      "year": 2020,
+      "title": "Enable encrypted DNS",
+      "duration": "13:16",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10047/"
+    },
+    {
+      "id": "10210",
+      "year": 2020,
+      "title": "Modernize PCI and SCSI drivers with DriverKit",
+      "duration": "36:53",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10210/"
+    },
+    {
+      "id": "10110",
+      "year": 2020,
+      "title": "Support local network privacy in your app",
+      "duration": "12:16",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10110/"
+    },
+    {
+      "id": "10095",
+      "year": 2020,
+      "title": "The Push Notifications primer",
+      "duration": "11:46",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10095/"
+    },
+    {
+      "id": "10045",
+      "year": 2021,
+      "title": "Create custom audio experiences with ShazamKit",
+      "duration": "15:53",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10045/"
+    },
+    {
+      "id": "10257",
+      "year": 2021,
+      "title": "Meet ClassKit for file-based apps",
+      "duration": "14:10",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10257/"
+    },
+    {
+      "id": "10298",
+      "year": 2021,
+      "title": "Add support for Matter in your smart home app",
+      "duration": "17:42",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10298/"
+    },
+    {
+      "id": "10118",
+      "year": 2021,
+      "title": "Automate CloudKit tests with cktool and declarative schema",
+      "duration": "9:34",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10118/"
+    },
+    {
+      "id": "10190",
+      "year": 2021,
+      "title": "Create audio drivers with DriverKit",
+      "duration": "18:38",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10190/"
+    },
+    {
+      "id": "10096",
+      "year": 2021,
+      "title": "Get ready for iCloud Private Relay",
+      "duration": "15:08",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10096/"
+    },
+    {
+      "id": "10117",
+      "year": 2021,
+      "title": "Meet CloudKit Console",
+      "duration": "7:22",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10117/"
+    },
+    {
+      "id": "10103",
+      "year": 2021,
+      "title": "Optimize for 5G networks",
+      "duration": "13:39",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10103/"
+    },
+    {
+      "id": "10239",
+      "year": 2021,
+      "title": "Reduce network delays for your app",
+      "duration": "22:51",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10239/"
+    },
+    {
+      "id": "10003",
+      "year": 2021,
+      "title": "There and back again: Data transfer on Apple Watch",
+      "duration": "31:49",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10003/"
+    },
+    {
+      "id": "10046",
+      "year": 2022,
+      "title": "Adopt declarative device management",
+      "duration": "31:47",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10046/"
+    },
+    {
+      "id": "10018",
+      "year": 2022,
+      "title": "Bring Continuity Camera to your macOS app",
+      "duration": "19:41",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10018/"
+    },
+    {
+      "id": "110348",
+      "year": 2022,
+      "title": "Build your first app in Swift Playgrounds",
+      "duration": "15:48",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/110348/"
+    },
+    {
+      "id": "10152",
+      "year": 2022,
+      "title": "Create accessible Single App Mode experiences",
+      "duration": "14:08",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10152/"
+    },
+    {
+      "id": "110349",
+      "year": 2022,
+      "title": "Create engaging content for Swift Playgrounds",
+      "duration": "20:26",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/110349/"
+    },
+    {
+      "id": "10002",
+      "year": 2022,
+      "title": "Create macOS or Linux virtual machines",
+      "duration": "23:00",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10002/"
+    },
+    {
+      "id": "10053",
+      "year": 2022,
+      "title": "Discover Sign in with Apple at Work & School",
+      "duration": "19:25",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10053/"
+    },
+    {
+      "id": "110335",
+      "year": 2022,
+      "title": "Explore Apple Business Essentials",
+      "duration": "13:12",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/110335/"
+    },
+    {
+      "id": "10045",
+      "year": 2022,
+      "title": "What's new in managing Apple devices",
+      "duration": "38:23",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10045/"
+    },
+    {
+      "id": "110345",
+      "year": 2022,
+      "title": "What’s new in Endpoint Security",
+      "duration": "10:14",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/110345/"
+    },
+    {
+      "id": "10167",
+      "year": 2022,
+      "title": "Create your Privacy Nutrition Label",
+      "duration": "12:14",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10167/"
+    },
+    {
+      "id": "10117",
+      "year": 2022,
+      "title": "Enhance voice communication with Push to Talk",
+      "duration": "21:24",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10117/"
+    },
+    {
+      "id": "10120",
+      "year": 2022,
+      "title": "Evolve your Core Data schema",
+      "duration": "19:51",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10120/"
+    },
+    {
+      "id": "110341",
+      "year": 2022,
+      "title": "Explore SMS message filters",
+      "duration": "12:37",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/110341/"
+    },
+    {
+      "id": "10119",
+      "year": 2022,
+      "title": "Optimize your use of Core Data and CloudKit",
+      "duration": "26:21",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10119/"
+    },
+    {
+      "id": "10078",
+      "year": 2022,
+      "title": "Reduce networking delays for a more responsive app",
+      "duration": "18:42",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10078/"
+    },
+    {
+      "id": "10115",
+      "year": 2022,
+      "title": "What’s new in CloudKit Console",
+      "duration": "7:10",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10115/"
+    },
+    {
+      "id": "10254",
+      "year": 2023,
+      "title": "Do more with Managed Apple IDs",
+      "duration": "19:42",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10254/"
+    },
+    {
+      "id": "10041",
+      "year": 2023,
+      "title": "Explore advances in declarative device management",
+      "duration": "36:36",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10041/"
+    },
+    {
+      "id": "10039",
+      "year": 2023,
+      "title": "Meet device management for Apple Watch",
+      "duration": "17:32",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10039/"
+    },
+    {
+      "id": "10040",
+      "year": 2023,
+      "title": "What’s new in managing Apple devices",
+      "duration": "28:46",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10040/"
+    },
+    {
+      "id": "10006",
+      "year": 2023,
+      "title": "Build robust and resumable file transfers",
+      "duration": "20:39",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10006/"
+    },
+    {
+      "id": "10007",
+      "year": 2023,
+      "title": "Create seamless experiences with Virtualization",
+      "duration": "15:58",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10007/"
+    },
+    {
+      "id": "10025",
+      "year": 2023,
+      "title": "Meet Push Notifications Console",
+      "duration": "11:32",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10025/"
+    },
+    {
+      "id": "10150",
+      "year": 2023,
+      "title": "Optimize CarPlay for vehicle systems",
+      "duration": "18:24",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10150/"
+    },
+    {
+      "id": "10002",
+      "year": 2023,
+      "title": "Ready, set, relay: Protect app traffic with network relays",
+      "duration": "12:19",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10002/"
+    },
+    {
+      "id": "10004",
+      "year": 2023,
+      "title": "Reduce network delays with L4S",
+      "duration": "17:05",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10004/"
+    },
+    {
+      "id": "10188",
+      "year": 2023,
+      "title": "Sync to iCloud with CKSyncEngine",
+      "duration": "23:02",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10188/"
+    },
+    {
+      "id": "10186",
+      "year": 2023,
+      "title": "What’s new in Core Data",
+      "duration": "23:23",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10186/"
+    },
+    {
+      "id": "10143",
+      "year": 2024,
+      "title": "What’s new in device management",
+      "duration": "25:12",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10143/"
+    },
+    {
+      "id": "10203",
+      "year": 2024,
+      "title": "Meet AccessorySetupKit",
+      "duration": "15:24",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10203/"
+    },
+    {
+      "id": "10111",
+      "year": 2024,
+      "title": "Meet the next generation of CarPlay architecture",
+      "duration": "27:40",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10111/"
+    },
+    {
+      "id": "10112",
+      "year": 2024,
+      "title": "Say hello to the next generation of CarPlay design system",
+      "duration": "19:25",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10112/"
+    },
+    {
+      "id": "10122",
+      "year": 2024,
+      "title": "Use CloudKit Console to monitor and optimize database activity",
+      "duration": "13:26",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10122/"
+    },
+    {
+      "id": "203",
+      "year": 2025,
+      "title": "Get to know the ManagedApp Framework",
+      "duration": "24:50",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/203/"
+    },
+    {
+      "id": "258",
+      "year": 2025,
+      "title": "What’s new in Apple device management and identity",
+      "duration": "19:43",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/258/"
+    },
+    {
+      "id": "299",
+      "year": 2025,
+      "title": "Deliver age-appropriate experiences in your app",
+      "duration": "13:37",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/299/"
+    },
+    {
+      "id": "234",
+      "year": 2025,
+      "title": "Filter and tunnel network traffic with NetworkExtension",
+      "duration": "28:11",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/234/"
+    },
+    {
+      "id": "227",
+      "year": 2025,
+      "title": "Finish tasks in the background",
+      "duration": "18:38",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/227/"
+    },
+    {
+      "id": "314",
+      "year": 2025,
+      "title": "Get ahead with quantum-secure cryptography",
+      "duration": "20:09",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/314/"
+    },
+    {
+      "id": "257",
+      "year": 2025,
+      "title": "Optimize home electricity usage with EnergyKit",
+      "duration": "15:28",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/257/"
+    },
+    {
+      "id": "226",
+      "year": 2025,
+      "title": "Profile and optimize power usage in your app",
+      "duration": "19:43",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/226/"
+    },
+    {
+      "id": "216",
+      "year": 2025,
+      "title": "Turbocharge your app for CarPlay",
+      "duration": "22:09",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/216/"
+    },
+    {
+      "id": "250",
+      "year": 2025,
+      "title": "Use structured concurrency with Network framework",
+      "duration": "21:10",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/250/"
+    }
+  ]
+}

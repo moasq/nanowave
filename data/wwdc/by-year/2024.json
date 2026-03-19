@@ -1,0 +1,1491 @@
+{
+  "year": 2024,
+  "count": 123,
+  "videos": [
+    {
+      "id": "10068",
+      "year": 2024,
+      "title": "Bring your Live Activity to Apple Watch",
+      "duration": "10:27",
+      "durationSeconds": 627,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10068/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10133",
+      "year": 2024,
+      "title": "Bring your app to Siri",
+      "duration": "21:49",
+      "durationSeconds": 1309,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10133/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10210",
+      "year": 2024,
+      "title": "Bring your app’s core features to users with App Intents",
+      "duration": "26:02",
+      "durationSeconds": 1562,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10210/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10069",
+      "year": 2024,
+      "title": "Broadcast updates to your Live Activities",
+      "duration": "12:48",
+      "durationSeconds": 768,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10069/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10084",
+      "year": 2024,
+      "title": "Build custom swimming workouts with WorkoutKit",
+      "duration": "8:49",
+      "durationSeconds": 529,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10084/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10066",
+      "year": 2024,
+      "title": "Build immersive web experiences with WebXR",
+      "duration": "26:16",
+      "durationSeconds": 1576,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10066/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10185",
+      "year": 2024,
+      "title": "Build multilingual-ready apps",
+      "duration": "16:41",
+      "durationSeconds": 1001,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10185/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10138",
+      "year": 2024,
+      "title": "Create a custom data store with SwiftData",
+      "duration": "13:52",
+      "durationSeconds": 832,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10138/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10070",
+      "year": 2024,
+      "title": "Customize feature discovery with TipKit",
+      "duration": "14:45",
+      "durationSeconds": 885,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10070/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10098",
+      "year": 2024,
+      "title": "Design Live Activities for Apple Watch",
+      "duration": "8:38",
+      "durationSeconds": 518,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10098/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10109",
+      "year": 2024,
+      "title": "Explore wellbeing APIs in HealthKit",
+      "duration": "14:20",
+      "durationSeconds": 860,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10109/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10110",
+      "year": 2024,
+      "title": "Implement App Store Offers",
+      "duration": "33:02",
+      "durationSeconds": 1982,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10110/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10139",
+      "year": 2024,
+      "title": "Introducing enterprise APIs for visionOS",
+      "duration": "21:18",
+      "durationSeconds": 1278,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10139/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "2023",
+      "year": 2024,
+      "title": "Meet FinanceKit",
+      "duration": "23:45",
+      "durationSeconds": 1425,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/2023/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10117",
+      "year": 2024,
+      "title": "Meet the Translation API",
+      "duration": "16:31",
+      "durationSeconds": 991,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10117/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10214",
+      "year": 2024,
+      "title": "Squeeze the most out of Apple Pencil",
+      "duration": "14:58",
+      "durationSeconds": 898,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10214/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10125",
+      "year": 2024,
+      "title": "Streamline sign-in with passkey upgrades and credential managers",
+      "duration": "14:01",
+      "durationSeconds": 841,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10125/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10131",
+      "year": 2024,
+      "title": "Support semantic search with Core Spotlight",
+      "duration": "10:55",
+      "durationSeconds": 655,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10131/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10155",
+      "year": 2024,
+      "title": "Swift Charts: Vectorized and function plots",
+      "duration": "13:29",
+      "durationSeconds": 809,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10155/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10075",
+      "year": 2024,
+      "title": "Track model changes with SwiftData history",
+      "duration": "16:52",
+      "durationSeconds": 1012,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10075/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10160",
+      "year": 2024,
+      "title": "Train your machine learning and AI models on Apple GPUs",
+      "duration": "18:21",
+      "durationSeconds": 1101,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10160/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10097",
+      "year": 2024,
+      "title": "Unlock the power of places with MapKit",
+      "duration": "16:39",
+      "durationSeconds": 999,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10097/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10134",
+      "year": 2024,
+      "title": "What’s new in App Intents",
+      "duration": "17:56",
+      "durationSeconds": 1076,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10134/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10124",
+      "year": 2024,
+      "title": "What’s new in AppKit",
+      "duration": "19:56",
+      "durationSeconds": 1196,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10124/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10061",
+      "year": 2024,
+      "title": "What’s new in StoreKit and In-App Purchase",
+      "duration": "23:00",
+      "durationSeconds": 1380,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10061/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10137",
+      "year": 2024,
+      "title": "What’s new in SwiftData",
+      "duration": "14:01",
+      "durationSeconds": 841,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10137/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10118",
+      "year": 2024,
+      "title": "What’s new in UIKit",
+      "duration": "21:10",
+      "durationSeconds": 1270,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10118/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10108",
+      "year": 2024,
+      "title": "What’s new in Wallet and Apple Pay",
+      "duration": "18:28",
+      "durationSeconds": 1108,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10108/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10205",
+      "year": 2024,
+      "title": "What’s new in watchOS 11",
+      "duration": "14:16",
+      "durationSeconds": 856,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10205/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "10062",
+      "year": 2024,
+      "title": "Explore App Store server APIs for In-App Purchase",
+      "duration": "32:09",
+      "durationSeconds": 1929,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10062/",
+      "topics": [
+        "App Store & Distribution"
+      ],
+      "category": "app-store,-distribution-&-marketing"
+    },
+    {
+      "id": "10060",
+      "year": 2024,
+      "title": "Meet AdAttributionKit",
+      "duration": "23:41",
+      "durationSeconds": 1421,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10060/",
+      "topics": [
+        "App Store & Distribution"
+      ],
+      "category": "app-store,-distribution-&-marketing"
+    },
+    {
+      "id": "10063",
+      "year": 2024,
+      "title": "What’s new in App Store Connect",
+      "duration": "19:03",
+      "durationSeconds": 1143,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10063/",
+      "topics": [
+        "App Store & Distribution"
+      ],
+      "category": "app-store,-distribution-&-marketing"
+    },
+    {
+      "id": "10201",
+      "year": 2024,
+      "title": "Customize spatial Persona templates in SharePlay",
+      "duration": "36:26",
+      "durationSeconds": 2186,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10201/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "10113",
+      "year": 2024,
+      "title": "Discover media performance metrics in AVFoundation",
+      "duration": "8:40",
+      "durationSeconds": 520,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10113/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "10114",
+      "year": 2024,
+      "title": "Enhance ad experiences with HLS interstitials",
+      "duration": "13:24",
+      "durationSeconds": 804,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10114/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "10207",
+      "year": 2024,
+      "title": "Migrate your TVML app to SwiftUI",
+      "duration": "17:30",
+      "durationSeconds": 1050,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10207/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "10177",
+      "year": 2024,
+      "title": "Use HDR for dynamic image experiences in your app",
+      "duration": "34:29",
+      "durationSeconds": 2069,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10177/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "10143",
+      "year": 2024,
+      "title": "What’s new in device management",
+      "duration": "25:12",
+      "durationSeconds": 1512,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10143/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "business-&-education"
+    },
+    {
+      "id": "10140",
+      "year": 2024,
+      "title": "Add personality to your app through UX writing",
+      "duration": "20:49",
+      "durationSeconds": 1249,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10140/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "10152",
+      "year": 2024,
+      "title": "Create custom hover effects in visionOS",
+      "duration": "16:40",
+      "durationSeconds": 1000,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10152/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "10151",
+      "year": 2024,
+      "title": "Create custom visual effects with SwiftUI",
+      "duration": "26:06",
+      "durationSeconds": 1566,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10151/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "10147",
+      "year": 2024,
+      "title": "Elevate your tab and sidebar experience in iPadOS",
+      "duration": "15:46",
+      "durationSeconds": 946,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10147/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "10145",
+      "year": 2024,
+      "title": "Enhance your UI animations and transitions",
+      "duration": "14:14",
+      "durationSeconds": 854,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10145/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "10094",
+      "year": 2024,
+      "title": "Explore game input in visionOS",
+      "duration": "16:22",
+      "durationSeconds": 982,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10094/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "10116",
+      "year": 2024,
+      "title": "Explore multiview video playback in visionOS",
+      "duration": "14:02",
+      "durationSeconds": 842,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10116/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "10184",
+      "year": 2024,
+      "title": "A Swift Tour: Explore Swift’s features and design",
+      "duration": "27:36",
+      "durationSeconds": 1656,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10184/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10104",
+      "year": 2024,
+      "title": "Build a spatial drawing app with RealityKit",
+      "duration": "32:25",
+      "durationSeconds": 1945,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10104/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10102",
+      "year": 2024,
+      "title": "Compose interactive 3D content in Reality Composer Pro",
+      "duration": "34:36",
+      "durationSeconds": 2076,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10102/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10171",
+      "year": 2024,
+      "title": "Demystify explicitly built modules",
+      "duration": "15:28",
+      "durationSeconds": 928,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10171/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10103",
+      "year": 2024,
+      "title": "Discover RealityKit APIs for iOS, macOS, and visionOS",
+      "duration": "31:31",
+      "durationSeconds": 1891,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10103/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10107",
+      "year": 2024,
+      "title": "Discover area mode for Object Capture",
+      "duration": "11:31",
+      "durationSeconds": 691,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10107/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "111801",
+      "year": 2024,
+      "title": "Enhance your spatial computing app with RealityKit audio",
+      "duration": "23:20",
+      "durationSeconds": 1400,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/111801/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10169",
+      "year": 2024,
+      "title": "Migrate your app to Swift 6",
+      "duration": "41:48",
+      "durationSeconds": 2508,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10169/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10089",
+      "year": 2024,
+      "title": "Port advanced games to Apple platforms",
+      "duration": "29:32",
+      "durationSeconds": 1772,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10089/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10136",
+      "year": 2024,
+      "title": "What’s new in Swift",
+      "duration": "30:24",
+      "durationSeconds": 1824,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10136/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "10106",
+      "year": 2024,
+      "title": "What’s new in USD and MaterialX",
+      "duration": "9:24",
+      "durationSeconds": 564,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10106/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "111976",
+      "year": 2024,
+      "title": "18 things from WWDC24",
+      "duration": "2:43",
+      "durationSeconds": 163,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/111976/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "10200",
+      "year": 2024,
+      "title": "Extend your Xcode Cloud workflows",
+      "duration": "21:10",
+      "durationSeconds": 1270,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10200/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "101",
+      "year": 2024,
+      "title": "Keynote",
+      "duration": "104:04",
+      "durationSeconds": 6244,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/101/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "111",
+      "year": 2024,
+      "title": "Keynote (ASL)",
+      "duration": "104:04",
+      "durationSeconds": 6244,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/111/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "10179",
+      "year": 2024,
+      "title": "Meet Swift Testing",
+      "duration": "23:58",
+      "durationSeconds": 1438,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10179/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "102",
+      "year": 2024,
+      "title": "Platforms State of the Union",
+      "duration": "66:31",
+      "durationSeconds": 3991,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/102/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "112",
+      "year": 2024,
+      "title": "Platforms State of the Union (ASL)",
+      "duration": "66:31",
+      "durationSeconds": 3991,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/112/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "111977",
+      "year": 2024,
+      "title": "Platforms State of the Union 5-Minute Recap",
+      "duration": "5:00",
+      "durationSeconds": 300,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/111977/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "10150",
+      "year": 2024,
+      "title": "SwiftUI essentials",
+      "duration": "24:16",
+      "durationSeconds": 1456,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10150/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "10144",
+      "year": 2024,
+      "title": "What’s new in SwiftUI",
+      "duration": "23:13",
+      "durationSeconds": 1393,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10144/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "10135",
+      "year": 2024,
+      "title": "What’s new in Xcode 16",
+      "duration": "22:14",
+      "durationSeconds": 1334,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10135/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "10181",
+      "year": 2024,
+      "title": "Xcode essentials",
+      "duration": "36:27",
+      "durationSeconds": 2187,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10181/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "10218",
+      "year": 2024,
+      "title": "Accelerate machine learning with Metal",
+      "duration": "25:06",
+      "durationSeconds": 1506,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10218/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "10172",
+      "year": 2024,
+      "title": "Break into the RealityKit debugger",
+      "duration": "24:10",
+      "durationSeconds": 1450,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10172/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "10088",
+      "year": 2024,
+      "title": "Capture HDR content with ScreenCaptureKit",
+      "duration": "11:29",
+      "durationSeconds": 689,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10088/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "10085",
+      "year": 2024,
+      "title": "Design advanced games for Apple platforms",
+      "duration": "23:54",
+      "durationSeconds": 1434,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10085/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "10086",
+      "year": 2024,
+      "title": "Design great visionOS apps",
+      "duration": "19:03",
+      "durationSeconds": 1143,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10086/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "10186",
+      "year": 2024,
+      "title": "Optimize your 3D assets for spatial computing",
+      "duration": "22:13",
+      "durationSeconds": 1333,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10186/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "10105",
+      "year": 2024,
+      "title": "What’s new in Quick Look for visionOS",
+      "duration": "14:24",
+      "durationSeconds": 864,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10105/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "10209",
+      "year": 2024,
+      "title": "Enhanced suggestions for your journaling app",
+      "duration": "15:55",
+      "durationSeconds": 955,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10209/",
+      "topics": [
+        "Health & Fitness"
+      ],
+      "category": "health-&-fitness"
+    },
+    {
+      "id": "10159",
+      "year": 2024,
+      "title": "Bring your machine learning and AI models to Apple silicon",
+      "duration": "30:09",
+      "durationSeconds": 1809,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10159/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "10204",
+      "year": 2024,
+      "title": "Build a great Lock Screen camera capture experience",
+      "duration": "22:49",
+      "durationSeconds": 1369,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10204/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "10161",
+      "year": 2024,
+      "title": "Deploy machine learning and AI models on-device with Core ML",
+      "duration": "18:15",
+      "durationSeconds": 1095,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10161/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "10176",
+      "year": 2024,
+      "title": "Design App Intents for system experiences",
+      "duration": "9:19",
+      "durationSeconds": 559,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10176/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "10163",
+      "year": 2024,
+      "title": "Discover Swift enhancements in the Vision framework",
+      "duration": "16:49",
+      "durationSeconds": 1009,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10163/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "10223",
+      "year": 2024,
+      "title": "Explore machine learning on Apple platforms",
+      "duration": "17:33",
+      "durationSeconds": 1053,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10223/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "10101",
+      "year": 2024,
+      "title": "Explore object tracking for visionOS",
+      "duration": "17:01",
+      "durationSeconds": 1021,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10101/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "10168",
+      "year": 2024,
+      "title": "Get started with Writing Tools",
+      "duration": "12:24",
+      "durationSeconds": 744,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10168/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "10162",
+      "year": 2024,
+      "title": "Keep colors consistent across captures",
+      "duration": "23:48",
+      "durationSeconds": 1428,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10162/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "10211",
+      "year": 2024,
+      "title": "Support real-time ML inference on the CPU",
+      "duration": "20:03",
+      "durationSeconds": 1203,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10211/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "10183",
+      "year": 2024,
+      "title": "What’s new in Create ML",
+      "duration": "11:32",
+      "durationSeconds": 692,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10183/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "10164",
+      "year": 2024,
+      "title": "What’s new in DockKit",
+      "duration": "16:06",
+      "durationSeconds": 966,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10164/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "10067",
+      "year": 2024,
+      "title": "Bring context to today’s weather",
+      "duration": "16:07",
+      "durationSeconds": 967,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10067/",
+      "topics": [
+        "Maps & Location"
+      ],
+      "category": "maps-&-location"
+    },
+    {
+      "id": "10166",
+      "year": 2024,
+      "title": "Build compelling spatial photo and video experiences",
+      "duration": "21:52",
+      "durationSeconds": 1312,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10166/",
+      "topics": [
+        "General"
+      ],
+      "category": "photos-&-camera"
+    },
+    {
+      "id": "10212",
+      "year": 2024,
+      "title": "What’s new in location authorization",
+      "duration": "18:16",
+      "durationSeconds": 1096,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10212/",
+      "topics": [
+        "Privacy & Security"
+      ],
+      "category": "privacy-&-security"
+    },
+    {
+      "id": "10123",
+      "year": 2024,
+      "title": "What’s new in privacy",
+      "duration": "23:46",
+      "durationSeconds": 1426,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10123/",
+      "topics": [
+        "Privacy & Security"
+      ],
+      "category": "privacy-&-security"
+    },
+    {
+      "id": "10093",
+      "year": 2024,
+      "title": "Bring your iOS or iPadOS game to visionOS",
+      "duration": "18:42",
+      "durationSeconds": 1122,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10093/",
+      "topics": [
+        "visionOS"
+      ],
+      "category": "spatial-computing"
+    },
+    {
+      "id": "10087",
+      "year": 2024,
+      "title": "Create custom environments for your immersive apps in visionOS",
+      "duration": "9:27",
+      "durationSeconds": 567,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10087/",
+      "topics": [
+        "visionOS"
+      ],
+      "category": "spatial-computing"
+    },
+    {
+      "id": "10100",
+      "year": 2024,
+      "title": "Create enhanced spatial computing experiences with ARKit",
+      "duration": "15:09",
+      "durationSeconds": 909,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10100/",
+      "topics": [
+        "visionOS"
+      ],
+      "category": "spatial-computing"
+    },
+    {
+      "id": "10096",
+      "year": 2024,
+      "title": "Design interactive experiences for visionOS",
+      "duration": "20:48",
+      "durationSeconds": 1248,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10096/",
+      "topics": [
+        "visionOS"
+      ],
+      "category": "spatial-computing"
+    },
+    {
+      "id": "10153",
+      "year": 2024,
+      "title": "Dive deep into volumes and immersive spaces",
+      "duration": "32:17",
+      "durationSeconds": 1937,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10153/",
+      "topics": [
+        "visionOS"
+      ],
+      "category": "spatial-computing"
+    },
+    {
+      "id": "10115",
+      "year": 2024,
+      "title": "Enhance the immersion of media viewing in custom environments",
+      "duration": "17:26",
+      "durationSeconds": 1046,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10115/",
+      "topics": [
+        "visionOS"
+      ],
+      "category": "spatial-computing"
+    },
+    {
+      "id": "10083",
+      "year": 2024,
+      "title": "Get started with HealthKit in visionOS",
+      "duration": "12:29",
+      "durationSeconds": 749,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10083/",
+      "topics": [
+        "visionOS"
+      ],
+      "category": "spatial-computing"
+    },
+    {
+      "id": "10091",
+      "year": 2024,
+      "title": "Meet TabletopKit for visionOS",
+      "duration": "16:39",
+      "durationSeconds": 999,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10091/",
+      "topics": [
+        "visionOS"
+      ],
+      "category": "spatial-computing"
+    },
+    {
+      "id": "10065",
+      "year": 2024,
+      "title": "Optimize for the spatial web",
+      "duration": "20:09",
+      "durationSeconds": 1209,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10065/",
+      "topics": [
+        "visionOS"
+      ],
+      "category": "spatial-computing"
+    },
+    {
+      "id": "10092",
+      "year": 2024,
+      "title": "Render Metal with passthrough in visionOS",
+      "duration": "19:54",
+      "durationSeconds": 1194,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10092/",
+      "topics": [
+        "visionOS"
+      ],
+      "category": "spatial-computing"
+    },
+    {
+      "id": "10149",
+      "year": 2024,
+      "title": "Work with windows in SwiftUI",
+      "duration": "12:55",
+      "durationSeconds": 775,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10149/",
+      "topics": [
+        "visionOS"
+      ],
+      "category": "spatial-computing"
+    },
+    {
+      "id": "10173",
+      "year": 2024,
+      "title": "Analyze heap memory",
+      "duration": "33:03",
+      "durationSeconds": 1983,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10173/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "10170",
+      "year": 2024,
+      "title": "Consume noncopyable types in Swift",
+      "duration": "22:21",
+      "durationSeconds": 1341,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10170/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "10217",
+      "year": 2024,
+      "title": "Explore Swift performance",
+      "duration": "34:36",
+      "durationSeconds": 2076,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10217/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "10216",
+      "year": 2024,
+      "title": "Explore the Swift on Server ecosystem",
+      "duration": "16:40",
+      "durationSeconds": 1000,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10216/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "10195",
+      "year": 2024,
+      "title": "Go further with Swift Testing",
+      "duration": "27:16",
+      "durationSeconds": 1636,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10195/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "10197",
+      "year": 2024,
+      "title": "Go small with Embedded Swift",
+      "duration": "22:17",
+      "durationSeconds": 1337,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10197/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "10198",
+      "year": 2024,
+      "title": "Run, Break, Inspect: Explore effective debugging in LLDB",
+      "duration": "28:48",
+      "durationSeconds": 1728,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10198/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "10220",
+      "year": 2024,
+      "title": "Bring expression to your app with Genmoji",
+      "duration": "11:17",
+      "durationSeconds": 677,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10220/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10073",
+      "year": 2024,
+      "title": "Catch up on accessibility in SwiftUI",
+      "duration": "21:19",
+      "durationSeconds": 1279,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10073/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10146",
+      "year": 2024,
+      "title": "Demystify SwiftUI containers",
+      "duration": "18:12",
+      "durationSeconds": 1092,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10146/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10132",
+      "year": 2024,
+      "title": "Evolve your document launch experience",
+      "duration": "10:08",
+      "durationSeconds": 608,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10132/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10157",
+      "year": 2024,
+      "title": "Extend your app’s controls across the system",
+      "duration": "18:09",
+      "durationSeconds": 1089,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10157/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10074",
+      "year": 2024,
+      "title": "Get started with Dynamic Type",
+      "duration": "15:30",
+      "durationSeconds": 930,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10074/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10121",
+      "year": 2024,
+      "title": "Meet the Contact Access Button",
+      "duration": "15:43",
+      "durationSeconds": 943,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10121/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10148",
+      "year": 2024,
+      "title": "Tailor macOS windows with SwiftUI",
+      "duration": "10:56",
+      "durationSeconds": 656,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10148/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10188",
+      "year": 2024,
+      "title": "What’s new in SF Symbols 6",
+      "duration": "17:19",
+      "durationSeconds": 1039,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10188/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "10203",
+      "year": 2024,
+      "title": "Meet AccessorySetupKit",
+      "duration": "15:24",
+      "durationSeconds": 924,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10203/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "system-services"
+    },
+    {
+      "id": "10111",
+      "year": 2024,
+      "title": "Meet the next generation of CarPlay architecture",
+      "duration": "27:40",
+      "durationSeconds": 1660,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10111/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "system-services"
+    },
+    {
+      "id": "10112",
+      "year": 2024,
+      "title": "Say hello to the next generation of CarPlay design system",
+      "duration": "19:25",
+      "durationSeconds": 1165,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10112/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "system-services"
+    },
+    {
+      "id": "10122",
+      "year": 2024,
+      "title": "Use CloudKit Console to monitor and optimize database activity",
+      "duration": "13:26",
+      "durationSeconds": 806,
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10122/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "system-services"
+    }
+  ]
+}

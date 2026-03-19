@@ -1,0 +1,1482 @@
+{
+  "year": 2025,
+  "count": 122,
+  "videos": [
+    {
+      "id": "238",
+      "year": 2025,
+      "title": "Customize your app for Assistive Access",
+      "duration": "15:37",
+      "durationSeconds": 937,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/238/",
+      "topics": [
+        "Accessibility"
+      ],
+      "category": "accessibility-&-inclusion"
+    },
+    {
+      "id": "224",
+      "year": 2025,
+      "title": "Evaluate your app for Accessibility Nutrition Labels",
+      "duration": "24:08",
+      "durationSeconds": 1448,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/224/",
+      "topics": [
+        "Accessibility"
+      ],
+      "category": "accessibility-&-inclusion"
+    },
+    {
+      "id": "229",
+      "year": 2025,
+      "title": "Make your Mac app more accessible to everyone",
+      "duration": "12:19",
+      "durationSeconds": 739,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/229/",
+      "topics": [
+        "Accessibility"
+      ],
+      "category": "accessibility-&-inclusion"
+    },
+    {
+      "id": "316",
+      "year": 2025,
+      "title": "Principles of inclusive app design",
+      "duration": "21:10",
+      "durationSeconds": 1270,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/316/",
+      "topics": [
+        "Accessibility"
+      ],
+      "category": "accessibility-&-inclusion"
+    },
+    {
+      "id": "325",
+      "year": 2025,
+      "title": "Discover Apple-Hosted Background Assets",
+      "duration": "25:05",
+      "durationSeconds": 1505,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/325/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "265",
+      "year": 2025,
+      "title": "Dive deeper into Writing Tools",
+      "duration": "17:54",
+      "durationSeconds": 1074,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/265/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "249",
+      "year": 2025,
+      "title": "Dive into App Store server APIs for In-App Purchase",
+      "duration": "22:47",
+      "durationSeconds": 1367,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/249/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "293",
+      "year": 2025,
+      "title": "Enhance child safety with PermissionKit",
+      "duration": "11:37",
+      "durationSeconds": 697,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/293/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "223",
+      "year": 2025,
+      "title": "Explore enhancements to your spatial business app",
+      "duration": "25:37",
+      "durationSeconds": 1537,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/223/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "285",
+      "year": 2025,
+      "title": "Meet PaperKit",
+      "duration": "12:11",
+      "durationSeconds": 731,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/285/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "321",
+      "year": 2025,
+      "title": "Meet the HealthKit Medications API",
+      "duration": "25:13",
+      "durationSeconds": 1513,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/321/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "291",
+      "year": 2025,
+      "title": "SwiftData: Dive into inheritance and schema migration",
+      "duration": "19:08",
+      "durationSeconds": 1148,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/291/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "322",
+      "year": 2025,
+      "title": "Track workouts with HealthKit on iOS and iPadOS",
+      "duration": "11:24",
+      "durationSeconds": 684,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/322/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "236",
+      "year": 2025,
+      "title": "Unlock GPU computing with WebGPU",
+      "duration": "21:53",
+      "durationSeconds": 1313,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/236/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "232",
+      "year": 2025,
+      "title": "Verify identity documents on the web",
+      "duration": "32:44",
+      "durationSeconds": 1964,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/232/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "230",
+      "year": 2025,
+      "title": "Wake up to the AlarmKit API",
+      "duration": "18:27",
+      "durationSeconds": 1107,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/230/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "201",
+      "year": 2025,
+      "title": "What’s new in Apple Pay",
+      "duration": "20:58",
+      "durationSeconds": 1258,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/201/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "233",
+      "year": 2025,
+      "title": "What’s new in Safari and WebKit",
+      "duration": "47:07",
+      "durationSeconds": 2827,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/233/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "202",
+      "year": 2025,
+      "title": "What’s new in Wallet",
+      "duration": "20:34",
+      "durationSeconds": 1234,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/202/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "324",
+      "year": 2025,
+      "title": "Automate your development process with the App Store Connect API",
+      "duration": "16:39",
+      "durationSeconds": 999,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/324/",
+      "topics": [
+        "App Store & Distribution"
+      ],
+      "category": "app-store,-distribution-&-marketing"
+    },
+    {
+      "id": "252",
+      "year": 2025,
+      "title": "Optimize your monetization with App Analytics",
+      "duration": "15:49",
+      "durationSeconds": 949,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/252/",
+      "topics": [
+        "App Store & Distribution"
+      ],
+      "category": "app-store,-distribution-&-marketing"
+    },
+    {
+      "id": "221",
+      "year": 2025,
+      "title": "What’s new in AdAttributionKit",
+      "duration": "23:40",
+      "durationSeconds": 1420,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/221/",
+      "topics": [
+        "App Store & Distribution"
+      ],
+      "category": "app-store,-distribution-&-marketing"
+    },
+    {
+      "id": "328",
+      "year": 2025,
+      "title": "What’s new in App Store Connect",
+      "duration": "25:51",
+      "durationSeconds": 1551,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/328/",
+      "topics": [
+        "App Store & Distribution"
+      ],
+      "category": "app-store,-distribution-&-marketing"
+    },
+    {
+      "id": "241",
+      "year": 2025,
+      "title": "What’s new in StoreKit and In-App Purchase",
+      "duration": "20:08",
+      "durationSeconds": 1208,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/241/",
+      "topics": [
+        "App Store & Distribution"
+      ],
+      "category": "app-store,-distribution-&-marketing"
+    },
+    {
+      "id": "302",
+      "year": 2025,
+      "title": "Create a seamless multiview playback experience",
+      "duration": "19:34",
+      "durationSeconds": 1174,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/302/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "251",
+      "year": 2025,
+      "title": "Enhance your app’s audio recording capabilities",
+      "duration": "19:19",
+      "durationSeconds": 1159,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/251/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "304",
+      "year": 2025,
+      "title": "Explore video experiences for visionOS",
+      "duration": "25:52",
+      "durationSeconds": 1552,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/304/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "403",
+      "year": 2025,
+      "title": "Learn about Apple Immersive Video technologies",
+      "duration": "14:50",
+      "durationSeconds": 890,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/403/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "297",
+      "year": 2025,
+      "title": "Learn about the Apple Projected Media Profile",
+      "duration": "19:31",
+      "durationSeconds": 1171,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/297/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "318",
+      "year": 2025,
+      "title": "Share visionOS experiences with nearby people",
+      "duration": "23:05",
+      "durationSeconds": 1385,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/318/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "296",
+      "year": 2025,
+      "title": "Support immersive video playback in visionOS apps",
+      "duration": "25:32",
+      "durationSeconds": 1532,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/296/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "317",
+      "year": 2025,
+      "title": "What’s new in visionOS 26",
+      "duration": "38:47",
+      "durationSeconds": 2327,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/317/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "203",
+      "year": 2025,
+      "title": "Get to know the ManagedApp Framework",
+      "duration": "24:50",
+      "durationSeconds": 1490,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/203/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "business-&-education"
+    },
+    {
+      "id": "258",
+      "year": 2025,
+      "title": "What’s new in Apple device management and identity",
+      "duration": "19:43",
+      "durationSeconds": 1183,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/258/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "business-&-education"
+    },
+    {
+      "id": "274",
+      "year": 2025,
+      "title": "Better together: SwiftUI and RealityKit",
+      "duration": "30:25",
+      "durationSeconds": 1825,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/274/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "323",
+      "year": 2025,
+      "title": "Build a SwiftUI app with the new design",
+      "duration": "22:17",
+      "durationSeconds": 1337,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/323/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "284",
+      "year": 2025,
+      "title": "Build a UIKit app with the new design",
+      "duration": "25:52",
+      "durationSeconds": 1552,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/284/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "248",
+      "year": 2025,
+      "title": "Explore prompt design & safety for on-device foundation models",
+      "duration": "22:11",
+      "durationSeconds": 1331,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/248/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "404",
+      "year": 2025,
+      "title": "Make a big impact with small writing changes",
+      "duration": "16:01",
+      "durationSeconds": 961,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/404/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "273",
+      "year": 2025,
+      "title": "Meet SwiftUI spatial layout",
+      "duration": "20:21",
+      "durationSeconds": 1221,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/273/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "305",
+      "year": 2025,
+      "title": "Optimize your custom environments for visionOS",
+      "duration": "32:46",
+      "durationSeconds": 1966,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/305/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "290",
+      "year": 2025,
+      "title": "Set the scene with SwiftUI in visionOS",
+      "duration": "24:51",
+      "durationSeconds": 1491,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/290/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "247",
+      "year": 2025,
+      "title": "What’s new in Xcode 26",
+      "duration": "36:56",
+      "durationSeconds": 2216,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/247/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "270",
+      "year": 2025,
+      "title": "Code-along: Elevate an app with Swift concurrency",
+      "duration": "32:56",
+      "durationSeconds": 1976,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/270/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "225",
+      "year": 2025,
+      "title": "Code-along: Explore localization with Xcode",
+      "duration": "21:33",
+      "durationSeconds": 1293,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/225/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "214",
+      "year": 2025,
+      "title": "Get started with Game Center",
+      "duration": "29:36",
+      "durationSeconds": 1776,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/214/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "346",
+      "year": 2025,
+      "title": "Meet Containerization",
+      "duration": "12:32",
+      "durationSeconds": 752,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/346/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "245",
+      "year": 2025,
+      "title": "What’s new in Swift",
+      "duration": "38:10",
+      "durationSeconds": 2290,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/245/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "256",
+      "year": 2025,
+      "title": "What’s new in SwiftUI",
+      "duration": "25:57",
+      "durationSeconds": 1557,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/256/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "359",
+      "year": 2025,
+      "title": "Design foundations from idea to interface",
+      "duration": "19:06",
+      "durationSeconds": 1146,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/359/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "360",
+      "year": 2025,
+      "title": "Discover machine learning & AI frameworks on Apple platforms",
+      "duration": "19:27",
+      "durationSeconds": 1167,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/360/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "101",
+      "year": 2025,
+      "title": "Keynote",
+      "duration": "92:26",
+      "durationSeconds": 5546,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/101/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "111",
+      "year": 2025,
+      "title": "Keynote (ASL)",
+      "duration": "92:26",
+      "durationSeconds": 5546,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/111/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "365",
+      "year": 2025,
+      "title": "New things on the way from Apple",
+      "duration": "2:08",
+      "durationSeconds": 128,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/365/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "102",
+      "year": 2025,
+      "title": "Platforms State of the Union",
+      "duration": "57:53",
+      "durationSeconds": 3473,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/102/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "112",
+      "year": 2025,
+      "title": "Platforms State of the Union (ASL)",
+      "duration": "57:53",
+      "durationSeconds": 3473,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/112/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "367",
+      "year": 2025,
+      "title": "WWDC25 Platforms State of the Union Recap",
+      "duration": "4:11",
+      "durationSeconds": 251,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/367/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "364",
+      "year": 2025,
+      "title": "Welcome to WWDC25",
+      "duration": "2:32",
+      "durationSeconds": 152,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/364/",
+      "topics": [
+        "General"
+      ],
+      "category": "essentials"
+    },
+    {
+      "id": "288",
+      "year": 2025,
+      "title": "Bring your SceneKit project to RealityKit",
+      "duration": "27:41",
+      "durationSeconds": 1661,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/288/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "262",
+      "year": 2025,
+      "title": "Combine Metal 4 machine learning and graphics",
+      "duration": "29:40",
+      "durationSeconds": 1780,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/262/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "205",
+      "year": 2025,
+      "title": "Discover Metal 4",
+      "duration": "24:06",
+      "durationSeconds": 1446,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/205/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "215",
+      "year": 2025,
+      "title": "Engage players with the Apple Games app",
+      "duration": "21:15",
+      "durationSeconds": 1275,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/215/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "254",
+      "year": 2025,
+      "title": "Explore Metal 4 games",
+      "duration": "32:21",
+      "durationSeconds": 1941,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/254/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "289",
+      "year": 2025,
+      "title": "Explore spatial accessory input on visionOS",
+      "duration": "17:44",
+      "durationSeconds": 1064,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/289/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "211",
+      "year": 2025,
+      "title": "Go further with Metal 4 games",
+      "duration": "26:47",
+      "durationSeconds": 1607,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/211/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "209",
+      "year": 2025,
+      "title": "Level up your games",
+      "duration": "23:10",
+      "durationSeconds": 1390,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/209/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "308",
+      "year": 2025,
+      "title": "Optimize CPU performance with Instruments",
+      "duration": "32:59",
+      "durationSeconds": 1979,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/308/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "294",
+      "year": 2025,
+      "title": "What’s new in Metal rendering for immersive apps",
+      "duration": "24:40",
+      "durationSeconds": 1480,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/294/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "287",
+      "year": 2025,
+      "title": "What’s new in RealityKit",
+      "duration": "26:08",
+      "durationSeconds": 1568,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/287/",
+      "topics": [
+        "Graphics & Games"
+      ],
+      "category": "graphics-&-games"
+    },
+    {
+      "id": "334",
+      "year": 2025,
+      "title": "What’s new in watchOS 26",
+      "duration": "20:56",
+      "durationSeconds": 1256,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/334/",
+      "topics": [
+        "Health & Fitness"
+      ],
+      "category": "health-&-fitness"
+    },
+    {
+      "id": "277",
+      "year": 2025,
+      "title": "Bring advanced speech-to-text to your app with SpeechAnalyzer",
+      "duration": "19:07",
+      "durationSeconds": 1147,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/277/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "259",
+      "year": 2025,
+      "title": "Code-along: Bring on-device AI to your app using the Foundation Models framework",
+      "duration": "30:32",
+      "durationSeconds": 1832,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/259/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "301",
+      "year": 2025,
+      "title": "Deep dive into the Foundation Models framework",
+      "duration": "25:31",
+      "durationSeconds": 1531,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/301/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "281",
+      "year": 2025,
+      "title": "Design interactive snippets",
+      "duration": "7:28",
+      "durationSeconds": 448,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/281/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "260",
+      "year": 2025,
+      "title": "Develop for Shortcuts and Spotlight with App Intents",
+      "duration": "18:56",
+      "durationSeconds": 1136,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/260/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "298",
+      "year": 2025,
+      "title": "Explore large language models on Apple silicon with MLX",
+      "duration": "20:08",
+      "durationSeconds": 1208,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/298/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "275",
+      "year": 2025,
+      "title": "Explore new advances in App Intents",
+      "duration": "26:49",
+      "durationSeconds": 1609,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/275/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "315",
+      "year": 2025,
+      "title": "Get started with MLX for Apple silicon",
+      "duration": "19:29",
+      "durationSeconds": 1169,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/315/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "244",
+      "year": 2025,
+      "title": "Get to know App Intents",
+      "duration": "24:36",
+      "durationSeconds": 1476,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/244/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "286",
+      "year": 2025,
+      "title": "Meet the Foundation Models framework",
+      "duration": "23:24",
+      "durationSeconds": 1404,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/286/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "272",
+      "year": 2025,
+      "title": "Read documents using the Vision framework",
+      "duration": "20:22",
+      "durationSeconds": 1222,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/272/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "276",
+      "year": 2025,
+      "title": "What’s new in BNNS Graph",
+      "duration": "23:45",
+      "durationSeconds": 1425,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/276/",
+      "topics": [
+        "Machine Learning & AI"
+      ],
+      "category": "machine-learning-&-ai"
+    },
+    {
+      "id": "204",
+      "year": 2025,
+      "title": "Go further with MapKit",
+      "duration": "21:11",
+      "durationSeconds": 1271,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/204/",
+      "topics": [
+        "Maps & Location"
+      ],
+      "category": "maps-&-location"
+    },
+    {
+      "id": "319",
+      "year": 2025,
+      "title": "Capture cinematic video in your app",
+      "duration": "18:27",
+      "durationSeconds": 1107,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/319/",
+      "topics": [
+        "General"
+      ],
+      "category": "photos-&-camera"
+    },
+    {
+      "id": "300",
+      "year": 2025,
+      "title": "Enhance your app with machine-learning-based video effects",
+      "duration": "16:57",
+      "durationSeconds": 1017,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/300/",
+      "topics": [
+        "General"
+      ],
+      "category": "photos-&-camera"
+    },
+    {
+      "id": "253",
+      "year": 2025,
+      "title": "Enhancing your camera experience with capture controls",
+      "duration": "19:20",
+      "durationSeconds": 1160,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/253/",
+      "topics": [
+        "General"
+      ],
+      "category": "photos-&-camera"
+    },
+    {
+      "id": "246",
+      "year": 2025,
+      "title": "Integrate privacy into your development process",
+      "duration": "25:42",
+      "durationSeconds": 1542,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/246/",
+      "topics": [
+        "Privacy & Security"
+      ],
+      "category": "privacy-&-security"
+    },
+    {
+      "id": "228",
+      "year": 2025,
+      "title": "Supercharge device connectivity with Wi-Fi Aware",
+      "duration": "23:44",
+      "durationSeconds": 1424,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/228/",
+      "topics": [
+        "Privacy & Security"
+      ],
+      "category": "privacy-&-security"
+    },
+    {
+      "id": "243",
+      "year": 2025,
+      "title": "What’s new in UIKit",
+      "duration": "26:02",
+      "durationSeconds": 1562,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/243/",
+      "topics": [
+        "Privacy & Security"
+      ],
+      "category": "privacy-&-security"
+    },
+    {
+      "id": "279",
+      "year": 2025,
+      "title": "What’s new in passkeys",
+      "duration": "22:02",
+      "durationSeconds": 1322,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/279/",
+      "topics": [
+        "Privacy & Security"
+      ],
+      "category": "privacy-&-security"
+    },
+    {
+      "id": "235",
+      "year": 2025,
+      "title": "Learn more about Declarative Web Push",
+      "duration": "19:27",
+      "durationSeconds": 1167,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/235/",
+      "topics": [
+        "Safari & Web"
+      ],
+      "category": "safari-&-web"
+    },
+    {
+      "id": "231",
+      "year": 2025,
+      "title": "Meet WebKit for SwiftUI",
+      "duration": "21:59",
+      "durationSeconds": 1319,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/231/",
+      "topics": [
+        "Safari & Web"
+      ],
+      "category": "safari-&-web"
+    },
+    {
+      "id": "303",
+      "year": 2025,
+      "title": "Design hover interactions for visionOS",
+      "duration": "14:10",
+      "durationSeconds": 850,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/303/",
+      "topics": [
+        "visionOS"
+      ],
+      "category": "spatial-computing"
+    },
+    {
+      "id": "255",
+      "year": 2025,
+      "title": "Design widgets for visionOS",
+      "duration": "21:04",
+      "durationSeconds": 1264,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/255/",
+      "topics": [
+        "visionOS"
+      ],
+      "category": "spatial-computing"
+    },
+    {
+      "id": "237",
+      "year": 2025,
+      "title": "What’s new for the spatial web",
+      "duration": "29:29",
+      "durationSeconds": 1769,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/237/",
+      "topics": [
+        "visionOS"
+      ],
+      "category": "spatial-computing"
+    },
+    {
+      "id": "280",
+      "year": 2025,
+      "title": "Code-along: Cook up a rich text experience in SwiftUI with AttributedString",
+      "duration": "35:10",
+      "durationSeconds": 2110,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/280/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "268",
+      "year": 2025,
+      "title": "Embracing Swift concurrency",
+      "duration": "28:01",
+      "durationSeconds": 1681,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/268/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "307",
+      "year": 2025,
+      "title": "Explore Swift and Java interoperability",
+      "duration": "21:22",
+      "durationSeconds": 1282,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/307/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "312",
+      "year": 2025,
+      "title": "Improve memory usage and performance with Swift",
+      "duration": "31:31",
+      "durationSeconds": 1891,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/312/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "306",
+      "year": 2025,
+      "title": "Optimize SwiftUI performance with Instruments",
+      "duration": "35:36",
+      "durationSeconds": 2136,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/306/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "344",
+      "year": 2025,
+      "title": "Record, replay, and review: UI automation with Xcode",
+      "duration": "24:41",
+      "durationSeconds": 1481,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/344/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "311",
+      "year": 2025,
+      "title": "Safely mix C, C++, and Swift",
+      "duration": "32:11",
+      "durationSeconds": 1931,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/311/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "313",
+      "year": 2025,
+      "title": "Bring Swift Charts to the third dimension",
+      "duration": "11:17",
+      "durationSeconds": 677,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/313/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "310",
+      "year": 2025,
+      "title": "Build an AppKit app with the new design",
+      "duration": "22:28",
+      "durationSeconds": 1348,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/310/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "361",
+      "year": 2025,
+      "title": "Create icons with Icon Composer",
+      "duration": "14:33",
+      "durationSeconds": 873,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/361/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "208",
+      "year": 2025,
+      "title": "Elevate the design of your iPad app",
+      "duration": "15:20",
+      "durationSeconds": 920,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/208/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "222",
+      "year": 2025,
+      "title": "Enhance your app’s multilingual experience",
+      "duration": "20:38",
+      "durationSeconds": 1238,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/222/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "266",
+      "year": 2025,
+      "title": "Explore concurrency in SwiftUI",
+      "duration": "24:55",
+      "durationSeconds": 1495,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/266/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "356",
+      "year": 2025,
+      "title": "Get to know the new design system",
+      "duration": "18:14",
+      "durationSeconds": 1094,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/356/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "282",
+      "year": 2025,
+      "title": "Make your UIKit app more flexible",
+      "duration": "16:43",
+      "durationSeconds": 1003,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/282/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "219",
+      "year": 2025,
+      "title": "Meet Liquid Glass",
+      "duration": "19:33",
+      "durationSeconds": 1173,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/219/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "220",
+      "year": 2025,
+      "title": "Say hello to the new look of app icons",
+      "duration": "11:54",
+      "durationSeconds": 714,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/220/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "337",
+      "year": 2025,
+      "title": "What’s new in SF Symbols 7",
+      "duration": "22:52",
+      "durationSeconds": 1372,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/337/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "278",
+      "year": 2025,
+      "title": "What’s new in widgets",
+      "duration": "24:28",
+      "durationSeconds": 1468,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/278/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "299",
+      "year": 2025,
+      "title": "Deliver age-appropriate experiences in your app",
+      "duration": "13:37",
+      "durationSeconds": 817,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/299/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "system-services"
+    },
+    {
+      "id": "234",
+      "year": 2025,
+      "title": "Filter and tunnel network traffic with NetworkExtension",
+      "duration": "28:11",
+      "durationSeconds": 1691,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/234/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "system-services"
+    },
+    {
+      "id": "227",
+      "year": 2025,
+      "title": "Finish tasks in the background",
+      "duration": "18:38",
+      "durationSeconds": 1118,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/227/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "system-services"
+    },
+    {
+      "id": "314",
+      "year": 2025,
+      "title": "Get ahead with quantum-secure cryptography",
+      "duration": "20:09",
+      "durationSeconds": 1209,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/314/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "system-services"
+    },
+    {
+      "id": "257",
+      "year": 2025,
+      "title": "Optimize home electricity usage with EnergyKit",
+      "duration": "15:28",
+      "durationSeconds": 928,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/257/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "system-services"
+    },
+    {
+      "id": "226",
+      "year": 2025,
+      "title": "Profile and optimize power usage in your app",
+      "duration": "19:43",
+      "durationSeconds": 1183,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/226/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "system-services"
+    },
+    {
+      "id": "216",
+      "year": 2025,
+      "title": "Turbocharge your app for CarPlay",
+      "duration": "22:09",
+      "durationSeconds": 1329,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/216/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "system-services"
+    },
+    {
+      "id": "250",
+      "year": 2025,
+      "title": "Use structured concurrency with Network framework",
+      "duration": "21:10",
+      "durationSeconds": 1270,
+      "url": "https://developer.apple.com/videos/play/wwdc2025/250/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "system-services"
+    }
+  ]
+}

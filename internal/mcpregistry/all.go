@@ -10,4 +10,5 @@ package mcpregistry
 func RegisterAll(r *Registry) {
 	r.Register(AppleDocs())
 	r.Register(XcodeGen())
+	r.Register(NanowaveTools())
 }

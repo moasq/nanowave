@@ -8,8 +8,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/moasq/nanowave/internal/config"
 	"github.com/moasq/nanowave/internal/integrations"
 	"github.com/moasq/nanowave/internal/integrations/providers"
+	"github.com/moasq/nanowave/internal/orchestration"
 	"github.com/moasq/nanowave/internal/terminal"
 	"github.com/spf13/cobra"
 )
@@ -134,16 +136,41 @@ func integrationsSetupRun(provider string) error {
 	if !ok {
 		return fmt.Errorf("provider %s does not support setup", provider)
 	}
-	if !sc.CLIAvailable() {
-		terminal.Warning(fmt.Sprintf("%s CLI not found. Install it with the provider's install instructions.", p.Meta().Name))
-		return fmt.Errorf("%s CLI not installed", provider)
+
+	// Resolve the current project's app name
+	appName := resolveCurrentAppName()
+
+	readLineFn := func(label string) string {
+		fmt.Printf("  %s: ", label)
+		reader := bufio.NewReader(os.Stdin)
+		line, _ := reader.ReadString('\n')
+		return strings.TrimSpace(line)
 	}
+
+	// Always use the guided flow (Manual=false) — it provides the best UX:
+	// asks for the API key, validates, auto-discovers projects/apps.
+	// The manual flow is only for edge cases where the user already has all IDs.
 	return sc.Setup(context.Background(), integrations.SetupRequest{
-		Store:   m.Store(),
-		AppName: "my-app",
-		PrintFn: terminalPrintFn,
-		PickFn:  terminalPickFn,
+		Store:      m.Store(),
+		AppName:    appName,
+		ReadLineFn: readLineFn,
+		PrintFn:    terminalPrintFn,
+		PickFn:     terminalPickFn,
 	})
+}
+
+// resolveCurrentAppName returns the app name from the active project config,
+// or a default if no project is active.
+func resolveCurrentAppName() string {
+	cfg, err := config.Load()
+	if err != nil || !cfg.HasProject() {
+		return "my-app"
+	}
+	name := orchestration.ReadProjectAppName(cfg.ProjectDir)
+	if name != "" {
+		return name
+	}
+	return "my-app"
 }
 
 func integrationsStatusRun() error {
@@ -354,38 +381,7 @@ func RunIntegrationsInteractive() {
 		case "Remove":
 			_ = integrationsRemoveRun(string(pid))
 		case "Add new":
-			if sc.CLIAvailable() {
-				_ = sc.Setup(context.Background(), integrations.SetupRequest{
-					Store:   store,
-					AppName: "my-app",
-					PrintFn: terminalPrintFn,
-					PickFn:  terminalPickFn,
-				})
-			} else {
-				terminal.Warning(fmt.Sprintf("%s CLI not found.", picked))
-			}
-		}
-	} else {
-		// Not configured — show setup options
-		action := terminal.Pick(fmt.Sprintf("%s Setup", picked), []terminal.PickerOption{
-			{Label: "Set up automatically", Desc: fmt.Sprintf("Login + create project via %s CLI", picked)},
-			{Label: "Enter credentials manually", Desc: "Paste project URL and anon key"},
-			{Label: "Cancel"},
-		}, "")
-
-		switch action {
-		case "Set up automatically":
-			if sc.CLIAvailable() {
-				_ = sc.Setup(context.Background(), integrations.SetupRequest{
-					Store:   store,
-					AppName: "my-app",
-					PrintFn: terminalPrintFn,
-					PickFn:  terminalPickFn,
-				})
-			} else {
-				terminal.Warning(fmt.Sprintf("%s CLI not found.", picked))
-			}
-		case "Enter credentials manually":
+			appName := resolveCurrentAppName()
 			readLineFn := func(label string) string {
 				fmt.Printf("  %s: ", label)
 				reader := bufio.NewReader(os.Stdin)
@@ -394,11 +390,29 @@ func RunIntegrationsInteractive() {
 			}
 			_ = sc.Setup(context.Background(), integrations.SetupRequest{
 				Store:      store,
-				AppName:    "my-app",
-				Manual:     true,
+				AppName:    appName,
 				ReadLineFn: readLineFn,
 				PrintFn:    terminalPrintFn,
+				PickFn:     terminalPickFn,
 			})
+		}
+	} else {
+		// Not configured — run guided setup directly (no picker needed)
+		appName := resolveCurrentAppName()
+		readLineFn := func(label string) string {
+			fmt.Printf("  %s: ", label)
+			reader := bufio.NewReader(os.Stdin)
+			line, _ := reader.ReadString('\n')
+			return strings.TrimSpace(line)
+		}
+		if err := sc.Setup(context.Background(), integrations.SetupRequest{
+			Store:      store,
+			AppName:    appName,
+			ReadLineFn: readLineFn,
+			PrintFn:    terminalPrintFn,
+			PickFn:     terminalPickFn,
+		}); err != nil {
+			terminal.Error(err.Error())
 		}
 	}
 	fmt.Println()

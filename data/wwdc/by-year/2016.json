@@ -1,0 +1,200 @@
+{
+  "year": 2016,
+  "count": 16,
+  "videos": [
+    {
+      "id": "723",
+      "year": 2016,
+      "title": "Developing CarPlay Systems, Part 2",
+      "duration": "26:13",
+      "durationSeconds": 1573,
+      "url": "https://developer.apple.com/videos/play/wwdc2016/723/",
+      "topics": [
+        "General"
+      ],
+      "category": "app-services"
+    },
+    {
+      "id": "509",
+      "year": 2016,
+      "title": "Speech Recognition API",
+      "duration": "11:37",
+      "durationSeconds": 697,
+      "url": "https://developer.apple.com/videos/play/wwdc2016/509/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "510",
+      "year": 2016,
+      "title": "Validating HTTP Live Streams",
+      "duration": "22:21",
+      "durationSeconds": 1341,
+      "url": "https://developer.apple.com/videos/play/wwdc2016/510/",
+      "topics": [
+        "Audio & Video"
+      ],
+      "category": "audio-&-video"
+    },
+    {
+      "id": "805",
+      "year": 2016,
+      "title": "Iterative UI Design",
+      "duration": "41:35",
+      "durationSeconds": 2495,
+      "url": "https://developer.apple.com/videos/play/wwdc2016/805/",
+      "topics": [
+        "Design"
+      ],
+      "category": "design"
+    },
+    {
+      "id": "606",
+      "year": 2016,
+      "title": "Advanced Metal Shader Optimization",
+      "duration": "41:15",
+      "durationSeconds": 2475,
+      "url": "https://developer.apple.com/videos/play/wwdc2016/606/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "720",
+      "year": 2016,
+      "title": "Concurrent Programming With GCD in Swift 3",
+      "duration": "35:41",
+      "durationSeconds": 2141,
+      "url": "https://developer.apple.com/videos/play/wwdc2016/720/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "411",
+      "year": 2016,
+      "title": "System Trace in Depth",
+      "duration": "37:18",
+      "durationSeconds": 2238,
+      "url": "https://developer.apple.com/videos/play/wwdc2016/411/",
+      "topics": [
+        "Developer Tools"
+      ],
+      "category": "developer-tools"
+    },
+    {
+      "id": "241",
+      "year": 2016,
+      "title": "Public Transit in Apple Maps",
+      "duration": "11:19",
+      "durationSeconds": 679,
+      "url": "https://developer.apple.com/videos/play/wwdc2016/241/",
+      "topics": [
+        "Maps & Location"
+      ],
+      "category": "maps-&-location"
+    },
+    {
+      "id": "511",
+      "year": 2016,
+      "title": "AVCapturePhotoOutput - Beyond the Basics",
+      "duration": "20:44",
+      "durationSeconds": 1244,
+      "url": "https://developer.apple.com/videos/play/wwdc2016/511/",
+      "topics": [
+        "General"
+      ],
+      "category": "photos-&-camera"
+    },
+    {
+      "id": "501",
+      "year": 2016,
+      "title": "Advances in iOS Photography",
+      "duration": "59:42",
+      "durationSeconds": 3582,
+      "url": "https://developer.apple.com/videos/play/wwdc2016/501/",
+      "topics": [
+        "General"
+      ],
+      "category": "photos-&-camera"
+    },
+    {
+      "id": "419",
+      "year": 2016,
+      "title": "Protocol and Value Oriented Programming in UIKit Apps",
+      "duration": "39:51",
+      "durationSeconds": 2391,
+      "url": "https://developer.apple.com/videos/play/wwdc2016/419/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "416",
+      "year": 2016,
+      "title": "Understanding Swift Performance",
+      "duration": "58:22",
+      "durationSeconds": 3502,
+      "url": "https://developer.apple.com/videos/play/wwdc2016/416/",
+      "topics": [
+        "Swift"
+      ],
+      "category": "swift"
+    },
+    {
+      "id": "725",
+      "year": 2016,
+      "title": "Deploying AirPrint in Enterprise",
+      "duration": "16:02",
+      "durationSeconds": 962,
+      "url": "https://developer.apple.com/videos/play/wwdc2016/725/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "230",
+      "year": 2016,
+      "title": "Enhancing VoIP Apps with CallKit",
+      "duration": "35:53",
+      "durationSeconds": 2153,
+      "url": "https://developer.apple.com/videos/play/wwdc2016/230/",
+      "topics": [
+        "Swift",
+        "SwiftUI & UI Frameworks"
+      ],
+      "category": "swiftui-&-ui-frameworks"
+    },
+    {
+      "id": "722",
+      "year": 2016,
+      "title": "Developing CarPlay Systems, Part 1",
+      "duration": "30:02",
+      "durationSeconds": 1802,
+      "url": "https://developer.apple.com/videos/play/wwdc2016/722/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "system-services"
+    },
+    {
+      "id": "724",
+      "year": 2016,
+      "title": "What's New in the Apple Push Notification Service",
+      "duration": "14:45",
+      "durationSeconds": 885,
+      "url": "https://developer.apple.com/videos/play/wwdc2016/724/",
+      "topics": [
+        "System Services"
+      ],
+      "category": "system-services"
+    }
+  ]
+}

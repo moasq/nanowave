@@ -6,17 +6,20 @@ import (
 )
 
 var (
-	boldRe      = regexp.MustCompile(`\*\*(.+?)\*\*`)
+	boldRe       = regexp.MustCompile(`\*\*(.+?)\*\*`)
 	inlineCodeRe = regexp.MustCompile("`([^`]+)`")
-	headerRe    = regexp.MustCompile(`^(#{1,3})\s+(.+)$`)
-	bulletRe    = regexp.MustCompile(`^[-*]\s+(.+)$`)
-	numberedRe  = regexp.MustCompile(`^(\d+\.)\s+(.+)$`)
-	ruleRe      = regexp.MustCompile(`^-{3,}$`)
+	headerRe     = regexp.MustCompile(`^(#{1,3})\s+(.+)$`)
+	bulletRe     = regexp.MustCompile(`^[-*]\s+(.+)$`)
+	numberedRe   = regexp.MustCompile(`^(\d+\.)\s+(.+)$`)
+	ruleRe       = regexp.MustCompile(`^-{3,}$`)
+	linkRe       = regexp.MustCompile(`\[([^\]]+)\]\(([^)]+)\)`)
+	tableRowRe   = regexp.MustCompile(`^\|(.+)\|$`)
+	tableSepRe   = regexp.MustCompile(`^\|[\s:]*[-]+`)
 )
 
 // RenderMarkdown converts markdown text to ANSI-styled terminal output.
-// Handles headers, bold, inline code, bullets, numbered lists, and rules.
-// Code blocks (```) are skipped entirely.
+// Handles headers, bold, inline code, bullets, numbered lists, rules,
+// links, tables, and code blocks.
 func RenderMarkdown(text string) string {
 	lines := strings.Split(text, "\n")
 	var out []string
@@ -25,12 +28,13 @@ func RenderMarkdown(text string) string {
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
 
-		// Toggle code blocks — skip their content
+		// Toggle code blocks — render content dimmed
 		if strings.HasPrefix(trimmed, "```") {
 			inCodeBlock = !inCodeBlock
 			continue
 		}
 		if inCodeBlock {
+			out = append(out, "  "+Dim+"  "+trimmed+Reset)
 			continue
 		}
 
@@ -43,6 +47,27 @@ func RenderMarkdown(text string) string {
 		// Horizontal rule
 		if ruleRe.MatchString(trimmed) {
 			out = append(out, "  "+Dim+strings.Repeat("─", 40)+Reset)
+			continue
+		}
+
+		// Table separator rows (|---|---|) → skip
+		if tableSepRe.MatchString(trimmed) {
+			continue
+		}
+
+		// Table rows (| col | col |) → render as aligned text
+		if m := tableRowRe.FindStringSubmatch(trimmed); m != nil {
+			cells := strings.Split(m[1], "|")
+			var parts []string
+			for _, cell := range cells {
+				cell = strings.TrimSpace(cell)
+				if cell != "" {
+					parts = append(parts, applyInline(cell))
+				}
+			}
+			if len(parts) > 0 {
+				out = append(out, "  "+strings.Join(parts, Dim+" · "+Reset))
+			}
 			continue
 		}
 
@@ -71,8 +96,16 @@ func RenderMarkdown(text string) string {
 	return strings.Join(out, "\n") + "\n"
 }
 
-// applyInline applies bold and inline code formatting.
+// applyInline applies bold, inline code, and link formatting.
 func applyInline(s string) string {
+	// Links: [text](url) → text (dimmed url)
+	s = linkRe.ReplaceAllStringFunc(s, func(match string) string {
+		m := linkRe.FindStringSubmatch(match)
+		if len(m) == 3 {
+			return m[1] + Dim + " (" + m[2] + ")" + Reset
+		}
+		return match
+	})
 	s = boldRe.ReplaceAllString(s, Bold+"${1}"+Reset)
 	s = inlineCodeRe.ReplaceAllString(s, Cyan+"${1}"+Reset)
 	return s

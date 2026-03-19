@@ -1,0 +1,62 @@
+# Nanowave - Hooks Configuration (Team)
+# See: nanowave hooks --help
+
+version: 1
+
+notifiers:
+  telegram:
+    enabled: true
+    bot_token_env: "TELEGRAM_BOT_TOKEN"
+    bot_token_keychain: "nanowave-telegram-bot"
+    chat_id: ""
+  slack:
+    enabled: true
+    webhook_url_env: "SLACK_WEBHOOK_URL"
+
+defaults:
+  timeout: "60s"
+  continue_on_error: true
+  log_dir: "~/.nanowave/hook-logs/"
+
+hooks:
+  build.start:
+    - name: "notify-build-start"
+      notify: slack
+      template: "Building {{.APP_NAME}}..."
+      when: always
+
+  build.done:
+    - name: "notify-build-slack"
+      notify: slack
+      template: "Build {{.STATUS}}: {{.APP_NAME}} ({{.DURATION_SEC}}s)"
+      when: always
+    - name: "notify-build-telegram"
+      notify: telegram
+      template: "Build {{.STATUS}}: {{.APP_NAME}}"
+      when: failure
+
+  store.upload.done:
+    - name: "notify-upload"
+      notify: slack
+      template: "Upload complete: {{.APP_NAME}} build {{.BUILD_NUMBER}}"
+      when: success
+
+  store.submit.done:
+    - name: "notify-submit-slack"
+      notify: slack
+      template: "Submitted for review: {{.APP_NAME}} v{{.VERSION}}"
+      when: success
+    - name: "notify-submit-telegram"
+      notify: telegram
+      template: "Submitted for review: {{.APP_NAME}} v{{.VERSION}}"
+      when: success
+
+  store.release:
+    - name: "notify-release"
+      notify: slack
+      template: "Released: {{.APP_NAME}} v{{.VERSION}}"
+      when: success
+    - name: "notify-release-telegram"
+      notify: telegram
+      template: "Released: {{.APP_NAME}} v{{.VERSION}}"
+      when: success

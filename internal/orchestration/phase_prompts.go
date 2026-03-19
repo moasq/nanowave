@@ -2,65 +2,8 @@ package orchestration
 
 import (
 	"fmt"
-	"io/fs"
-	"sort"
 	"strings"
 )
-
-func loadPhaseSkillContent(skillName string) (string, error) {
-	dirPath := fmt.Sprintf("skills/phases/%s", skillName)
-	if _, err := fs.ReadDir(skillsFS, dirPath); err != nil {
-		return "", fmt.Errorf("phase skill %q not found: %w", skillName, err)
-	}
-
-	var parts []string
-	if body, found := readEmbeddedMarkdownBody(dirPath + "/SKILL.md"); found && strings.TrimSpace(body) != "" {
-		parts = append(parts, strings.TrimSpace(body))
-	}
-
-	seen := map[string]bool{
-		dirPath + "/SKILL.md": true,
-	}
-	orderedRefs := []string{
-		dirPath + "/references/workflow.md",
-		dirPath + "/references/output-format.md",
-		dirPath + "/references/common-mistakes.md",
-		dirPath + "/references/examples.md",
-	}
-	for _, p := range orderedRefs {
-		if body, found := readEmbeddedMarkdownBody(p); found && strings.TrimSpace(body) != "" {
-			parts = append(parts, strings.TrimSpace(body))
-			seen[p] = true
-		}
-	}
-
-	var extras []string
-	_ = fs.WalkDir(skillsFS, dirPath, func(path string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
-			return nil
-		}
-		if !strings.HasSuffix(strings.ToLower(d.Name()), ".md") {
-			return nil
-		}
-		if seen[path] {
-			return nil
-		}
-		extras = append(extras, path)
-		return nil
-	})
-	sort.Strings(extras)
-	for _, p := range extras {
-		if body, found := readEmbeddedMarkdownBody(p); found && strings.TrimSpace(body) != "" {
-			parts = append(parts, strings.TrimSpace(body))
-		}
-	}
-
-	content := strings.TrimSpace(strings.Join(parts, "\n\n"))
-	if content == "" {
-		return "", fmt.Errorf("phase skill %q has no loadable markdown content", skillName)
-	}
-	return content, nil
-}
 
 func appendPromptSection(b *strings.Builder, title, content string) {
 	content = strings.TrimSpace(content)
@@ -78,140 +21,102 @@ func appendPromptSection(b *strings.Builder, title, content string) {
 	b.WriteString(content)
 }
 
-func appendXMLSection(b *strings.Builder, tag, content string) {
-	content = strings.TrimSpace(content)
-	if content == "" {
-		return
-	}
-	if b.Len() > 0 {
-		b.WriteString("\n\n")
-	}
-	b.WriteString("<")
-	b.WriteString(tag)
-	b.WriteString(">\n")
-	b.WriteString(content)
-	b.WriteString("\n</")
-	b.WriteString(tag)
-	b.WriteString(">")
-}
-
-func formatIntentHintsForPrompt(intent *IntentDecision) string {
-	if intent == nil {
-		return ""
-	}
-	var lines []string
-	if intent.PlatformHint != "" {
-		lines = append(lines, fmt.Sprintf("- platform_hint: %s", intent.PlatformHint))
-	}
-	if len(intent.PlatformHints) > 1 {
-		lines = append(lines, fmt.Sprintf("- platform_hints: [%s]", strings.Join(intent.PlatformHints, ", ")))
-	}
-	if intent.DeviceFamilyHint != "" {
-		lines = append(lines, fmt.Sprintf("- device_family_hint: %s", intent.DeviceFamilyHint))
-	}
-	if intent.WatchProjectShapeHint != "" {
-		lines = append(lines, fmt.Sprintf("- watch_project_shape_hint: %s", intent.WatchProjectShapeHint))
-	}
-	if intent.Operation != "" && intent.Operation != "unknown" {
-		lines = append(lines, fmt.Sprintf("- operation: %s", intent.Operation))
-	}
-	if intent.Confidence > 0 {
-		lines = append(lines, fmt.Sprintf("- confidence: %.2f", intent.Confidence))
-	}
-	if intent.Reason != "" {
-		lines = append(lines, fmt.Sprintf("- reason: %s", intent.Reason))
-	}
-	if len(lines) == 0 {
-		return ""
-	}
-	var b strings.Builder
-	b.WriteString("Intent hints (advisory only; explicit user request wins):\n")
-	for _, line := range lines {
-		b.WriteString(line)
-		b.WriteString("\n")
-	}
-	return strings.TrimSpace(b.String())
-}
-
-func composeAnalyzerSystemPrompt(intent *IntentDecision) (string, error) {
-	phaseSkill, err := loadPhaseSkillContent("analyzer")
-	if err != nil {
-		return "", err
+// ComposeAgenticSystemPrompt assembles a single system prompt for agentic mode.
+func ComposeAgenticSystemPrompt(ac ActionContext, catalogRoot string) string {
+	platform := ac.Platform
+	if platform == "" {
+		platform = PlatformIOS
 	}
 
 	var b strings.Builder
-	appendPromptSection(&b, "Analyzer Base", analyzerPrompt)
-	appendXMLSection(&b, "constraints", planningConstraints)
-	appendPromptSection(&b, "Phase Skill", phaseSkill)
-	if hints := formatIntentHintsForPrompt(intent); hints != "" {
-		appendPromptSection(&b, "Intent Hints", hints)
+
+	appendPromptSection(&b, "Role", `You are an autonomous Apple app builder. You have tools to set up workspaces, scaffold Xcode projects, build, verify, and finalize. You make all decisions yourself. Never ask clarifying questions.`)
+
+	appendPromptSection(&b, "Coder", coderPromptForPlatform(platform))
+
+	appendPromptSection(&b, "Skills", `Feature-specific skills (camera, authentication, supabase, charts, widgets, etc.) are available via the nw_get_skills tool. Call it with the relevant keys before implementing features you're unfamiliar with. Call nw_get_skills with list_available:true to discover all available skills.`)
+
+	appendPromptSection(&b, "Backend Integrations", composeIntegrationSection(ac.ActiveIntegrations))
+
+	if ac.IsEdit() {
+		editCtx := fmt.Sprintf("Operating on existing project:\n- Project dir: %s\n- App name: %s\n- Platform: %s", ac.ProjectDir, ac.AppName, ac.Platform)
+		if len(ac.Platforms) > 1 {
+			editCtx += fmt.Sprintf("\n- Platforms: %s", strings.Join(ac.Platforms, ", "))
+		}
+		appendPromptSection(&b, "Edit Context", editCtx)
+	} else if catalogRoot != "" {
+		appendPromptSection(&b, "Project Location", fmt.Sprintf(
+			"CRITICAL: Create the project directory inside `%s`. For example, if the app is called MyApp, create it at `%s/MyApp/`. Do NOT create projects anywhere else.",
+			catalogRoot, catalogRoot))
 	}
-	return b.String(), nil
+
+	return b.String()
 }
 
-func composePlannerSystemPrompt(intent *IntentDecision, platform string) (string, error) {
-	phaseSkill, err := loadPhaseSkillContent("planner")
-	if err != nil {
-		return "", err
+// composeIntegrationSection generates the Backend Integrations prompt section.
+func composeIntegrationSection(activeIntegrations []string) string {
+	active := make(map[string]bool, len(activeIntegrations))
+	for _, id := range activeIntegrations {
+		active[id] = true
 	}
 
 	var b strings.Builder
-	appendPromptSection(&b, "Planner Base", plannerPromptForPlatform(platform))
-	appendXMLSection(&b, "constraints", planningConstraints)
-	appendPromptSection(&b, "Phase Skill", phaseSkill)
-	if hints := formatIntentHintsForPrompt(intent); hints != "" {
-		appendPromptSection(&b, "Intent Hints", hints)
+
+	// Describe what IS available
+	if len(activeIntegrations) > 0 {
+		b.WriteString("The following backend integrations are configured and available for this project:\n")
+		for _, id := range activeIntegrations {
+			switch id {
+			case "supabase":
+				b.WriteString("- **Supabase**: Configured. You MAY use Supabase for authentication, database, storage, and realtime. Use the `nw_get_skills` tool with key `repositories` to learn the repository pattern. MCP tools for Supabase are available.\n")
+			case "revenuecat":
+				b.WriteString("- **RevenueCat**: Configured. You MAY use RevenueCat for in-app purchases and subscriptions. Use the `nw_get_skills` tool with key `paywall` to learn the paywall pattern. MCP tools for RevenueCat are available.\n")
+			default:
+				b.WriteString(fmt.Sprintf("- **%s**: Configured and available.\n", id))
+			}
+		}
 	}
-	return b.String(), nil
+
+	// Describe what is NOT yet configured
+	var unconfigured []string
+	if !active["supabase"] {
+		unconfigured = append(unconfigured, "supabase")
+	}
+	if !active["revenuecat"] {
+		unconfigured = append(unconfigured, "revenuecat")
+	}
+
+	if len(unconfigured) > 0 {
+		if b.Len() > 0 {
+			b.WriteString("\n")
+		}
+		b.WriteString("**The following backends are NOT yet configured:**\n")
+		for _, id := range unconfigured {
+			b.WriteString(fmt.Sprintf("- **%s** is not configured.\n", integrationDisplayName(id)))
+		}
+		b.WriteString("\nWhen the user asks for features that require an unconfigured backend (authentication, database, subscriptions, in-app purchases, paywalls, etc.), you MUST:\n")
+		b.WriteString("1. Explain what you'll build and which backend it needs\n")
+		b.WriteString("2. End your response by telling the user to run the setup command:\n")
+		for _, id := range unconfigured {
+			name := integrationDisplayName(id)
+			b.WriteString(fmt.Sprintf("   - For %s: \"Run `/%s` to connect your %s account, then I'll wire everything up.\"\n", name, id, name))
+		}
+		b.WriteString("3. Do NOT generate any code, imports, or SPM packages for the unconfigured backend. Wait until the user confirms setup is complete.\n")
+		if !active["supabase"] && !active["revenuecat"] {
+			b.WriteString("\nCurrently this app has no backend. If the user does not request backend features, store all data on-device using SwiftData or UserDefaults.")
+		}
+	}
+
+	return b.String()
 }
 
-func composeCoderAppendPrompt(phaseSkillName, platform string) (string, error) {
-	phaseSkill, err := loadPhaseSkillContent(phaseSkillName)
-	if err != nil {
-		return "", err
+func integrationDisplayName(id string) string {
+	switch id {
+	case "supabase":
+		return "Supabase"
+	case "revenuecat":
+		return "RevenueCat"
+	default:
+		return id
 	}
-
-	var b strings.Builder
-	appendPromptSection(&b, "Coder Base", coderPromptForPlatform(platform))
-	appendXMLSection(&b, "constraints", sharedConstraints)
-	appendPromptSection(&b, "Phase Skill", phaseSkill)
-	appendXMLSection(&b, "verification", composeSelfCheck(platform))
-
-	return b.String(), nil
-}
-
-func composeSelfCheck(platform string) string {
-	base := `Before completing each file, verify every item:
-- [ ] No raw .font() — all fonts via AppTheme.Fonts.* (reason: centralized tokens enable theme changes)
-- [ ] No raw .foregroundStyle(.white/.black/.red) — all colors via AppTheme.Colors.* (reason: consistency)
-- [ ] No raw .padding(N) or VStack(spacing: N) — all spacing via AppTheme.Spacing.* (reason: consistency)
-- [ ] @Observable used, NOT ObservableObject. @State with @Observable, NOT @StateObject.
-- [ ] No type re-declarations — each type defined in exactly one file
-- [ ] Every View file includes #Preview
-- [ ] Every async view uses Loadable<T> switch with loading, empty, data, and error states
-- [ ] Every mutation button disabled while in-progress with inline spinner
-- [ ] Empty states use ContentUnavailableView with action button
-- [ ] Error states show user-friendly message with retry button`
-
-	switch {
-	case IsMacOS(platform):
-		base += `
-- [ ] Settings scene present for preferences (auto-wires Cmd+,)
-- [ ] CommandMenu actions wired via @FocusedValue — not empty closures
-- [ ] .keyboardShortcut() on every primary action and menu item
-- [ ] .disabled(value == nil) on every CommandMenu button`
-	case IsWatchOS(platform):
-		base += `
-- [ ] No UIKit imports — watchOS is SwiftUI-only
-- [ ] NavigationStack used (not NavigationSplitView) for watch navigation`
-	case IsTvOS(platform):
-		base += `
-- [ ] Focus-based navigation with .focusable() on interactive elements
-- [ ] No small tap targets — tvOS uses focus system, not touch`
-	case IsVisionOS(platform):
-		base += `
-- [ ] RealityView used for 3D content, SwiftUI for 2D chrome
-- [ ] No UIKit imports — visionOS is SwiftUI + RealityKit`
-	}
-	return base
 }

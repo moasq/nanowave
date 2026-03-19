@@ -67,3 +67,80 @@ func TestOnAssistantTextPlanModeKeepsStructuredPreview(t *testing.T) {
 	pd.OnAssistantText("{\n  \"models\": []\n}")
 	assertFriendlyStructuredStatus(t, pd.statusText)
 }
+
+func TestOnAgentCommentaryAddsActivityAndDeduplicates(t *testing.T) {
+	pd := NewProgressDisplay("agentic", 0)
+
+	pd.OnAgentCommentary("Inspecting runtime wiring. Then patching.")
+	if len(pd.activities) != 1 {
+		t.Fatalf("len(activities) = %d, want 1", len(pd.activities))
+	}
+	if pd.activities[0].text != "Inspecting runtime wiring" {
+		t.Fatalf("activities[0].text = %q", pd.activities[0].text)
+	}
+
+	pd.OnAgentCommentary("Inspecting runtime wiring. More detail.")
+	if len(pd.activities) != 1 {
+		t.Fatalf("len(activities) after duplicate = %d, want 1", len(pd.activities))
+	}
+
+	pd.OnAgentCommentary("Patching the Codex adapter.")
+	if len(pd.activities) != 2 {
+		t.Fatalf("len(activities) after new message = %d, want 2", len(pd.activities))
+	}
+	if !pd.activities[0].done {
+		t.Fatal("expected first commentary activity to be marked done")
+	}
+	if pd.activities[1].text != "Patching the Codex adapter" {
+		t.Fatalf("activities[1].text = %q", pd.activities[1].text)
+	}
+}
+
+func TestOnAgentMessagePromotesTextToActivity(t *testing.T) {
+	pd := NewProgressDisplay("agentic", 0)
+
+	pd.OnAgentMessage("I'll start by reading the project files to understand the current structure.")
+	if len(pd.activities) != 1 {
+		t.Fatalf("len(activities) = %d, want 1", len(pd.activities))
+	}
+	if pd.activities[0].text != "I'll start by reading the project files to understand the current structure" {
+		t.Fatalf("activities[0].text = %q", pd.activities[0].text)
+	}
+}
+
+func TestOnAgentMessageCodeGoesToStatus(t *testing.T) {
+	pd := NewProgressDisplay("agentic", 0)
+
+	// Code-like text should not become an activity
+	pd.OnAgentMessage("import SwiftUI\nstruct ContentView: View {")
+	if len(pd.activities) != 0 {
+		t.Fatalf("len(activities) = %d, want 0 for code text", len(pd.activities))
+	}
+}
+
+func TestOnAgentMessageDeduplicates(t *testing.T) {
+	pd := NewProgressDisplay("agentic", 0)
+
+	pd.OnAgentMessage("Reading the project configuration.")
+	pd.OnAgentMessage("Reading the project configuration.")
+	if len(pd.activities) != 1 {
+		t.Fatalf("len(activities) = %d, want 1 after duplicate", len(pd.activities))
+	}
+
+	pd.OnAgentMessage("Now fixing the build error in ContentView.")
+	if len(pd.activities) != 2 {
+		t.Fatalf("len(activities) = %d, want 2 after new message", len(pd.activities))
+	}
+}
+
+func TestOnAgentMessagePlanModeShowsStructuredLabel(t *testing.T) {
+	pd := NewProgressDisplay("plan", 0)
+	pd.OnAgentMessage("{\"files\": []}")
+	if pd.statusText == "" {
+		t.Fatal("expected structured mode label for JSON in plan mode")
+	}
+	if len(pd.activities) != 0 {
+		t.Fatal("JSON should not become an activity in plan mode")
+	}
+}
+

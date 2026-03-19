@@ -1,0 +1,238 @@
+{
+  "name": "Accessibility",
+  "slug": "accessibility",
+  "count": 33,
+  "videos": [
+    {
+      "id": "110",
+      "year": 2017,
+      "title": "Convenience for You is Independence for Me",
+      "duration": "41:48",
+      "url": "https://developer.apple.com/videos/play/wwdc2017/110/"
+    },
+    {
+      "id": "819",
+      "year": 2017,
+      "title": "Designing for a Global Audience",
+      "duration": "9:31",
+      "url": "https://developer.apple.com/videos/play/wwdc2017/819/"
+    },
+    {
+      "id": "230",
+      "year": 2018,
+      "title": "Deliver an Exceptional Accessibility Experience",
+      "duration": "40:30",
+      "url": "https://developer.apple.com/videos/play/wwdc2018/230/"
+    },
+    {
+      "id": "403",
+      "year": 2019,
+      "title": "Creating Great Localized Experiences with Xcode 11",
+      "duration": "34:58",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/403/"
+    },
+    {
+      "id": "10970",
+      "year": 2020,
+      "title": "A conversation with Lisa Jackson and former Attorney General Eric Holder",
+      "duration": "22:48",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10970/"
+    },
+    {
+      "id": "10140",
+      "year": 2020,
+      "title": "Build location-aware enterprise apps",
+      "duration": "14:16",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10140/"
+    },
+    {
+      "id": "10022",
+      "year": 2020,
+      "title": "Create a seamless speech experience in your apps",
+      "duration": "8:39",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10022/"
+    },
+    {
+      "id": "10160",
+      "year": 2020,
+      "title": "Formatters: Make data human-friendly",
+      "duration": "15:18",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10160/"
+    },
+    {
+      "id": "10681",
+      "year": 2020,
+      "title": "Swan's Quest, Chapter 1: Voices in the dark",
+      "duration": "14:43",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10681/"
+    },
+    {
+      "id": "10169",
+      "year": 2020,
+      "title": "Swift packages: Resources and localization",
+      "duration": "15:43",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10169/"
+    },
+    {
+      "id": "10116",
+      "year": 2020,
+      "title": "VoiceOver efficiency with custom rotors",
+      "duration": "10:52",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10116/"
+    },
+    {
+      "id": "10308",
+      "year": 2021,
+      "title": "Accessibility by design: An Apple Watch for everyone",
+      "duration": "10:12",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10308/"
+    },
+    {
+      "id": "10122",
+      "year": 2021,
+      "title": "Bring accessibility to charts in your app",
+      "duration": "19:43",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10122/"
+    },
+    {
+      "id": "10318",
+      "year": 2021,
+      "title": "Developer spotlight: Accessibility",
+      "duration": "6:20",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10318/"
+    },
+    {
+      "id": "10220",
+      "year": 2021,
+      "title": "Localize your SwiftUI app",
+      "duration": "17:36",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10220/"
+    },
+    {
+      "id": "10120",
+      "year": 2021,
+      "title": "Support Full Keyboard Access in your iOS app",
+      "duration": "16:50",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10120/"
+    },
+    {
+      "id": "10121",
+      "year": 2021,
+      "title": "Tailor the VoiceOver experience in your data-rich apps",
+      "duration": "10:26",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10121/"
+    },
+    {
+      "id": "10304",
+      "year": 2021,
+      "title": "The process of inclusive design",
+      "duration": "36:34",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10304/"
+    },
+    {
+      "id": "10259",
+      "year": 2021,
+      "title": "Your guide to keyboard layout",
+      "duration": "14:40",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10259/"
+    },
+    {
+      "id": "10110",
+      "year": 2022,
+      "title": "Build global apps: Localization by example",
+      "duration": "22:17",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10110/"
+    },
+    {
+      "id": "10034",
+      "year": 2022,
+      "title": "Design for Arabic",
+      "duration": "20:13",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10034/"
+    },
+    {
+      "id": "110441",
+      "year": 2022,
+      "title": "Design for Arabic · صمّم بالعربي",
+      "duration": "19:30",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/110441/"
+    },
+    {
+      "id": "10107",
+      "year": 2022,
+      "title": "Get it right (to left)",
+      "duration": "33:46",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10107/"
+    },
+    {
+      "id": "10065",
+      "year": 2022,
+      "title": "Plug-in and play: Add Apple frameworks to your Unity game projects",
+      "duration": "26:41",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10065/"
+    },
+    {
+      "id": "10036",
+      "year": 2023,
+      "title": "Build accessible apps with SwiftUI and UIKit",
+      "duration": "15:39",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10036/"
+    },
+    {
+      "id": "10078",
+      "year": 2023,
+      "title": "Design considerations for vision and motion",
+      "duration": "15:10",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10078/"
+    },
+    {
+      "id": "10033",
+      "year": 2023,
+      "title": "Extend Speech Synthesis with personal and custom voices",
+      "duration": "12:49",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10033/"
+    },
+    {
+      "id": "10032",
+      "year": 2023,
+      "title": "Meet Assistive Access",
+      "duration": "8:09",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10032/"
+    },
+    {
+      "id": "10153",
+      "year": 2023,
+      "title": "Unlock the power of grammatical agreement",
+      "duration": "18:21",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10153/"
+    },
+    {
+      "id": "238",
+      "year": 2025,
+      "title": "Customize your app for Assistive Access",
+      "duration": "15:37",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/238/"
+    },
+    {
+      "id": "224",
+      "year": 2025,
+      "title": "Evaluate your app for Accessibility Nutrition Labels",
+      "duration": "24:08",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/224/"
+    },
+    {
+      "id": "229",
+      "year": 2025,
+      "title": "Make your Mac app more accessible to everyone",
+      "duration": "12:19",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/229/"
+    },
+    {
+      "id": "316",
+      "year": 2025,
+      "title": "Principles of inclusive app design",
+      "duration": "21:10",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/316/"
+    }
+  ]
+}

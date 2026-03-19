@@ -220,29 +220,6 @@ func TestTruncateStr(t *testing.T) {
 	}
 }
 
-func TestExtractSpinnerStatus(t *testing.T) {
-	tests := []struct {
-		name  string
-		input string
-		want  string
-	}{
-		{"empty", "", ""},
-		{"whitespace", "   ", ""},
-		{"single sentence", "Creating the model file", "Creating the model file"},
-		{"sentence with period", "Creating the model file. Then the view.", "Creating the model file"},
-		{"with newline", "First line\nSecond line", "First line"},
-		{"long text truncated", "This is a very long status message that exceeds the maximum width allowed for spinner display and should be truncated", "This is a very long status message that exceeds the maximum ..."},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := extractSpinnerStatus(tt.input)
-			if got != tt.want {
-				t.Errorf("extractSpinnerStatus(%q) = %q, want %q", tt.input, got, tt.want)
-			}
-		})
-	}
-}
-
 func TestParsePlan_WithPackages(t *testing.T) {
 	plan := `{
 		"design": {"navigation":"tabs","palette":{"primary":"#FF0000","secondary":"#00FF00","accent":"#0000FF","background":"#FFFFFF","surface":"#F0F0F0"},"font_design":"default","corner_radius":12,"density":"standard","surfaces":"solid","app_mood":"calm"},

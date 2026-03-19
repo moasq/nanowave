@@ -1,0 +1,588 @@
+{
+  "name": "Audio & Video",
+  "slug": "audio-video",
+  "count": 83,
+  "videos": [
+    {
+      "id": "513",
+      "year": 2014,
+      "title": "Direct Access to Video Encoding and Decoding",
+      "duration": "52:43",
+      "url": "https://developer.apple.com/videos/play/wwdc2014/513/"
+    },
+    {
+      "id": "509",
+      "year": 2016,
+      "title": "Speech Recognition API",
+      "duration": "11:37",
+      "url": "https://developer.apple.com/videos/play/wwdc2016/509/"
+    },
+    {
+      "id": "510",
+      "year": 2016,
+      "title": "Validating HTTP Live Streams",
+      "duration": "22:21",
+      "url": "https://developer.apple.com/videos/play/wwdc2016/510/"
+    },
+    {
+      "id": "504",
+      "year": 2017,
+      "title": "Advances in HTTP Live Streaming",
+      "duration": "54:51",
+      "url": "https://developer.apple.com/videos/play/wwdc2017/504/"
+    },
+    {
+      "id": "719",
+      "year": 2017,
+      "title": "Enabling Your App for CarPlay",
+      "duration": "27:33",
+      "url": "https://developer.apple.com/videos/play/wwdc2017/719/"
+    },
+    {
+      "id": "514",
+      "year": 2017,
+      "title": "Error Handling Best Practices for HTTP Live Streaming",
+      "duration": "18:41",
+      "url": "https://developer.apple.com/videos/play/wwdc2017/514/"
+    },
+    {
+      "id": "515",
+      "year": 2017,
+      "title": "HLS Authoring Update",
+      "duration": "9:07",
+      "url": "https://developer.apple.com/videos/play/wwdc2017/515/"
+    },
+    {
+      "id": "509",
+      "year": 2019,
+      "title": "AUv3 Extensions User Presets",
+      "duration": "5:32",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/509/"
+    },
+    {
+      "id": "503",
+      "year": 2019,
+      "title": "Delivering Intuitive Media Playback with AVKit",
+      "duration": "40:05",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/503/"
+    },
+    {
+      "id": "223",
+      "year": 2019,
+      "title": "Expanding the Sensory Experience with Core Haptics",
+      "duration": "56:04",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/223/"
+    },
+    {
+      "id": "506",
+      "year": 2019,
+      "title": "HEVC Video with Alpha",
+      "duration": "14:50",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/506/"
+    },
+    {
+      "id": "507",
+      "year": 2019,
+      "title": "HLS Authoring for AirPlay 2 Video",
+      "duration": "6:56",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/507/"
+    },
+    {
+      "id": "502",
+      "year": 2019,
+      "title": "Introducing Low-Latency HLS",
+      "duration": "42:06",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/502/"
+    },
+    {
+      "id": "508",
+      "year": 2019,
+      "title": "Modernizing Your Audio App",
+      "duration": "1:46",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/508/"
+    },
+    {
+      "id": "501",
+      "year": 2019,
+      "title": "Reaching the Big Screen with AirPlay 2",
+      "duration": "35:49",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/501/"
+    },
+    {
+      "id": "510",
+      "year": 2019,
+      "title": "What's New in AVAudioEngine",
+      "duration": "8:53",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/510/"
+    },
+    {
+      "id": "10232",
+      "year": 2020,
+      "title": "Adapt ad insertion to Low-Latency HLS",
+      "duration": "9:39",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10232/"
+    },
+    {
+      "id": "10011",
+      "year": 2020,
+      "title": "Author fragmented MPEG-4 content with AVAssetWriter",
+      "duration": "22:11",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10011/"
+    },
+    {
+      "id": "10021",
+      "year": 2020,
+      "title": "Build Metal-based Core Image kernels with Xcode",
+      "duration": "6:12",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10021/"
+    },
+    {
+      "id": "10158",
+      "year": 2020,
+      "title": "Deliver a better HLS audio experience",
+      "duration": "19:57",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10158/"
+    },
+    {
+      "id": "10089",
+      "year": 2020,
+      "title": "Discover Core Image debugging techniques",
+      "duration": "7:16",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10089/"
+    },
+    {
+      "id": "10229",
+      "year": 2020,
+      "title": "Discover HLS Blocking Preload Hints",
+      "duration": "9:27",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10229/"
+    },
+    {
+      "id": "10655",
+      "year": 2020,
+      "title": "Discover how to download and play HLS offline",
+      "duration": "17:08",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10655/"
+    },
+    {
+      "id": "10225",
+      "year": 2020,
+      "title": "Improve stream authoring with HLS Tools",
+      "duration": "10:41",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10225/"
+    },
+    {
+      "id": "10224",
+      "year": 2020,
+      "title": "Meet Audio Workgroups",
+      "duration": "10:52",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10224/"
+    },
+    {
+      "id": "10230",
+      "year": 2020,
+      "title": "Optimize live streams with HLS Playlist Delta Updates",
+      "duration": "7:34",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10230/"
+    },
+    {
+      "id": "10226",
+      "year": 2020,
+      "title": "Record stereo audio with AVAudioSession",
+      "duration": "9:37",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10226/"
+    },
+    {
+      "id": "10231",
+      "year": 2020,
+      "title": "Reduce latency with HLS Blocking Playlist Reload",
+      "duration": "8:40",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10231/"
+    },
+    {
+      "id": "10645",
+      "year": 2020,
+      "title": "Support multiple users in your tvOS app",
+      "duration": "8:46",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10645/"
+    },
+    {
+      "id": "10228",
+      "year": 2020,
+      "title": "What's new in Low-Latency HLS",
+      "duration": "5:54",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10228/"
+    },
+    {
+      "id": "10636",
+      "year": 2020,
+      "title": "What's new in streaming audio for Apple Watch",
+      "duration": "7:12",
+      "url": "https://developer.apple.com/videos/play/wwdc2020/10636/"
+    },
+    {
+      "id": "10187",
+      "year": 2021,
+      "title": "Build custom experiences with Group Activities",
+      "duration": "25:09",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10187/"
+    },
+    {
+      "id": "10225",
+      "year": 2021,
+      "title": "Coordinate media experiences with Group Activities",
+      "duration": "37:58",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10225/"
+    },
+    {
+      "id": "10189",
+      "year": 2021,
+      "title": "Coordinate media playback in Safari with Group Activities",
+      "duration": "12:02",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10189/"
+    },
+    {
+      "id": "10159",
+      "year": 2021,
+      "title": "Explore Core Image kernel improvements",
+      "duration": "9:03",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10159/"
+    },
+    {
+      "id": "10161",
+      "year": 2021,
+      "title": "Explore HDR rendering with EDR",
+      "duration": "34:16",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10161/"
+    },
+    {
+      "id": "10143",
+      "year": 2021,
+      "title": "Explore HLS variants in AVFoundation",
+      "duration": "9:28",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10143/"
+    },
+    {
+      "id": "10140",
+      "year": 2021,
+      "title": "Explore dynamic pre-rolls and mid-rolls in HLS",
+      "duration": "15:19",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10140/"
+    },
+    {
+      "id": "10291",
+      "year": 2021,
+      "title": "Explore the catalog with the Apple Music API",
+      "duration": "7:50",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10291/"
+    },
+    {
+      "id": "10265",
+      "year": 2021,
+      "title": "Immerse your app in Spatial Audio",
+      "duration": "18:17",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10265/"
+    },
+    {
+      "id": "10141",
+      "year": 2021,
+      "title": "Improve global streaming availability with HLS Content Steering",
+      "duration": "13:02",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10141/"
+    },
+    {
+      "id": "10294",
+      "year": 2021,
+      "title": "Meet MusicKit for Swift",
+      "duration": "17:46",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10294/"
+    },
+    {
+      "id": "10142",
+      "year": 2021,
+      "title": "Transition media gaplessly with HLS",
+      "duration": "10:33",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10142/"
+    },
+    {
+      "id": "10146",
+      "year": 2021,
+      "title": "What’s new in AVFoundation",
+      "duration": "16:51",
+      "url": "https://developer.apple.com/videos/play/wwdc2021/10146/"
+    },
+    {
+      "id": "110373",
+      "year": 2022,
+      "title": "Bring your driver to iPad with DriverKit",
+      "duration": "18:02",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/110373/"
+    },
+    {
+      "id": "110379",
+      "year": 2022,
+      "title": "Create a more responsive media app",
+      "duration": "10:27",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/110379/"
+    },
+    {
+      "id": "10028",
+      "year": 2022,
+      "title": "Create custom catalogs at scale with ShazamKit",
+      "duration": "19:44",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10028/"
+    },
+    {
+      "id": "10144",
+      "year": 2022,
+      "title": "Deliver reliable streams with HLS Content Steering",
+      "duration": "22:24",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10144/"
+    },
+    {
+      "id": "10114",
+      "year": 2022,
+      "title": "Display EDR content with Core Image, Metal, and SwiftUI",
+      "duration": "17:41",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10114/"
+    },
+    {
+      "id": "110565",
+      "year": 2022,
+      "title": "Display HDR video in EDR with AVFoundation and Metal",
+      "duration": "22:04",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/110565/"
+    },
+    {
+      "id": "10113",
+      "year": 2022,
+      "title": "Explore EDR on iOS",
+      "duration": "20:36",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10113/"
+    },
+    {
+      "id": "110338",
+      "year": 2022,
+      "title": "Explore media metadata publishing and playback interactions",
+      "duration": "14:12",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/110338/"
+    },
+    {
+      "id": "110347",
+      "year": 2022,
+      "title": "Explore more content with MusicKit",
+      "duration": "25:54",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/110347/"
+    },
+    {
+      "id": "10139",
+      "year": 2022,
+      "title": "Make a great SharePlay experience",
+      "duration": "18:38",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10139/"
+    },
+    {
+      "id": "10156",
+      "year": 2022,
+      "title": "Meet ScreenCaptureKit",
+      "duration": "15:28",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10156/"
+    },
+    {
+      "id": "110384",
+      "year": 2022,
+      "title": "Support multiple users in tvOS apps",
+      "duration": "14:36",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/110384/"
+    },
+    {
+      "id": "10155",
+      "year": 2022,
+      "title": "Take ScreenCaptureKit to the next level",
+      "duration": "37:19",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10155/"
+    },
+    {
+      "id": "10140",
+      "year": 2022,
+      "title": "What's new in SharePlay",
+      "duration": "14:54",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10140/"
+    },
+    {
+      "id": "10149",
+      "year": 2022,
+      "title": "What’s new in AVQT",
+      "duration": "9:38",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10149/"
+    },
+    {
+      "id": "10145",
+      "year": 2022,
+      "title": "What’s new in HLS Interstitials",
+      "duration": "9:26",
+      "url": "https://developer.apple.com/videos/play/wwdc2022/10145/"
+    },
+    {
+      "id": "10239",
+      "year": 2023,
+      "title": "Add SharePlay to your app",
+      "duration": "13:37",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10239/"
+    },
+    {
+      "id": "10051",
+      "year": 2023,
+      "title": "Create a great ShazamKit experience",
+      "duration": "21:58",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10051/"
+    },
+    {
+      "id": "10256",
+      "year": 2023,
+      "title": "Discover Continuity Camera for tvOS",
+      "duration": "29:12",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10256/"
+    },
+    {
+      "id": "10275",
+      "year": 2023,
+      "title": "Explore AirPlay with interstitials",
+      "duration": "19:51",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10275/"
+    },
+    {
+      "id": "10271",
+      "year": 2023,
+      "title": "Explore immersive sound design",
+      "duration": "14:33",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10271/"
+    },
+    {
+      "id": "10241",
+      "year": 2023,
+      "title": "Share files with SharePlay",
+      "duration": "9:39",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10241/"
+    },
+    {
+      "id": "10137",
+      "year": 2023,
+      "title": "Support Cinematic mode videos in your app",
+      "duration": "24:53",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10137/"
+    },
+    {
+      "id": "10238",
+      "year": 2023,
+      "title": "Tune up your AirPlay audio experience",
+      "duration": "10:33",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10238/"
+    },
+    {
+      "id": "10136",
+      "year": 2023,
+      "title": "What’s new in ScreenCaptureKit",
+      "duration": "13:43",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10136/"
+    },
+    {
+      "id": "10235",
+      "year": 2023,
+      "title": "What’s new in voice processing",
+      "duration": "15:54",
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10235/"
+    },
+    {
+      "id": "10201",
+      "year": 2024,
+      "title": "Customize spatial Persona templates in SharePlay",
+      "duration": "36:26",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10201/"
+    },
+    {
+      "id": "10113",
+      "year": 2024,
+      "title": "Discover media performance metrics in AVFoundation",
+      "duration": "8:40",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10113/"
+    },
+    {
+      "id": "10114",
+      "year": 2024,
+      "title": "Enhance ad experiences with HLS interstitials",
+      "duration": "13:24",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10114/"
+    },
+    {
+      "id": "10207",
+      "year": 2024,
+      "title": "Migrate your TVML app to SwiftUI",
+      "duration": "17:30",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10207/"
+    },
+    {
+      "id": "10177",
+      "year": 2024,
+      "title": "Use HDR for dynamic image experiences in your app",
+      "duration": "34:29",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10177/"
+    },
+    {
+      "id": "302",
+      "year": 2025,
+      "title": "Create a seamless multiview playback experience",
+      "duration": "19:34",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/302/"
+    },
+    {
+      "id": "251",
+      "year": 2025,
+      "title": "Enhance your app’s audio recording capabilities",
+      "duration": "19:19",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/251/"
+    },
+    {
+      "id": "304",
+      "year": 2025,
+      "title": "Explore video experiences for visionOS",
+      "duration": "25:52",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/304/"
+    },
+    {
+      "id": "403",
+      "year": 2025,
+      "title": "Learn about Apple Immersive Video technologies",
+      "duration": "14:50",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/403/"
+    },
+    {
+      "id": "297",
+      "year": 2025,
+      "title": "Learn about the Apple Projected Media Profile",
+      "duration": "19:31",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/297/"
+    },
+    {
+      "id": "318",
+      "year": 2025,
+      "title": "Share visionOS experiences with nearby people",
+      "duration": "23:05",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/318/"
+    },
+    {
+      "id": "296",
+      "year": 2025,
+      "title": "Support immersive video playback in visionOS apps",
+      "duration": "25:32",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/296/"
+    },
+    {
+      "id": "317",
+      "year": 2025,
+      "title": "What’s new in visionOS 26",
+      "duration": "38:47",
+      "url": "https://developer.apple.com/videos/play/wwdc2025/317/"
+    }
+  ]
+}

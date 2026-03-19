@@ -47,104 +47,79 @@ func (p Phase) label() string {
 	}
 }
 
-func (p Phase) number() int {
-	switch p {
-	case PhaseAnalyzing:
-		return 1
-	case PhasePlanning:
-		return 2
-	case PhaseBuildingCode:
-		return 3
-	case PhaseGenerating:
-		return 4
-	case PhaseCompiling:
-		return 5
-	case PhaseFixing:
-		return 6
-	case PhaseEditing:
-		return 1
-	case PhaseASC:
-		return 1
-	default:
-		return 1
-	}
-}
-
-// activity represents a single logged action.
+// activity represents a single logged action (kept for non-interactive fallback).
 type activity struct {
 	text string
 	done bool
 }
 
-// ProgressDisplay provides a rich, phase-aware terminal progress UI.
+// ProgressDisplay provides a streaming log display for agent activity.
+//
+// Design: agent messages and tool calls are printed as permanent log lines.
+// Only the current spinner line at the bottom is redrawn in place.
+// This means the user sees the full stream of what the agent is doing,
+// not a rigid summary that hides the real work.
 type ProgressDisplay struct {
-	mu            sync.Mutex
-	phase         Phase
-	totalFiles    int
-	filesWritten  int
-	activities    []activity
-	statusText    string          // dimmed assistant text
-	streamingBuf  strings.Builder // accumulates streaming text tokens
-	running       bool
-	done          chan struct{}
-	stopped       chan struct{} // closed when renderLoop exits
-	mode          string       // "build", "edit", "fix", "analyze", "plan"
-	totalPhases   int
-	buildFailed   bool
-	fixAttempts   int
-	startedAt     time.Time
-	interactive   bool
+	mu         sync.Mutex
+	phase      Phase
+	totalFiles int
+	filesWritten int
+	statusText   string          // current spinner status (redrawn in place)
+	streamingBuf strings.Builder // accumulates streaming text tokens
+	running      bool
+	done         chan struct{}
+	stopped      chan struct{}
+	mode         string
+	totalPhases  int
+	buildFailed  bool
+	fixAttempts  int
+	startedAt    time.Time
+	interactive  bool
+
+	// Streaming log state
+	spinnerDirty      bool   // whether the spinner line needs clearing before next print
+	lastLogLine       string // deduplication: last printed log line
+	lastToolVerb      string // verb of the last tool call (for collapsing)
+	lastToolVerbCount int    // how many consecutive calls share this verb
+
+	// Non-interactive fallback
 	lastRenderID    string
+	lastRenderLines int
+	activities      []activity
 	maxActivities   int
-	lastRenderLines int // tracks previous render height for dynamic clearing
 }
 
 const (
-	defaultMaxActivities         = 4
-	maxStatusWidth               = 70
-	structuredStreamingTailRunes = 240
+	defaultMaxActivities = 4
+	maxStatusWidth       = 100
 )
 
 // NewProgressDisplay creates a progress display for the given mode.
-// totalFiles is used for the build progress bar (0 if unknown).
-func NewProgressDisplay(mode string, totalFiles int) *ProgressDisplay {
-	totalPhases := 5 // build: analyze → plan → code → generate → compile
+func NewProgressDisplay(mode string, _ int) *ProgressDisplay {
 	startPhase := PhaseBuildingCode
-
 	switch mode {
-	case "intent":
-		startPhase = PhaseAnalyzing
-		totalPhases = 5
 	case "analyze":
 		startPhase = PhaseAnalyzing
-		totalPhases = 5
 	case "plan":
 		startPhase = PhasePlanning
-		totalPhases = 5
-	case "build":
+	case "build", "agentic":
 		startPhase = PhaseBuildingCode
-		totalPhases = 5
 	case "edit":
 		startPhase = PhaseEditing
-		totalPhases = 0
 	case "fix":
 		startPhase = PhaseCompiling
-		totalPhases = 0
 	case "asc":
 		startPhase = PhaseASC
-		totalPhases = 0
 	}
 
 	maxAct := defaultMaxActivities
-	if mode == "asc" {
+	if mode == "asc" || mode == "agentic" {
 		maxAct = 8
 	}
 
 	return &ProgressDisplay{
 		phase:         startPhase,
-		totalFiles:    totalFiles,
 		mode:          mode,
-		totalPhases:   totalPhases,
 		startedAt:     time.Now(),
 		interactive:   term.IsTerminal(int(os.Stdout.Fd())),
 		done:          make(chan struct{}),
@@ -153,7 +128,7 @@ func NewProgressDisplay(mode string, totalFiles int) *ProgressDisplay {
 	}
 }
 
-// Start begins the rendering loop.
+// Start begins the spinner rendering loop.
 func (pd *ProgressDisplay) Start() {
 	pd.mu.Lock()
 	if pd.running {
@@ -162,11 +137,10 @@ func (pd *ProgressDisplay) Start() {
 	}
 	pd.running = true
 	pd.mu.Unlock()
-
-	go pd.renderLoop()
+	go pd.spinnerLoop()
 }
 
-// Stop stops the progress display and clears the output area.
+// Stop stops the display and clears the spinner.
 func (pd *ProgressDisplay) Stop() {
 	pd.mu.Lock()
 	if !pd.running {
@@ -177,22 +151,23 @@ func (pd *ProgressDisplay) Stop() {
 	pd.mu.Unlock()
 
 	close(pd.done)
-	<-pd.stopped // wait for renderLoop to exit before clearing
+	<-pd.stopped
 	if pd.interactive {
-		pd.clearDisplay()
+		// Clear the spinner line
+		fmt.Printf("\r\033[K")
 	}
 }
 
-// StopWithSuccess stops and prints a success message.
+// StopWithSuccess stops and prints a success message with trailing spacing.
 func (pd *ProgressDisplay) StopWithSuccess(msg string) {
 	pd.Stop()
-	fmt.Printf("  %s%s✓%s %s\n", Bold, Green, Reset, msg)
+	fmt.Printf("\n  %s%s✓%s %s\n\n", Bold, Green, Reset, msg)
 }
 
-// StopWithError stops and prints an error message.
+// StopWithError stops and prints an error message with trailing spacing.
 func (pd *ProgressDisplay) StopWithError(msg string) {
 	pd.Stop()
-	fmt.Printf("  %s%s✗%s %s\n", Bold, Red, Reset, msg)
+	fmt.Printf("\n  %s%s✗%s %s\n\n", Bold, Red, Reset, msg)
 }
 
 // SetPhase explicitly transitions to a new phase.
@@ -202,27 +177,27 @@ func (pd *ProgressDisplay) SetPhase(phase Phase) {
 	pd.phase = phase
 }
 
-// AddActivity adds a new activity line to the display.
+// AddActivity prints a permanent log line for a nanowave-internal event.
 func (pd *ProgressDisplay) AddActivity(text string) {
 	pd.mu.Lock()
 	defer pd.mu.Unlock()
 	pd.addActivity(text)
+	if pd.interactive {
+		pd.printLogLine(fmt.Sprintf("  %s●%s %s", Dim, Reset, text))
+	}
 }
 
 func (pd *ProgressDisplay) addActivity(text string) {
-	// Mark previous last activity as done
 	if len(pd.activities) > 0 {
 		pd.activities[len(pd.activities)-1].done = true
 	}
 	pd.activities = append(pd.activities, activity{text: text, done: false})
-	// Trim to max
 	if len(pd.activities) > pd.maxActivities {
 		pd.activities = pd.activities[len(pd.activities)-pd.maxActivities:]
 	}
 }
 
-// UpdateLastActivity updates the text of the most recent (in-progress) activity.
-// If there is no in-progress activity, it adds a new one.
+// UpdateLastActivity updates the text of the most recent activity.
 func (pd *ProgressDisplay) UpdateLastActivity(text string) {
 	pd.mu.Lock()
 	defer pd.mu.Unlock()
@@ -233,7 +208,7 @@ func (pd *ProgressDisplay) UpdateLastActivity(text string) {
 	}
 }
 
-// SetStatus sets the dimmed status text (from assistant messages).
+// SetStatus sets the spinner status text.
 func (pd *ProgressDisplay) SetStatus(text string) {
 	pd.mu.Lock()
 	defer pd.mu.Unlock()
@@ -250,8 +225,7 @@ func (pd *ProgressDisplay) IncrementFiles() {
 	}
 }
 
-// ResetForRetry resets transient display state for a new completion pass
-// while preserving cumulative counters (filesWritten) and totalFiles.
+// ResetForRetry resets transient display state for a new completion pass.
 func (pd *ProgressDisplay) ResetForRetry() {
 	pd.mu.Lock()
 	defer pd.mu.Unlock()
@@ -263,7 +237,6 @@ func (pd *ProgressDisplay) ResetForRetry() {
 }
 
 // SetTotalFiles updates the total expected file count.
-// If the new total is less than files already written, it's raised to filesWritten.
 func (pd *ProgressDisplay) SetTotalFiles(total int) {
 	pd.mu.Lock()
 	defer pd.mu.Unlock()
@@ -273,139 +246,75 @@ func (pd *ProgressDisplay) SetTotalFiles(total int) {
 	}
 }
 
-// toolActivityLabel returns a human-readable label for a tool use event.
-// Returns "" if no meaningful label can be generated.
-func (pd *ProgressDisplay) toolActivityLabel(toolName string, inputGetter func(key string) string) string {
-	switch toolName {
-	case "Write":
-		path := inputGetter("file_path")
-		if path != "" {
-			return fmt.Sprintf("Writing %s", shortPath(path))
-		}
-		return "Writing file"
-	case "Edit":
-		path := inputGetter("file_path")
-		if path != "" {
-			return fmt.Sprintf("Editing %s", shortPath(path))
-		}
-		return "Editing file"
-	case "Read":
-		path := inputGetter("file_path")
-		if path != "" {
-			return fmt.Sprintf("Reading %s", shortPath(path))
-		}
-		return "Reading file"
-	case "Bash":
-		command := inputGetter("command")
-		if strings.Contains(command, "xcodegen") {
-			return "Generating Xcode project"
-		} else if strings.Contains(command, "xcodebuild") {
-			return "Compiling project"
-		} else if strings.Contains(command, "git") {
-			return "Updating repository"
-		} else if label := ascCommandLabel(command); label != "" {
-			return label
-		} else if command != "" {
-			short := command
-			if len(short) > 80 {
-				short = short[:80] + "..."
-			}
-			return short
-		}
-		return "Running command"
-	case "Glob":
-		return "Searching files..."
-	case "Grep":
-		return "Searching code..."
-	case "WebFetch", "WebSearch":
-		return "Searching web..."
-	default:
-		if label := friendlyToolName(toolName, inputGetter); label != "" {
-			return label
-		}
-		return ""
-	}
-}
+// ---------------------------------------------------------------------------
+// Agent event handlers — these are the primary display drivers
+// ---------------------------------------------------------------------------
 
-// OnToolUse processes a tool_use event and updates the display state.
+// OnToolUse processes a tool call event.
+// Consecutive same-verb calls (e.g. "Reading X", "Reading Y") are collapsed:
+// only the first is printed as a log line; subsequent ones just update the spinner.
+// When the verb changes or agent text arrives, a summary is flushed.
 func (pd *ProgressDisplay) OnToolUse(toolName string, inputGetter func(key string) string) {
 	pd.mu.Lock()
 	defer pd.mu.Unlock()
 
-	// Clear stale status and streaming buffer once real tool activity begins.
-	pd.statusText = ""
 	pd.streamingBuf.Reset()
 
-	// Update phase based on tool
-	switch toolName {
-	case "Write":
-		if pd.mode == "build" {
-			pd.phase = PhaseBuildingCode
-		}
-		if inputGetter("file_path") != "" {
-			pd.filesWritten++
-			if pd.filesWritten > pd.totalFiles && pd.totalFiles > 0 {
-				pd.totalFiles = pd.filesWritten
-			}
-		}
-	case "Edit":
-		if pd.buildFailed {
-			pd.phase = PhaseFixing
-		} else if pd.mode == "edit" {
-			pd.phase = PhaseEditing
-		}
-	case "Bash":
-		command := inputGetter("command")
-		if strings.Contains(command, "xcodegen") {
-			pd.phase = PhaseGenerating
-		} else if strings.Contains(command, "xcodebuild") {
-			pd.phase = PhaseCompiling
-		}
+	label := pd.toolActivityLabel(toolName, inputGetter)
+	if label == "" {
+		return
+	}
+	pd.addActivity(label)
+
+	if !pd.interactive {
+		return
 	}
 
-	label := pd.toolActivityLabel(toolName, inputGetter)
-	if label != "" {
-		pd.addActivity(label)
+	verb := toolVerb(label)
+
+	if verb != "" && verb == pd.lastToolVerb {
+		// Same verb — don't print a new line. Just count and update spinner.
+		pd.lastToolVerbCount++
+		pd.statusText = fmt.Sprintf("%s (%d files)", verb, pd.lastToolVerbCount)
+		return
 	}
+
+	// Different verb — flush previous collapsed run, then print this one
+	pd.flushToolCollapse()
+	pd.lastToolVerb = verb
+	pd.lastToolVerbCount = 1
+	pd.printLogLine(fmt.Sprintf("  %s↳%s %s%s%s", Dim, Reset, Dim, label, Reset))
 }
 
-// UpdateToolActivity refines the most recent activity label for a tool
-// as more input becomes available (e.g., from streaming tool_input_delta).
-// If countFile is true and the tool is a Write with a file_path, the file
-// counter is incremented (used when the complete tool input arrives).
-func (pd *ProgressDisplay) UpdateToolActivity(toolName string, inputGetter func(key string) string, countFile bool) {
+// UpdateToolActivity refines the spinner status for a tool in progress.
+// Unlike OnToolUse, this does NOT print a new log line — it just updates
+// the spinner so the user sees what's happening in real time.
+func (pd *ProgressDisplay) UpdateToolActivity(toolName string, inputGetter func(key string) string, _ bool) {
 	pd.mu.Lock()
 	defer pd.mu.Unlock()
-
-	if countFile && toolName == "Write" && pd.mode == "build" {
-		if inputGetter("file_path") != "" {
-			pd.filesWritten++
-			if pd.filesWritten > pd.totalFiles && pd.totalFiles > 0 {
-				pd.totalFiles = pd.filesWritten
-			}
-		}
-	}
 
 	label := pd.toolActivityLabel(toolName, inputGetter)
 	if label == "" {
 		return
 	}
 
-	// Update the last in-progress activity
+	// Update both the activity list and the spinner status
 	if len(pd.activities) > 0 && !pd.activities[len(pd.activities)-1].done {
 		pd.activities[len(pd.activities)-1].text = label
 	}
+	pd.statusText = label
 }
 
-// OnStreamingText processes a token-by-token text delta from content_block_delta events.
-// It accumulates text and updates the status display in real-time.
+// OnStreamingText processes token-by-token text deltas.
+// Updates the spinner status with a preview — does NOT print raw tokens,
+// because the stream often contains tool output (xcodebuild stderr, etc.)
+// that would flood the display. Full agent messages are printed by OnAgentMessage.
 func (pd *ProgressDisplay) OnStreamingText(text string) {
 	pd.mu.Lock()
 	defer pd.mu.Unlock()
 
 	pd.streamingBuf.WriteString(text)
 
-	// Extract a mode-aware preview from accumulated text for display.
 	accumulated := pd.streamingBuf.String()
 	status := extractStreamingPreview(accumulated, pd.mode)
 	if status != "" {
@@ -413,42 +322,218 @@ func (pd *ProgressDisplay) OnStreamingText(text string) {
 	}
 }
 
-// OnAssistantText processes assistant text content (full message, not deltas).
+// OnAssistantText processes full assistant messages.
 func (pd *ProgressDisplay) OnAssistantText(text string) {
 	pd.mu.Lock()
 	defer pd.mu.Unlock()
 
-	// Reset streaming buffer since we got the full message
 	pd.streamingBuf.Reset()
 
-	// Detect build failure mentions to transition phase
-	lower := strings.ToLower(text)
-	if strings.Contains(lower, "build failed") || strings.Contains(lower, "compilation error") ||
-		strings.Contains(lower, "build error") {
-		pd.buildFailed = true
-	}
-	if pd.buildFailed && (strings.Contains(lower, "fix") || strings.Contains(lower, "correct") ||
-		strings.Contains(lower, "let me") || strings.Contains(lower, "i'll")) {
-		pd.phase = PhaseFixing
-		pd.fixAttempts++
-	}
-
-	if isStructuredStreamingPreviewMode(pd.mode) {
-		if status := extractStreamingPreview(text, pd.mode); status != "" {
-			pd.statusText = status
-		}
+	if isStructuredMode(pd.mode) && strings.TrimSpace(text) != "" {
+		pd.statusText = structuredModeLabel(pd.mode)
 		return
 	}
 
-	// Extract a short meaningful status from assistant text
 	status := extractStatus(text)
-	if status != "" {
+	if status != "" && !looksLikeCode(status) {
 		pd.statusText = status
 	}
 }
 
-// renderLoop runs the rendering goroutine.
-func (pd *ProgressDisplay) renderLoop() {
+// OnAgentMessage processes any agent text and prints it as a permanent log line.
+// This is the primary display: the agent's own words appear as they come.
+// If tokens were already streamed via OnStreamingText, this is a no-op for display
+// (the text was already printed token-by-token). We just clean up state.
+func (pd *ProgressDisplay) OnAgentMessage(text string) {
+	pd.mu.Lock()
+	defer pd.mu.Unlock()
+
+	// Flush any pending tool collapse — agent speaking ends tool runs
+	pd.flushToolCollapse()
+
+	text = strings.TrimSpace(text)
+	if text == "" {
+		pd.streamingBuf.Reset()
+		return
+	}
+
+	if isStructuredMode(pd.mode) {
+		pd.streamingBuf.Reset()
+		pd.statusText = structuredModeLabel(pd.mode)
+		return
+	}
+
+	// Always track in activities (for non-interactive mode and tests)
+	label := extractStatus(text)
+	if label != "" && !looksLikeCode(label) {
+		label = truncateActivity(label)
+		if len(pd.activities) == 0 || pd.activities[len(pd.activities)-1].text != label {
+			pd.addActivity(label)
+		}
+	}
+
+	pd.streamingBuf.Reset()
+
+	// Interactive: print the full agent message (wasn't streamed token-by-token)
+	if pd.interactive {
+		pd.printAgentText(text)
+	} else if label != "" && !looksLikeCode(label) {
+		pd.statusText = label
+	}
+}
+
+// OnAgentCommentary records agent commentary as a log line.
+func (pd *ProgressDisplay) OnAgentCommentary(text string) {
+	pd.mu.Lock()
+	defer pd.mu.Unlock()
+
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return
+	}
+
+	label := truncateActivity(extractStatus(text))
+	if label == "" {
+		return
+	}
+	if len(pd.activities) > 0 && pd.activities[len(pd.activities)-1].text == label {
+		return
+	}
+
+	pd.statusText = ""
+	pd.streamingBuf.Reset()
+	pd.addActivity(label)
+
+	if pd.interactive {
+		pd.printAgentText(text)
+	}
+}
+
+
+// ---------------------------------------------------------------------------
+// Rendering
+// ---------------------------------------------------------------------------
+
+// printLogLine clears the spinner, prints a permanent line, and marks spinner dirty.
+// MUST be called with pd.mu held.
+func (pd *ProgressDisplay) printLogLine(line string) {
+	if line == pd.lastLogLine {
+		return // deduplicate
+	}
+	pd.lastLogLine = line
+
+
+	if pd.spinnerDirty {
+		fmt.Printf("\r\033[K") // clear the spinner line
+	}
+	fmt.Printf("%s\n", line)
+	pd.spinnerDirty = false
+}
+
+// flushToolCollapse prints a summary line if there was a collapsed tool run
+// (e.g. "↳ Reading (22 files)"). MUST be called with pd.mu held.
+func (pd *ProgressDisplay) flushToolCollapse() {
+	if pd.lastToolVerbCount > 1 && pd.lastToolVerb != "" {
+		summary := fmt.Sprintf("  %s↳%s %s%s (%d files)%s", Dim, Reset, Dim, pd.lastToolVerb, pd.lastToolVerbCount, Reset)
+		pd.doPrintLine(summary)
+	}
+	pd.lastToolVerb = ""
+	pd.lastToolVerbCount = 0
+}
+
+// printAgentText renders agent text as permanent log lines with markdown formatting.
+// Long runs of dimmed lines (tool output, code) are collapsed for readability.
+// MUST be called with pd.mu held.
+func (pd *ProgressDisplay) printAgentText(text string) {
+	// Flush any pending tool collapse before printing agent text
+	pd.flushToolCollapse()
+	rendered := RenderMarkdown(text)
+	lines := strings.Split(rendered, "\n")
+
+	// Collapse: if many consecutive dim (code/output) lines, show first few + summary
+	const maxDimRun = 3
+	var printed bool
+	dimRunCount := 0
+
+	for _, line := range lines {
+		raw := strings.TrimSpace(stripAnsi(line))
+		if raw == "" {
+			dimRunCount = 0
+			continue
+		}
+
+		isDim := strings.Contains(line, Dim)
+
+		if isDim {
+			dimRunCount++
+			if dimRunCount > maxDimRun {
+				// Count remaining dim lines to show total hidden
+				continue
+			}
+		} else {
+			if dimRunCount > maxDimRun {
+				hidden := dimRunCount - maxDimRun
+				pd.doPrintLine(fmt.Sprintf("  %s... %d lines collapsed%s", Dim, hidden, Reset))
+				printed = true
+			}
+			dimRunCount = 0
+		}
+
+		if line == pd.lastLogLine {
+			continue
+		}
+		pd.lastLogLine = line
+		pd.doPrintLine(line)
+		printed = true
+	}
+
+	// Handle trailing dim run
+	if dimRunCount > maxDimRun {
+		hidden := dimRunCount - maxDimRun
+		pd.doPrintLine(fmt.Sprintf("  %s... %d lines collapsed%s", Dim, hidden, Reset))
+		printed = true
+	}
+
+	if printed {
+		pd.statusText = ""
+	}
+}
+
+// doPrintLine prints a single line, clearing spinner if needed.
+// MUST be called with pd.mu held.
+func (pd *ProgressDisplay) doPrintLine(line string) {
+	if pd.spinnerDirty {
+		fmt.Printf("\r\033[K")
+		pd.spinnerDirty = false
+	}
+	fmt.Printf("%s\n", line)
+}
+
+// stripAnsi removes ANSI escape codes for length/emptiness checks.
+func stripAnsi(s string) string {
+	// Simple ANSI stripper: remove ESC[...m sequences
+	var b strings.Builder
+	i := 0
+	for i < len(s) {
+		if s[i] == '\033' && i+1 < len(s) && s[i+1] == '[' {
+			// Skip until 'm'
+			j := i + 2
+			for j < len(s) && s[j] != 'm' {
+				j++
+			}
+			if j < len(s) {
+				i = j + 1
+				continue
+			}
+		}
+		b.WriteByte(s[i])
+		i++
+	}
+	return b.String()
+}
+
+// spinnerLoop redraws the spinner line in place.
+func (pd *ProgressDisplay) spinnerLoop() {
 	defer close(pd.stopped)
 	frame := 0
 	for {
@@ -456,98 +541,64 @@ func (pd *ProgressDisplay) renderLoop() {
 		case <-pd.done:
 			return
 		default:
-			pd.render(frame)
+			pd.renderSpinner(frame)
 			frame++
 			time.Sleep(100 * time.Millisecond)
 		}
 	}
 }
 
-// render draws the current state to the terminal.
-func (pd *ProgressDisplay) render(frame int) {
+// renderSpinner draws a single spinner line at the current cursor position.
+func (pd *ProgressDisplay) renderSpinner(frame int) {
 	pd.mu.Lock()
-	phase := pd.phase
-	totalFiles := pd.totalFiles
-	filesWritten := pd.filesWritten
-	activities := make([]activity, len(pd.activities))
-	copy(activities, pd.activities)
 	statusText := pd.statusText
-	totalPhases := pd.totalPhases
-	buildFailed := pd.buildFailed
 	elapsed := time.Since(pd.startedAt)
 	interactive := pd.interactive
 	pd.mu.Unlock()
 
 	if !interactive {
-		pd.renderNonInteractive(phase, totalPhases, totalFiles, filesWritten, activities, statusText, buildFailed)
+		pd.renderNonInteractive()
 		return
 	}
 
 	spinChar := spinnerFrames[frame%len(spinnerFrames)]
-	var lines []string
 
-	// Phase header with progress bar and elapsed time
-	phaseHeader := pd.buildPhaseHeader(phase, totalPhases, totalFiles, filesWritten, buildFailed, spinChar, elapsed)
-	lines = append(lines, phaseHeader)
+	var sb strings.Builder
+	sb.WriteString("  ")
+	sb.WriteString(fmt.Sprintf("%s%s%s", Cyan, spinChar, Reset))
+	sb.WriteString(fmt.Sprintf("  %s%s%s", Dim, formatElapsed(elapsed), Reset))
 
-	// Activity tree
-	for i, act := range activities {
-		prefix := "  ├─ "
-		if i == len(activities)-1 {
-			prefix = "  └─ "
-		}
-		marker := spinChar
-		color := Cyan
-		if act.done {
-			marker = "✓"
-			color = Green
-		}
-		lines = append(lines, fmt.Sprintf("%s%s%s%s %s%s", Dim, prefix, color, marker, Reset+act.text, Reset))
-	}
-
-	// Status text (assistant thinking)
 	if statusText != "" {
-		lines = append(lines, fmt.Sprintf("  %s%s%s", Dim, statusText, Reset))
+		sb.WriteString(fmt.Sprintf("  %s", statusText))
 	}
 
-	totalLines := len(lines)
+	line := sb.String()
 
-	// Move cursor up and overwrite previous render
+	fmt.Printf("\r\033[K%s", line)
+
 	pd.mu.Lock()
-	prevLines := pd.lastRenderLines
-	pd.lastRenderLines = totalLines
+	pd.spinnerDirty = true
 	pd.mu.Unlock()
-
-	if frame > 0 && prevLines > 0 {
-		fmt.Printf("\033[%dA", prevLines) // move up to top of previous render
-	}
-	for _, line := range lines {
-		fmt.Printf("\r\033[K%s\n", line)
-	}
-	// Clear any leftover lines from a previous taller render
-	if prevLines > totalLines {
-		for i := 0; i < prevLines-totalLines; i++ {
-			fmt.Printf("\r\033[K\n")
-		}
-		// Move cursor back up to just below current content
-		fmt.Printf("\033[%dA", prevLines-totalLines)
-	}
 }
 
-func (pd *ProgressDisplay) renderNonInteractive(phase Phase, totalPhases, totalFiles, filesWritten int, activities []activity, statusText string, buildFailed bool) {
-	header := pd.buildPhaseHeader(phase, totalPhases, totalFiles, filesWritten, buildFailed, "•", 0)
+func (pd *ProgressDisplay) renderNonInteractive() {
+	pd.mu.Lock()
+	activities := make([]activity, len(pd.activities))
+	copy(activities, pd.activities)
+	statusText := pd.statusText
+	pd.mu.Unlock()
 
 	latestActivity := ""
 	if len(activities) > 0 {
 		act := activities[len(activities)-1]
-		marker := "•"
 		if act.done {
-			marker = "✓"
+			latestActivity = fmt.Sprintf("  ✓ %s", act.text)
+		} else {
+			latestActivity = fmt.Sprintf("  • %s", act.text)
 		}
-		latestActivity = fmt.Sprintf("  %s %s", marker, act.text)
 	}
 
-	parts := []string{header, latestActivity, statusText}
+	parts := []string{latestActivity, statusText}
 	renderID := strings.Join(parts, "\n")
 
 	pd.mu.Lock()
@@ -558,7 +609,6 @@ func (pd *ProgressDisplay) renderNonInteractive(phase Phase, totalPhases, totalF
 	pd.lastRenderID = renderID
 	pd.mu.Unlock()
 
-	fmt.Println(header)
 	if latestActivity != "" {
 		fmt.Println(latestActivity)
 	}
@@ -567,38 +617,6 @@ func (pd *ProgressDisplay) renderNonInteractive(phase Phase, totalPhases, totalF
 	}
 }
 
-// buildPhaseHeader builds the header line with optional progress bar.
-func (pd *ProgressDisplay) buildPhaseHeader(phase Phase, totalPhases, totalFiles, filesWritten int, buildFailed bool, spinChar string, elapsed time.Duration) string {
-	var sb strings.Builder
-	sb.WriteString("  ")
-
-	// Phase number (only for build mode with numbered phases)
-	if totalPhases > 0 {
-		phaseNum := phase.number()
-		if buildFailed && phase == PhaseFixing {
-			sb.WriteString(fmt.Sprintf("%s%s %s...%s", Yellow, spinChar, phase.label(), Reset))
-		} else {
-			sb.WriteString(fmt.Sprintf("%sPhase %d/%d:%s %s%s %s...%s",
-				Dim, phaseNum, totalPhases, Reset, Cyan, spinChar, phase.label(), Reset))
-		}
-	} else {
-		sb.WriteString(fmt.Sprintf("%s%s %s...%s", Cyan, spinChar, phase.label(), Reset))
-	}
-
-	// Progress bar for building code phase
-	if phase == PhaseBuildingCode && totalFiles > 0 {
-		sb.WriteString("  ")
-		sb.WriteString(buildProgressBar(filesWritten, totalFiles))
-		sb.WriteString(fmt.Sprintf(" %s%d/%d files%s", Dim, filesWritten, totalFiles, Reset))
-	}
-
-	// Elapsed time
-	sb.WriteString(fmt.Sprintf("  %s%s%s", Dim, formatElapsed(elapsed), Reset))
-
-	return sb.String()
-}
-
-// formatElapsed formats a duration as a compact time string.
 func formatElapsed(d time.Duration) string {
 	s := int(d.Seconds())
 	if s < 60 {
@@ -609,37 +627,74 @@ func formatElapsed(d time.Duration) string {
 	return fmt.Sprintf("%dm%02ds", m, s)
 }
 
-// clearDisplay clears the progress display area.
-func (pd *ProgressDisplay) clearDisplay() {
-	total := pd.lastRenderLines
-	if total <= 0 {
-		total = 1 // at minimum clear the header line
-	}
-	for i := 0; i < total; i++ {
-		fmt.Printf("\033[K\n") // clear line and move down
-	}
-	fmt.Printf("\033[%dA", total) // move back up
-}
+// ---------------------------------------------------------------------------
+// Tool label generation (unchanged)
+// ---------------------------------------------------------------------------
 
-// buildProgressBar creates a progress bar string.
-func buildProgressBar(current, total int) string {
-	if total <= 0 {
+func (pd *ProgressDisplay) toolActivityLabel(toolName string, inputGetter func(key string) string) string {
+	switch toolName {
+	case "Write":
+		path := inputGetter("file_path")
+		if path != "" {
+			return fmt.Sprintf("Writing %s", sanitizeActivityLabel(shortPath(path)))
+		}
+		return "Writing file"
+	case "Edit":
+		path := inputGetter("file_path")
+		if path != "" {
+			return fmt.Sprintf("Editing %s", sanitizeActivityLabel(shortPath(path)))
+		}
+		return "Editing file"
+	case "Read":
+		path := inputGetter("file_path")
+		if path != "" {
+			return fmt.Sprintf("Reading %s", sanitizeActivityLabel(shortPath(path)))
+		}
+		return "Reading file"
+	case "Bash":
+		command := unwrapShellCommand(inputGetter("command"))
+		if strings.Contains(command, "xcodegen") {
+			return "Generating Xcode project"
+		} else if strings.Contains(command, "xcodebuild") {
+			return "Compiling project"
+		} else if strings.Contains(command, "git init") || strings.Contains(command, "git add") || strings.Contains(command, "git commit") {
+			return "Updating repository"
+		} else if label := ascCommandLabel(command); label != "" {
+			return label
+		} else if command != "" {
+			return truncateActivity(friendlyBashLabel(command))
+		}
+		return "Running command"
+	case "Glob":
+		pattern := inputGetter("pattern")
+		if pattern != "" {
+			return fmt.Sprintf("Searching for %s", sanitizeActivityLabel(shortPath(pattern)))
+		}
+		return "Searching files"
+	case "Grep":
+		pattern := inputGetter("pattern")
+		if pattern != "" {
+			return fmt.Sprintf("Searching for %s", sanitizeActivityLabel(truncateActivity(pattern)))
+		}
+		return "Searching code"
+	case "WebFetch", "WebSearch":
+		return "Searching web"
+	case "TodoWrite":
+		return "Updating task list"
+	default:
+		if label := friendlyToolName(toolName, inputGetter); label != "" {
+			return label
+		}
 		return ""
 	}
-	width := 16
-	filled := (current * width) / total
-	if filled > width {
-		filled = width
-	}
-	bar := strings.Repeat("█", filled) + strings.Repeat("░", width-filled)
-	return fmt.Sprintf("%s[%s]%s", Dim, bar, Reset)
 }
 
-// shortPath extracts a meaningful short path from a full file path.
+// ---------------------------------------------------------------------------
+// Utility functions (unchanged)
+// ---------------------------------------------------------------------------
+
 func shortPath(fullPath string) string {
-	// Find the app source directory and show relative path
 	parts := strings.Split(fullPath, "/")
-	// Show last 2 components (e.g., "Models/Habit.swift")
 	if len(parts) >= 2 {
 		return parts[len(parts)-2] + "/" + parts[len(parts)-1]
 	}
@@ -649,10 +704,8 @@ func shortPath(fullPath string) string {
 	return fullPath
 }
 
-// friendlyToolName maps MCP tool names to human-readable activity labels.
 func friendlyToolName(toolName string, inputGetter func(key string) string) string {
 	switch toolName {
-	// Apple docs
 	case "mcp__apple-docs__search_apple_docs":
 		if q := inputGetter("query"); q != "" {
 			return truncateActivity("Researching " + q)
@@ -673,8 +726,6 @@ func friendlyToolName(toolName string, inputGetter func(key string) string) stri
 		return "Finding similar APIs"
 	case "mcp__apple-docs__get_platform_compatibility":
 		return "Checking platform compatibility"
-
-	// XcodeGen project config
 	case "mcp__xcodegen__add_permission":
 		if key := inputGetter("key"); key != "" {
 			return truncateActivity("Adding permission: " + key)
@@ -698,28 +749,131 @@ func friendlyToolName(toolName string, inputGetter func(key string) string) stri
 		return "Reading project config"
 	case "mcp__xcodegen__regenerate_project":
 		return "Regenerating Xcode project"
-
 	}
-
 	return ""
 }
 
-// ascCommandLabel returns a friendly display label for asc CLI commands.
-// Instead of a hardcoded mapping, it dynamically constructs a label from
-// the command tokens — so new asc subcommands automatically get readable labels.
-// Returns "" if the command is not an asc command.
+func unwrapShellCommand(command string) string {
+	command = strings.TrimSpace(command)
+	if command == "" {
+		return ""
+	}
+	for _, prefix := range []string{
+		"/bin/zsh -lc ", "/bin/zsh -c ",
+		"/bin/bash -lc ", "/bin/bash -c ",
+		"/bin/sh -lc ", "/bin/sh -c ",
+		"bash -lc ", "bash -c ",
+		"sh -lc ", "sh -c ",
+		"zsh -lc ", "zsh -c ",
+	} {
+		if strings.HasPrefix(command, prefix) {
+			inner := strings.TrimSpace(command[len(prefix):])
+			if len(inner) >= 2 {
+				if (inner[0] == '\'' && inner[len(inner)-1] == '\'') ||
+					(inner[0] == '"' && inner[len(inner)-1] == '"') {
+					inner = inner[1 : len(inner)-1]
+				}
+			}
+			return unwrapShellCommand(strings.TrimSpace(inner))
+		}
+	}
+	return command
+}
+
+func friendlyBashLabel(command string) string {
+	command = strings.TrimSpace(command)
+	if command == "" {
+		return "Running command"
+	}
+	first := command
+	for _, sep := range []string{" | ", " && ", " ; "} {
+		if idx := strings.Index(first, sep); idx > 0 {
+			first = first[:idx]
+		}
+	}
+	fields := strings.Fields(first)
+	if len(fields) == 0 {
+		return "Running command"
+	}
+	bin := fields[0]
+	if idx := strings.LastIndex(bin, "/"); idx >= 0 {
+		bin = bin[idx+1:]
+	}
+	filePath := extractFileArg(fields)
+	switch bin {
+	case "cat", "nl", "sed", "head", "tail", "awk", "less", "more", "wc":
+		if filePath != "" {
+			return "Reading " + shortPath(filePath)
+		}
+		return "Reading file"
+	case "grep", "rg", "ag":
+		if filePath != "" {
+			return "Searching " + shortPath(filePath)
+		}
+		return "Searching code"
+	case "ls", "find", "fd", "tree":
+		if filePath != "" {
+			return "Listing " + shortPath(filePath)
+		}
+		return "Listing files"
+	case "mkdir":
+		if filePath != "" {
+			return "Creating " + shortPath(filePath)
+		}
+		return "Creating directory"
+	case "rm":
+		return "Removing files"
+	case "cp":
+		return "Copying files"
+	case "mv":
+		return "Moving files"
+	case "touch":
+		if filePath != "" {
+			return "Creating " + shortPath(filePath)
+		}
+		return "Creating file"
+	case "chmod":
+		return "Setting permissions"
+	case "curl", "wget":
+		return "Downloading"
+	case "jq":
+		return "Processing JSON"
+	case "swift":
+		return "Running Swift"
+	case "pod":
+		return "Running CocoaPods"
+	case "echo", "printf":
+		return "Running command"
+	default:
+		return bin
+	}
+}
+
+func extractFileArg(fields []string) string {
+	for i := len(fields) - 1; i >= 1; i-- {
+		arg := fields[i]
+		if strings.HasPrefix(arg, "-") {
+			continue
+		}
+		if strings.HasPrefix(arg, "'") || strings.HasPrefix(arg, "\"") {
+			continue
+		}
+		if strings.Contains(arg, "/") || strings.Contains(arg, ".") {
+			return arg
+		}
+	}
+	return ""
+}
+
 func ascCommandLabel(command string) string {
 	command = strings.TrimSpace(command)
 	if !strings.HasPrefix(command, "asc ") && !strings.HasPrefix(command, "asc\t") {
 		return ""
 	}
-
 	parts := strings.Fields(command)
 	if len(parts) < 2 {
 		return "Running asc"
 	}
-
-	// Extract subcommand tokens (everything after "asc" until the first flag).
 	var tokens []string
 	for _, p := range parts[1:] {
 		if strings.HasPrefix(p, "-") {
@@ -730,31 +884,16 @@ func ascCommandLabel(command string) string {
 			break
 		}
 	}
-
 	if len(tokens) == 0 {
 		return "Running asc"
 	}
-
-	// Dynamically build a label from the tokens.
-	// The last token is treated as the action verb; preceding tokens provide context.
-	//
-	// Examples:
-	//   [builds, list]                  → "Listing builds"
-	//   [testflight, beta-testers, add] → "Adding beta testers"  (context: testflight)
-	//   [status]                        → "Checking status"
-	//   [publish, testflight]           → "Publishing testflight"
-	//   [apps, get]                     → "Getting apps"
-
 	action := tokens[len(tokens)-1]
 	var context string
 	if len(tokens) >= 3 {
-		// e.g. [testflight, beta-testers, add] → context = "beta testers"
 		context = humanizeToken(tokens[len(tokens)-2])
 	} else if len(tokens) == 2 {
-		// e.g. [builds, list] → context = "builds"
 		context = humanizeToken(tokens[0])
 	}
-
 	verb := humanizeVerb(action)
 	if context != "" {
 		return truncateActivity(verb + " " + context)
@@ -762,7 +901,6 @@ func ascCommandLabel(command string) string {
 	return truncateActivity(verb)
 }
 
-// humanizeVerb converts an asc action token into a present-participle label.
 func humanizeVerb(action string) string {
 	action = strings.ToLower(action)
 	switch action {
@@ -801,23 +939,19 @@ func humanizeVerb(action string) string {
 	case "help", "--help":
 		return "Checking help"
 	default:
-		// For unknown verbs, use "Running <action>" with title case.
 		return "Running " + humanizeToken(action)
 	}
 }
 
-// humanizeToken converts a kebab-case CLI token into a readable label.
-// e.g. "beta-testers" → "beta testers", "bundle-ids" → "bundle IDs"
 func humanizeToken(token string) string {
 	s := strings.ReplaceAll(token, "-", " ")
-	// Common abbreviations that should be uppercased
 	s = strings.ReplaceAll(s, " ids", " IDs")
 	s = strings.ReplaceAll(s, " id", " ID")
 	return s
 }
 
-// truncateActivity truncates an activity label to fit the display.
 func truncateActivity(s string) string {
+	s = sanitizeActivityLabel(s)
 	const maxWidth = 80
 	if len(s) > maxWidth {
 		return s[:maxWidth] + "..."
@@ -825,104 +959,117 @@ func truncateActivity(s string) string {
 	return s
 }
 
-// extractStreamingPreview returns a mode-aware live preview for streaming text.
-// Structured modes intentionally avoid raw JSON tails in the UI.
-func extractStreamingPreview(text, mode string) string {
-	if !isStructuredStreamingPreviewMode(mode) {
-		return extractLastLine(text)
+func sanitizeActivityLabel(s string) string {
+	s = strings.TrimSpace(s)
+	s = strings.Trim(s, `"'`)
+	s = strings.ReplaceAll(s, `\"`, `"`)
+	s = strings.ReplaceAll(s, `\\`, `\`)
+	s = strings.ReplaceAll(s, `"`, "")
+	s = strings.TrimLeft(s, "{[")
+	s = strings.TrimRight(s, "}]")
+	s = strings.TrimSpace(s)
+	return s
+}
+
+// toolVerb extracts the action verb from a tool label.
+// e.g. "Reading Models/Foo.swift" → "Reading", "Compiling project" → "Compiling"
+func toolVerb(label string) string {
+	if idx := strings.IndexByte(label, ' '); idx > 0 {
+		return label[:idx]
 	}
-	if strings.TrimSpace(text) == "" {
-		return ""
-	}
+	return label
+}
+
+func isStructuredMode(mode string) bool {
+	return mode == "analyze" || mode == "plan"
+}
+
+func structuredModeLabel(mode string) string {
 	switch mode {
-	case "intent":
-		return "Preparing routing decision..."
 	case "analyze":
 		return "Preparing analysis output..."
 	case "plan":
 		return "Preparing build plan..."
 	default:
-		return "Preparing structured output..."
+		return "Preparing output..."
 	}
 }
 
-func isStructuredStreamingPreviewMode(mode string) bool {
-	return mode == "intent" || mode == "analyze" || mode == "plan"
-}
-
-func tailRunes(s string, max int) string {
-	if max <= 0 || s == "" {
+func extractStreamingPreview(text, mode string) string {
+	if strings.TrimSpace(text) == "" {
 		return ""
 	}
-	r := []rune(s)
-	if len(r) <= max {
-		return s
+	switch mode {
+	case "analyze":
+		return "Preparing analysis output..."
+	case "plan":
+		return "Preparing build plan..."
+	default:
+		return extractLastLine(text)
 	}
-	return string(r[len(r)-max:])
 }
 
-func truncateTailWithEllipsis(s string, max int) string {
-	if max <= 0 {
-		return ""
-	}
-	r := []rune(s)
-	if len(r) <= max {
-		return s
-	}
-	if max <= 3 {
-		return string(r[len(r)-max:])
-	}
-	return "..." + string(r[len(r)-(max-3):])
-}
-
-// extractStatus extracts a short, meaningful status from assistant text.
 func extractStatus(text string) string {
-	// Take the first sentence, truncated
 	text = strings.TrimSpace(text)
 	if text == "" {
 		return ""
 	}
-
-	// Find first sentence boundary
 	for i, ch := range text {
 		if ch == '.' || ch == '\n' {
 			text = text[:i]
 			break
 		}
 	}
-
-	// Truncate to max width
 	if len(text) > maxStatusWidth {
 		text = text[:maxStatusWidth] + "..."
 	}
-
 	return text
 }
 
-// extractLastLine returns the last non-empty line from streaming text,
-// skipping JSON content and code blocks. Used to show real-time status
-// from token-by-token streaming during generation.
 func extractLastLine(text string) string {
 	lines := strings.Split(text, "\n")
-
-	// Walk backwards to find the last meaningful line
 	for i := len(lines) - 1; i >= 0; i-- {
 		line := strings.TrimSpace(lines[i])
 		if line == "" {
 			continue
 		}
-		// Skip JSON and code block content
-		if strings.HasPrefix(line, "{") || strings.HasPrefix(line, "}") ||
-			strings.HasPrefix(line, "\"") || strings.HasPrefix(line, "[") ||
-			strings.HasPrefix(line, "]") || strings.HasPrefix(line, "```") {
+		if looksLikeCode(line) {
 			continue
 		}
-		// Truncate
 		if len(line) > maxStatusWidth {
 			line = line[:maxStatusWidth] + "..."
 		}
 		return line
 	}
-
 	return ""
+}
+
+func looksLikeCode(line string) bool {
+	if strings.HasPrefix(line, "{") || strings.HasPrefix(line, "}") ||
+		strings.HasPrefix(line, "\"") || strings.HasPrefix(line, "[") ||
+		strings.HasPrefix(line, "]") || strings.HasPrefix(line, "```") {
+		return true
+	}
+	if strings.HasPrefix(line, ".") || strings.HasPrefix(line, "//") ||
+		strings.HasPrefix(line, "import ") || strings.HasPrefix(line, "func ") ||
+		strings.HasPrefix(line, "struct ") || strings.HasPrefix(line, "class ") ||
+		strings.HasPrefix(line, "enum ") || strings.HasPrefix(line, "protocol ") ||
+		strings.HasPrefix(line, "var ") || strings.HasPrefix(line, "let ") ||
+		strings.HasPrefix(line, "case ") || strings.HasPrefix(line, "return ") ||
+		strings.HasPrefix(line, "@") || strings.HasPrefix(line, "#") {
+		return true
+	}
+	codeChars := 0
+	for _, ch := range line {
+		if ch == '(' || ch == ')' || ch == '{' || ch == '}' || ch == ';' || ch == '=' {
+			codeChars++
+		}
+	}
+	if codeChars >= 3 {
+		return true
+	}
+	if len(line) > 0 && (line[0] == '\t' || strings.HasPrefix(line, "    ")) {
+		return true
+	}
+	return false
 }
