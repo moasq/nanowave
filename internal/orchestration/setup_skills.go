@@ -5,10 +5,11 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/moasq/nanowave/internal/agentruntime"
-	"github.com/moasq/nanowave/internal/instructions"
+	"github.com/moasq/nanowave/internal/skills"
 )
 
 // writeSkillsForRuntime writes skill files to disk in the native format
@@ -25,23 +26,17 @@ func writeSkillsForRuntime(projectDir, platform string, ruleKeys []string, packa
 	case agentruntime.KindOpenCode:
 		return writeSkillsForOpenCode(projectDir, platform, ruleKeys, packages)
 	default:
-		// Unknown runtime — write Claude format as default
 		return writeSkillsForClaude(projectDir, platform, packages)
 	}
 }
 
-// writeSkillsForClaude writes rules to .claude/rules/ which Claude Code auto-loads.
-// Writes all top-level rules/*.md plus platform-conditional rules/{platform}/*.md.
-func writeSkillsForClaude(projectDir, platform string, packages []PackagePlan) error {
+// writeCoreRules copies skills/data/core/*.md to projectDir/.claude/rules/ (always loaded eagerly).
+func writeCoreRules(projectDir, platform string, packages []PackagePlan) error {
 	rulesDir := filepath.Join(projectDir, ".claude", "rules")
-	if err := os.MkdirAll(rulesDir, 0o755); err != nil {
-		return fmt.Errorf("failed to create rules dir: %w", err)
-	}
 
-	// Write all top-level rules/*.md
-	entries, err := fs.ReadDir(instructionsFS, "rules")
+	entries, err := fs.ReadDir(skillsFS, "data/core")
 	if err != nil {
-		return fmt.Errorf("failed to read embedded rules: %w", err)
+		return fmt.Errorf("failed to read embedded core rules: %w", err)
 	}
 
 	for _, entry := range entries {
@@ -49,7 +44,7 @@ func writeSkillsForClaude(projectDir, platform string, packages []PackagePlan) e
 			continue
 		}
 
-		content, err := instructionsFS.ReadFile("rules/" + entry.Name())
+		content, err := skillsFS.ReadFile("data/core/" + entry.Name())
 		if err != nil {
 			return fmt.Errorf("failed to read embedded rule %s: %w", entry.Name(), err)
 		}
@@ -60,30 +55,99 @@ func writeSkillsForClaude(projectDir, platform string, packages []PackagePlan) e
 			return err
 		}
 	}
+	return nil
+}
 
-	// Write platform-conditional rules
-	platDir := platformRuleDir(platform)
-	if platDir != "" {
-		platEntries, err := fs.ReadDir(instructionsFS, "rules/"+platDir)
-		if err == nil {
-			for _, entry := range platEntries {
-				if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
-					continue
-				}
-				content, err := instructionsFS.ReadFile("rules/" + platDir + "/" + entry.Name())
-				if err != nil {
-					continue
-				}
-				// Write as {platform}-{name}.md to avoid collisions with top-level rules
-				outName := platDir + "-" + entry.Name()
-				if err := os.WriteFile(filepath.Join(rulesDir, outName), content, 0o644); err != nil {
-					return err
-				}
-			}
+// writeAlwaysRules copies skills/data/always/**/SKILL.md to projectDir/.claude/rules/.
+func writeAlwaysRules(projectDir string) error {
+	rulesDir := filepath.Join(projectDir, ".claude", "rules")
+
+	entries, err := fs.ReadDir(skillsFS, "data/always")
+	if err != nil {
+		return nil // always/ may not exist
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		skillPath := "data/always/" + entry.Name() + "/SKILL.md"
+		content, err := skillsFS.ReadFile(skillPath)
+		if err != nil {
+			continue
+		}
+		outName := entry.Name() + ".md"
+		if err := os.WriteFile(filepath.Join(rulesDir, outName), content, 0o644); err != nil {
+			return err
 		}
 	}
-
 	return nil
+}
+
+// writePlatformRules copies skills/data/always-{platform}/ content to projectDir/.claude/rules/.
+// Reads both bare .md files and SKILL.md from subdirectories.
+func writePlatformRules(projectDir, platform string) error {
+	rulesDir := filepath.Join(projectDir, ".claude", "rules")
+	platDir := platformAlwaysDir(platform)
+	if platDir == "" {
+		return nil
+	}
+
+	entries, err := fs.ReadDir(skillsFS, "data/"+platDir)
+	if err != nil {
+		return nil
+	}
+
+	// Track which names we've written to avoid duplicates (bare .md vs subdir/SKILL.md)
+	written := make(map[string]bool)
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			// Try loading SKILL.md from subdirectory
+			skillPath := "data/" + platDir + "/" + entry.Name() + "/SKILL.md"
+			content, err := skillsFS.ReadFile(skillPath)
+			if err != nil {
+				continue
+			}
+			outName := platformRuleDir(platform) + "-" + entry.Name() + ".md"
+			if written[outName] {
+				continue
+			}
+			if err := os.WriteFile(filepath.Join(rulesDir, outName), content, 0o644); err != nil {
+				return err
+			}
+			written[outName] = true
+		} else if strings.HasSuffix(entry.Name(), ".md") {
+			content, err := skillsFS.ReadFile("data/" + platDir + "/" + entry.Name())
+			if err != nil {
+				continue
+			}
+			outName := platformRuleDir(platform) + "-" + entry.Name()
+			if written[outName] {
+				continue
+			}
+			if err := os.WriteFile(filepath.Join(rulesDir, outName), content, 0o644); err != nil {
+				return err
+			}
+			written[outName] = true
+		}
+	}
+	return nil
+}
+
+// writeSkillsForClaude writes core + always + platform rules to .claude/rules/.
+func writeSkillsForClaude(projectDir, platform string, packages []PackagePlan) error {
+	rulesDir := filepath.Join(projectDir, ".claude", "rules")
+	if err := os.MkdirAll(rulesDir, 0o755); err != nil {
+		return fmt.Errorf("failed to create rules dir: %w", err)
+	}
+
+	if err := writeCoreRules(projectDir, platform, packages); err != nil {
+		return err
+	}
+	if err := writeAlwaysRules(projectDir); err != nil {
+		return err
+	}
+	return writePlatformRules(projectDir, platform)
 }
 
 // writeSkillsForCodex writes a single codex.md instructions file at the project root.
@@ -105,8 +169,18 @@ func composeUnifiedSkillsDoc(platform string, ruleKeys []string, packages []Pack
 
 	b.WriteString("# Nanowave Project Rules\n\n")
 
-	// Core rules (the 4 original core files)
-	for _, key := range []string{"swift-conventions", "mvvm-architecture", "file-structure", "forbidden-patterns"} {
+	// Architecture constraints (AppTheme, Observable pattern, layout, animation safety)
+	b.WriteString("---\n\n")
+	b.WriteString(sharedConstraints)
+	b.WriteString("\n\n")
+
+	// Platform verification checklist
+	b.WriteString("---\n\n")
+	b.WriteString(composeSelfCheck(platform))
+	b.WriteString("\n\n")
+
+	// Core rules
+	for _, key := range []string{"scope", "swift-conventions", "mvvm-architecture", "file-structure", "forbidden-patterns"} {
 		content := loadCoreRuleAdapted(key, platform, packages)
 		if content != "" {
 			b.WriteString(content)
@@ -114,23 +188,30 @@ func composeUnifiedSkillsDoc(platform string, ruleKeys []string, packages []Pack
 		}
 	}
 
-	// Always-on rules (flattened from always/)
-	for _, key := range []string{"components", "design-system", "layout", "navigation"} {
-		if body, found := instructions.LoadRule(key); found && body != "" {
-			b.WriteString(body)
+	// Always-on rules
+	for _, key := range []string{"components", "design-system", "layout", "navigation", "swiftui", "review"} {
+		content := skills.LoadRuleContent(key)
+		if content != "" {
+			b.WriteString(content)
 			b.WriteString("\n\n")
 		}
 	}
 
-	// Platform-conditional rules
-	platDir := platformRuleDir(platform)
+	// Platform-conditional always rules
+	platDir := platformAlwaysDir(platform)
 	if platDir != "" {
-		platRules := instructions.LoadPlatformRules(platDir)
-		if len(platRules) > 0 {
-			b.WriteString("---\n\n# Platform Rules\n\n")
-			for _, body := range platRules {
-				b.WriteString(body)
-				b.WriteString("\n\n")
+		entries, err := fs.ReadDir(skillsFS, "data/"+platDir)
+		if err == nil {
+			for _, entry := range entries {
+				if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+					continue
+				}
+				body, found := skills.ReadMarkdownBody(platDir + "/" + entry.Name())
+				if found && body != "" {
+					b.WriteString("---\n\n")
+					b.WriteString(body)
+					b.WriteString("\n\n")
+				}
 			}
 		}
 	}
@@ -152,12 +233,12 @@ func composeUnifiedSkillsDoc(platform string, ruleKeys []string, packages []Pack
 
 // loadCoreRuleAdapted loads a core rule and applies platform/package adaptations.
 func loadCoreRuleAdapted(key, platform string, packages []PackagePlan) string {
-	data, err := instructionsFS.ReadFile("rules/" + key + ".md")
+	data, err := skillsFS.ReadFile("data/core/" + key + ".md")
 	if err != nil {
 		return ""
 	}
 	adapted := adaptCoreRule(key+".md", data, platform, packages)
-	_, body := instructions.ExtractFrontmatter(string(adapted))
+	_, body := skills.ExtractFrontmatter(string(adapted))
 	return body
 }
 
@@ -217,7 +298,7 @@ func platformArchDescription(platform string) string {
 	}
 }
 
-// platformRuleDir maps platform constants to the rules/ subdirectory name.
+// platformRuleDir maps platform constants to subdirectory names.
 func platformRuleDir(platform string) string {
 	switch platform {
 	case PlatformWatchOS:
@@ -233,18 +314,66 @@ func platformRuleDir(platform string) string {
 	}
 }
 
-// loadRuleContent loads skill content by key, delegating to instructions.LoadSkillContent.
+// platformAlwaysDir returns the always-{platform} directory name.
+func platformAlwaysDir(platform string) string {
+	dir := platformRuleDir(platform)
+	if dir == "" {
+		return ""
+	}
+	return "always-" + dir
+}
+
+// loadRuleContent loads skill content by key, delegating to skills.LoadRuleContent.
 func loadRuleContent(ruleKey string) string {
-	return instructions.LoadSkillContent(ruleKey)
+	return skills.LoadRuleContent(ruleKey)
 }
 
 // readEmbeddedMarkdownDirBodies reads all markdown bodies from a skill directory.
 func readEmbeddedMarkdownDirBodies(dirPath string) string {
-	dirPath = strings.TrimPrefix(dirPath, "skills/")
-	return instructions.ReadMarkdownDirBodies("skills/" + dirPath)
+	return skills.ReadMarkdownDirBodies(dirPath)
 }
 
 // listAvailableSkillKeys returns all discoverable skill keys from the embedded FS.
+// Platform-specific skills are returned with their platform prefix (e.g. "watchos-biometrics").
 func listAvailableSkillKeys() []string {
-	return instructions.ListSkillKeys()
+	seen := make(map[string]bool)
+
+	// Non-platform categories — keys returned as-is
+	for _, cat := range []string{"core", "always", "features", "ui", "extensions"} {
+		entries, err := fs.ReadDir(skillsFS, "data/"+cat)
+		if err != nil {
+			continue
+		}
+		for _, entry := range entries {
+			name := entry.Name()
+			if entry.IsDir() {
+				seen[name] = true
+			} else if strings.HasSuffix(name, ".md") {
+				seen[strings.TrimSuffix(name, ".md")] = true
+			}
+		}
+	}
+
+	// Platform categories — keys prefixed with platform name
+	for _, plat := range []string{"watchos", "tvos", "visionos", "macos"} {
+		entries, err := fs.ReadDir(skillsFS, "data/"+plat)
+		if err != nil {
+			continue
+		}
+		for _, entry := range entries {
+			name := entry.Name()
+			if entry.IsDir() {
+				seen[plat+"-"+name] = true
+			} else if strings.HasSuffix(name, ".md") {
+				seen[plat+"-"+strings.TrimSuffix(name, ".md")] = true
+			}
+		}
+	}
+
+	keys := make([]string, 0, len(seen))
+	for k := range seen {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
 }

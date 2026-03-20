@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/moasq/nanowave/internal/instructions"
+	"github.com/moasq/nanowave/internal/skills"
 	"github.com/moasq/nanowave/internal/mcpregistry"
 )
 
@@ -145,8 +145,8 @@ func TestLoadRule(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			body, found := instructions.LoadRule(tc.rule)
-			if !found {
+			body := skills.LoadRuleContent(tc.rule)
+			if body == "" {
 				t.Fatalf("expected rule %q to be found", tc.rule)
 			}
 			if !strings.Contains(body, tc.wantHas) {
@@ -158,24 +158,29 @@ func TestLoadRule(t *testing.T) {
 
 func TestLoadPlatformRules(t *testing.T) {
 	tests := []struct {
-		platform string
-		wantKeys []string
+		platform  string
+		wantFiles []string
 	}{
-		{"watchos", []string{"components", "layout", "navigation", "watchos-patterns"}},
-		{"tvos", []string{"components", "layout", "navigation", "tvos-patterns"}},
-		{"visionos", []string{"components", "layout", "navigation", "visionos-patterns"}},
-		{"macos", []string{"components", "layout", "navigation", "macos-patterns"}},
+		{"watchos", []string{"components.md", "layout.md", "navigation.md", "watchos-patterns.md"}},
+		{"tvos", []string{"components.md", "layout.md", "navigation.md", "tvos-patterns.md"}},
+		{"visionos", []string{"components.md", "layout.md", "navigation.md", "visionos-patterns.md"}},
+		{"macos", []string{"components.md", "layout.md", "navigation.md", "macos-patterns.md"}},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.platform, func(t *testing.T) {
-			rules := instructions.LoadPlatformRules(tc.platform)
-			if len(rules) == 0 {
-				t.Fatalf("expected platform rules for %q, got none", tc.platform)
+			dir := "always-" + tc.platform
+			entries, err := skills.ReadDir(dir)
+			if err != nil {
+				t.Fatalf("expected platform rules dir %q, got error: %v", dir, err)
 			}
-			for _, key := range tc.wantKeys {
-				if _, ok := rules[key]; !ok {
-					t.Errorf("expected platform rule %q for %q", key, tc.platform)
+			names := make(map[string]bool)
+			for _, e := range entries {
+				names[e.Name()] = true
+			}
+			for _, want := range tc.wantFiles {
+				if !names[want] {
+					t.Errorf("expected platform rule file %q in %q", want, dir)
 				}
 			}
 		})
@@ -192,7 +197,7 @@ func TestListAvailableSkillKeys(t *testing.T) {
 	wantKeys := map[string]bool{
 		"camera": false, "authentication": false, "charts": false,
 		"swiftui": false, "review": false, "watchos-biometrics": false,
-		"keyboard-shortcuts": false, "spatial-gestures": false,
+		"macos-keyboard-shortcuts": false, "visionos-spatial-gestures": false,
 		"swift-conventions-ui": false,
 	}
 	for _, k := range keys {
@@ -410,14 +415,21 @@ func TestWriteSkillsForClaude(t *testing.T) {
 		names[e.Name()] = true
 	}
 
-	// Top-level rules
-	for _, rule := range []string{"swift-conventions.md", "mvvm-architecture.md", "file-structure.md", "forbidden-patterns.md", "components.md", "design-system.md", "layout.md", "navigation.md"} {
+	// Core rules (from data/core/)
+	for _, rule := range []string{"swift-conventions.md", "mvvm-architecture.md", "file-structure.md", "forbidden-patterns.md", "scope.md"} {
 		if !names[rule] {
-			t.Errorf("expected rule file %q in .claude/rules/", rule)
+			t.Errorf("expected core rule file %q in .claude/rules/", rule)
 		}
 	}
 
-	// Platform rules should be prefixed
+	// Always-on rules (from data/always/)
+	for _, rule := range []string{"components.md", "design-system.md", "layout.md", "navigation.md"} {
+		if !names[rule] {
+			t.Errorf("expected always rule file %q in .claude/rules/", rule)
+		}
+	}
+
+	// Platform always rules should be prefixed (from data/always-watchos/)
 	for _, rule := range []string{"watchos-components.md", "watchos-layout.md", "watchos-navigation.md", "watchos-watchos-patterns.md"} {
 		if !names[rule] {
 			t.Errorf("expected platform rule file %q in .claude/rules/", rule)

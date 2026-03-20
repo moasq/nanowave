@@ -83,6 +83,13 @@ func buildPromptWithSystem(userMessage string, opts GenerateOpts) string {
 			b.WriteString(img)
 			b.WriteString("\n")
 		}
+		b.WriteString("\nHow to handle attached images:\n")
+		b.WriteString("1. Read each image to see what it contains.\n")
+		b.WriteString("2. Determine intent from the user's message:\n")
+		b.WriteString("   - DESIGN REFERENCE (\"make it look like this\"): Analyze visually, do NOT copy into the project.\n")
+		b.WriteString("   - APP ASSET (\"use this as the icon\", \"add this image\"): Copy into the project using cp, resize with sips if needed.\n")
+		b.WriteString("   - If unclear, default to embedding the image as an app asset.\n")
+		b.WriteString("3. For asset integration, use nw_get_skills with key \"user-assets\" for step-by-step instructions.")
 		parts = append(parts, strings.TrimSpace(b.String()))
 	}
 	return strings.Join(parts, "\n\n")

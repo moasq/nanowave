@@ -72,7 +72,10 @@ var errClaudeResultReceived = errors.New("claude result received")
 
 const claudeResultExitGrace = 250 * time.Millisecond
 
-// buildImageContext appends image file references to the user message.
+// buildImageContext appends image file references to the user message along
+// with guidance on how to handle them. The agent must distinguish between
+// images used as design references ("make it look like this") and images
+// the user wants embedded in the generated app ("use this as the app icon").
 func buildImageContext(userMessage string, images []string) string {
 	if len(images) == 0 {
 		return userMessage
@@ -86,6 +89,13 @@ func buildImageContext(userMessage string, images []string) string {
 	for i, img := range images {
 		sb.WriteString(fmt.Sprintf("- Image %d: %s\n", i+1, img))
 	}
+	sb.WriteString("\n[How to handle attached images:]\n")
+	sb.WriteString("1. Read each image to see what it contains.\n")
+	sb.WriteString("2. Determine intent from the user's message:\n")
+	sb.WriteString("   - DESIGN REFERENCE (\"make it look like this\", \"match this style\"): Analyze visually, do NOT copy into the project.\n")
+	sb.WriteString("   - APP ASSET (\"use this as the icon\", \"add this image\", \"put this logo\"): Copy into the project using `cp`, resize with `sips` if needed.\n")
+	sb.WriteString("   - If unclear, default to embedding the image as an app asset.\n")
+	sb.WriteString("3. For asset integration, use nw_get_skills with key \"user-assets\" for step-by-step instructions.\n")
 	return sb.String()
 }
 
@@ -157,8 +167,13 @@ func (c *Client) Generate(ctx context.Context, userMessage string, opts Generate
 		args = append(args, "--mcp-config", opts.MCPConfig)
 	}
 
-	for _, tool := range opts.AllowedTools {
-		args = append(args, "--allowedTools", tool)
+	if opts.AllowedTools != nil && len(opts.AllowedTools) == 0 {
+		// Explicitly empty: disable all tools
+		args = append(args, "--allowedTools", "")
+	} else {
+		for _, tool := range opts.AllowedTools {
+			args = append(args, "--allowedTools", tool)
+		}
 	}
 
 	cmd := exec.CommandContext(ctx, c.claudePath, args...)
@@ -242,8 +257,13 @@ func (c *Client) GenerateStreaming(ctx context.Context, userMessage string, opts
 		args = append(args, "--mcp-config", opts.MCPConfig)
 	}
 
-	for _, tool := range opts.AllowedTools {
-		args = append(args, "--allowedTools", tool)
+	if opts.AllowedTools != nil && len(opts.AllowedTools) == 0 {
+		// Explicitly empty: disable all tools
+		args = append(args, "--allowedTools", "")
+	} else {
+		for _, tool := range opts.AllowedTools {
+			args = append(args, "--allowedTools", tool)
+		}
 	}
 
 	cmd := exec.CommandContext(ctx, c.claudePath, args...)
@@ -511,8 +531,13 @@ func (c *Client) StartInteractiveStreaming(ctx context.Context, userMessage stri
 	if opts.MCPConfig != "" {
 		args = append(args, "--mcp-config", opts.MCPConfig)
 	}
-	for _, tool := range opts.AllowedTools {
-		args = append(args, "--allowedTools", tool)
+	if opts.AllowedTools != nil && len(opts.AllowedTools) == 0 {
+		// Explicitly empty: disable all tools
+		args = append(args, "--allowedTools", "")
+	} else {
+		for _, tool := range opts.AllowedTools {
+			args = append(args, "--allowedTools", tool)
+		}
 	}
 
 	cmd := exec.CommandContext(ctx, c.claudePath, args...)

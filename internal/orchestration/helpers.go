@@ -60,9 +60,8 @@ func parseIntentDecision(result string) (*IntentDecision, error) {
 	}
 
 	// Accept only canonical operation values; fall back to "build" for anything else.
-	// The skill docs instruct the AI to return exactly "build", "edit", or "fix".
 	switch decision.Operation {
-	case "build", "edit", "fix":
+	case "build", "edit", "fix", "question":
 		// valid — keep as-is
 	default:
 		decision.Operation = "build"

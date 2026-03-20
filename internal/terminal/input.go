@@ -1113,11 +1113,32 @@ func (e *inputEditor) backspace() {
 		return
 	}
 	if e.cursor <= 0 || len(e.buffer) == 0 {
+		// No text to delete — try removing the most recent attachment.
+		// This handles: paste image → press backspace (cursor at 0, attachment at 0).
+		// Also handles: paste image → type text → select-all-delete → backspace.
+		if len(e.attachments) > 0 {
+			e.removeNewestAttachment()
+		}
 		return
 	}
 	e.shiftAttachmentsForDelete(e.cursor-1, e.cursor)
 	e.buffer = append(e.buffer[:e.cursor-1], e.buffer[e.cursor:]...)
 	e.cursor--
+	e.preferredCol = -1
+}
+
+// removeNewestAttachment removes the attachment with the highest id (most recently added).
+func (e *inputEditor) removeNewestAttachment() {
+	if len(e.attachments) == 0 {
+		return
+	}
+	newest := 0
+	for i := range e.attachments {
+		if e.attachments[i].id > e.attachments[newest].id {
+			newest = i
+		}
+	}
+	e.attachments = append(e.attachments[:newest], e.attachments[newest+1:]...)
 	e.preferredCol = -1
 }
 

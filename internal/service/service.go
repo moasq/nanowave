@@ -116,14 +116,177 @@ func NewService(cfg *config.Config, opts ...ServiceOpts) (*Service, error) {
 	}, nil
 }
 
-// Send auto-routes to build (no project) or handles the request on an existing project.
-// images is an optional list of absolute paths to image files to include.
+// Send routes the user's prompt: question → ask(), build/edit → Action().
+// The intent router decides the operation silently. Internal pipeline details
+// are never shown to the user for questions.
 func (s *Service) Send(ctx context.Context, prompt string, images []string) error {
 	s.stopBackgroundLogStreaming()
 
-	// All builds/edits go through the agentic path: a single LLM call with all tools.
-	return s.AgenticSend(ctx, prompt, images)
+	// Build the ActionContext — same for build and edit, Action() handles both
+	isEdit := s.config.HasProject()
+	var ac orchestration.ActionContext
+	var project *storage.Project
+
+	if isEdit {
+		var err error
+		project, err = s.projectStore.Load()
+		if err != nil || project == nil {
+			return fmt.Errorf("no active project found")
+		}
+		platform, platforms, watchProjectShape := orchestration.DetectProjectBuildHints(project.ProjectPath)
+		ac = orchestration.ActionContext{
+			ProjectDir:        project.ProjectPath,
+			AppName:           orchestration.ReadProjectAppName(project.ProjectPath),
+			SessionID:         project.SessionID,
+			Platform:          platform,
+			Platforms:         platforms,
+			WatchProjectShape: watchProjectShape,
+		}
+		if s.manager != nil {
+			activeProviders := s.manager.ResolveExisting(ac.AppName)
+			for _, ap := range activeProviders {
+				ac.ActiveIntegrations = append(ac.ActiveIntegrations, string(ap.Provider.ID()))
+			}
+		}
+	}
+
+	// Quick intent check — silent, no terminal output
+	pipeline := orchestration.NewPipeline(s.runtime, s.runtimeKind, s.config, s.model)
+	pipeline.SetManager(s.manager)
+	intent, _ := pipeline.QuickIntentCheck(ctx, prompt)
+
+	// Route: questions go to ask() directly — no pipeline noise
+	if intent != nil && intent.Operation == "question" {
+		if isEdit {
+			return s.ask(ctx, prompt)
+		}
+		// No project — answer directly without project context
+		return s.answerGeneral(ctx, prompt)
+	}
+
+	// Route: when there's an existing project and intent says edit/fix (or even build
+	// when user is clearly editing — e.g. "add real music"), force edit path
+	if isEdit && intent != nil && intent.Operation == "build" {
+		// If there's already a project, "build" almost certainly means "edit"
+		intent.Operation = "edit"
+	}
+
+	// Run the pipeline — Action() handles both new builds and edits
+	if isEdit {
+		terminal.Header("Nanowave")
+		terminal.Detail("Project", projectName(project))
+	} else {
+		terminal.Header("Nanowave Build")
+	}
+
+	result, err := pipeline.Action(ctx, prompt, ac, images)
+	if err != nil {
+		label := "Build"
+		if isEdit {
+			label = "Edit"
+		}
+		terminal.Error(fmt.Sprintf("%s failed: %v", label, err))
+		return err
+	}
+
+	// Record usage
+	s.usageStore.RecordUsage(result.TotalCostUSD, result.InputTokens, result.OutputTokens, result.CacheRead, result.CacheCreated)
+
+	if isEdit {
+		// Edit: update session, show summary
+		if result.SessionID != "" {
+			project.SessionID = result.SessionID
+			project.RuntimeKind = string(s.runtimeKind)
+			project.ModelID = s.CurrentModel()
+			s.projectStore.Save(project)
+		}
+		terminal.Success(fmt.Sprintf("Edit complete — %d files", result.CompletedFiles))
+		s.historyStore.Append(storage.HistoryMessage{Role: "user", Content: prompt})
+		s.historyStore.Append(storage.HistoryMessage{Role: "assistant", Content: fmt.Sprintf("Applied edit: %s (%d files)", truncateStr(prompt, 50), result.CompletedFiles)})
+	} else {
+		// New build: switch config, save project, print results
+		s.config.SetProject(result.ProjectDir)
+		s.projectStore = storage.NewProjectStore(s.config.NanowaveDir)
+		s.historyStore = storage.NewHistoryStore(s.config.NanowaveDir)
+		s.usageStore = storage.NewUsageStore(s.config.NanowaveDir)
+
+		if err := s.config.EnsureNanowaveDir(); err == nil {
+			appName := result.AppName
+			proj := &storage.Project{
+				ID:           1,
+				Name:         &appName,
+				Status:       "active",
+				ProjectPath:  result.ProjectDir,
+				BundleID:     result.BundleID,
+				Platform:     result.Platform,
+				Platforms:    result.Platforms,
+				DeviceFamily: result.DeviceFamily,
+				SessionID:    result.SessionID,
+				RuntimeKind:  string(s.runtimeKind),
+				ModelID:      s.CurrentModel(),
+			}
+			s.projectStore.Save(proj)
+			s.historyStore.Append(storage.HistoryMessage{Role: "user", Content: prompt})
+			buildSummary := fmt.Sprintf("Built %s (%d files)", result.AppName, result.CompletedFiles)
+			if result.Description != "" {
+				buildSummary += " — " + result.Description
+			}
+			s.historyStore.Append(storage.HistoryMessage{Role: "assistant", Content: buildSummary})
+		}
+
+		fmt.Println()
+		terminal.Success(fmt.Sprintf("%s is ready!", result.AppName))
+		if result.Description != "" {
+			fmt.Printf("  %s%s%s\n", terminal.Dim, result.Description, terminal.Reset)
+		}
+		fmt.Println()
+		if len(result.Features) > 0 {
+			for _, f := range result.Features {
+				fmt.Printf("  %s•%s %s%s%s", terminal.Bold, terminal.Reset, terminal.Bold, f.Name, terminal.Reset)
+				if f.Description != "" {
+					fmt.Printf(" %s— %s%s", terminal.Dim, f.Description, terminal.Reset)
+				}
+				fmt.Println()
+			}
+			fmt.Println()
+		}
+		terminal.Detail("Files", fmt.Sprintf("%d", result.CompletedFiles))
+		terminal.Detail("Location", result.ProjectDir)
+
+		appNamePascal := SanitizeToPascalCase(result.AppName)
+		xcodeproj := filepath.Join(result.ProjectDir, appNamePascal+".xcodeproj")
+		if _, err := os.Stat(xcodeproj); err == nil {
+			terminal.Detail("Open in Xcode", fmt.Sprintf("open %s", xcodeproj))
+		} else {
+			terminal.Detail("Open folder", fmt.Sprintf("open %s", result.ProjectDir))
+		}
+	}
+
+	return nil
 }
+
+// answerGeneral answers a question when there is no active project.
+func (s *Service) answerGeneral(ctx context.Context, prompt string) error {
+	fmt.Println()
+	resp, err := s.runtime.GenerateStreaming(ctx, prompt, agentruntime.GenerateOpts{
+		SystemPrompt: "You are a helpful assistant for an iOS app builder tool. Answer the user's question concisely. Do not modify any files.",
+		MaxTurns:     3,
+		Model:        s.phaseModel(agentruntime.PhaseQuestion),
+	}, func(ev agentruntime.StreamEvent) {
+		if ev.Type == "content_block_delta" && ev.Text != "" {
+			fmt.Print(ev.Text)
+		}
+	})
+	fmt.Println()
+	if err != nil {
+		return err
+	}
+	if resp != nil {
+		s.usageStore.RecordUsage(resp.TotalCostUSD, resp.Usage.InputTokens, resp.Usage.OutputTokens, resp.Usage.CacheReadInputTokens, resp.Usage.CacheCreationInputTokens)
+	}
+	return nil
+}
+
 
 // SetModel changes the model at runtime.
 func (s *Service) SetModel(model string) {
