@@ -1,12 +1,9 @@
 package orchestration
 
 import (
-	"context"
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/moasq/nanowave/internal/agentruntime"
 	"github.com/moasq/nanowave/internal/config"
@@ -14,30 +11,6 @@ import (
 	"github.com/moasq/nanowave/internal/mcpregistry"
 	"github.com/moasq/nanowave/internal/terminal"
 )
-
-const maxBuildCompletionPasses = 6
-const maxPhaseRetries = 2 // retry analyze/plan up to 2 times on transient failures
-
-// retryPhase retries a phase function up to maxRetries times on transient errors.
-func retryPhase[T any](ctx context.Context, maxRetries int, fn func() (T, error)) (T, error) {
-	var lastErr error
-	for attempt := 0; attempt <= maxRetries; attempt++ {
-		if ctx.Err() != nil {
-			var zero T
-			return zero, ctx.Err()
-		}
-		result, err := fn()
-		if err == nil {
-			return result, nil
-		}
-		lastErr = err
-		if ctx.Err() != nil {
-			break
-		}
-	}
-	var zero T
-	return zero, lastErr
-}
 
 // DetectProjectBuildHints reads project_config.json and extracts build-relevant hints.
 // Returns ("ios", nil, "") when missing or unreadable (backward compat).
@@ -58,6 +31,22 @@ func DetectProjectBuildHints(projectDir string) (platform string, platforms []st
 		cfg.Platform = PlatformIOS
 	}
 	return cfg.Platform, cfg.Platforms, cfg.WatchProjectShape
+}
+
+// ReadProjectBundleID reads bundle_id from project_config.json.
+// Returns empty string if not found.
+func ReadProjectBundleID(projectDir string) string {
+	data, err := os.ReadFile(filepath.Join(projectDir, "project_config.json"))
+	if err != nil {
+		return ""
+	}
+	var cfg struct {
+		BundleID string `json:"bundle_id"`
+	}
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		return ""
+	}
+	return cfg.BundleID
 }
 
 // ReadProjectAppName returns the Xcode app name for an existing project.
@@ -173,240 +162,4 @@ func (p *Pipeline) modelForPhase(phase agentruntime.Phase) string {
 	return p.runtime.DefaultModel(phase)
 }
 
-// mergedOpts handles AppendSystemPrompt compatibility across runtimes.
-// Claude Code supports AppendSystemPrompt natively; other runtimes get it
-// concatenated into SystemPrompt.
-func (p *Pipeline) mergedOpts(opts agentruntime.GenerateOpts, appendPrompt string) agentruntime.GenerateOpts {
-	if appendPrompt == "" {
-		return opts
-	}
-	if p.runtimeKind == agentruntime.KindClaude {
-		opts.AppendSystemPrompt = appendPrompt
-	} else {
-		opts.SystemPrompt += "\n\n" + appendPrompt
-	}
-	return opts
-}
-
-// QuickIntentCheck runs the intent router silently and returns the decision.
-// No terminal output — the caller decides what to show based on the result.
-func (p *Pipeline) QuickIntentCheck(ctx context.Context, prompt string) (*IntentDecision, error) {
-	return p.decideBuildIntent(ctx, prompt, nil)
-}
-
-// Action runs the unified pipeline: intent → analyze → plan → scaffold → code + completion gate → finalize.
-// For new builds (ac.ProjectDir == ""), it creates a workspace and scaffolds the project.
-// For edits (ac.ProjectDir != ""), it runs in the existing workspace with session continuity.
-func (p *Pipeline) Action(ctx context.Context, prompt string, ac ActionContext, images []string) (*BuildResult, error) {
-	isEdit := ac.IsEdit()
-
-	// Phase 0: Intent decision (advisory hints for analyzer/planner) — silent
-	intentDecision, intentErr := p.decideBuildIntent(ctx, prompt, nil)
-	if intentErr != nil {
-		op := "build"
-		if isEdit {
-			op = "edit"
-		}
-		intentDecision = &IntentDecision{
-			Operation:        op,
-			PlatformHint:     PlatformIOS,
-			DeviceFamilyHint: "iphone",
-			Confidence:       0.1,
-			Reason:           "Router unavailable; using default iOS/iPhone assumptions",
-		}
-	}
-
-	// For edits, override platform hint from existing project config
-	if isEdit && ac.Platform != "" {
-		intentDecision.PlatformHint = ac.Platform
-	}
-
-	// Phase 2: Analyze (with retry for transient failures)
-	analyzeProgress := terminal.NewProgressDisplay("analyze", 0)
-	analyzeProgress.Start()
-
-	analysis, err := retryPhase(ctx, maxPhaseRetries, func() (*AnalysisResult, error) {
-		return p.analyze(ctx, prompt, intentDecision, ac, analyzeProgress)
-	})
-	if err != nil {
-		analyzeProgress.StopWithError("Analysis failed")
-		return nil, fmt.Errorf("analysis failed: %w", err)
-	}
-
-	var appName, projectDir string
-	if isEdit {
-		appName = ac.AppName
-		projectDir = ac.ProjectDir
-	} else {
-		appName = sanitizeToPascalCase(analysis.AppName)
-		projectDir = uniqueProjectDir(p.config.ProjectDir, appName)
-	}
-
-	var featureNames []string
-	for _, f := range analysis.Features {
-		featureNames = append(featureNames, f.Name)
-	}
-	analyzeProgress.StopWithSuccess(fmt.Sprintf("%s — %s", analysis.AppName, strings.Join(featureNames, ", ")))
-
-	// Phase 3: Plan (with retry for transient failures)
-	planProgress := terminal.NewProgressDisplay("plan", 0)
-	planProgress.Start()
-
-	plan, err := retryPhase(ctx, maxPhaseRetries, func() (*PlannerResult, error) {
-		return p.plan(ctx, analysis, intentDecision, ac, planProgress)
-	})
-	if err != nil {
-		planProgress.StopWithError("Planning failed")
-		return nil, fmt.Errorf("planning failed: %w", err)
-	}
-
-	planProgress.StopWithSuccess(fmt.Sprintf("%d files planned", len(plan.Files)))
-
-	if isEdit {
-		// For edits, ensure project configs are up to date
-		p.ensureProjectConfigs(projectDir)
-	} else {
-		// Set up the actual workspace with the real app name
-		if err := p.setupBuildWorkspace(projectDir, appName, plan); err != nil {
-			return nil, err
-		}
-	}
-
-	// Resolve and provision integrations
-	provState, err := p.provisionIntegrations(ctx, projectDir, appName, plan, analysis, ac)
-	if err != nil {
-		return nil, err
-	}
-
-	if !isEdit {
-		// Scaffold project files and run XcodeGen (new builds only)
-		if err := p.scaffoldProject(projectDir, appName, plan, provState.needsAppleSignIn); err != nil {
-			return nil, err
-		}
-	}
-	backendProvisioned := provState.backendProvisioned
-
-	// Phase 4: Code + deterministic completion gate
-	var (
-		report            *FileCompletionReport
-		sessionID         = ac.SessionID
-		completionPasses  int
-		totalCostUSD      float64
-		totalInputTokens  int
-		totalOutputTokens int
-		totalCacheRead    int
-		totalCacheCreate  int
-	)
-
-	progress := terminal.NewProgressDisplay("build", len(plan.Files))
-	progress.Start()
-
-	prevValidCount := 0
-	for pass := 1; pass <= maxBuildCompletionPasses; pass++ {
-		passLabel := fmt.Sprintf("Generation pass %d", pass)
-
-		var resp *agentruntime.Response
-		if pass == 1 {
-			resp, err = p.buildStreaming(ctx, prompt, appName, projectDir, analysis, plan, sessionID, progress, images, backendProvisioned, ac)
-		} else {
-			resp, err = p.completeMissingFilesStreaming(ctx, appName, projectDir, plan, report, sessionID, progress)
-		}
-		if err != nil {
-			progress.StopWithError(passLabel + " failed")
-			return nil, fmt.Errorf("%s failed: %w", strings.ToLower(passLabel), err)
-		}
-
-		totalCostUSD += resp.TotalCostUSD
-		totalInputTokens += resp.Usage.InputTokens
-		totalOutputTokens += resp.Usage.OutputTokens
-		totalCacheRead += resp.Usage.CacheReadInputTokens
-		totalCacheCreate += resp.Usage.CacheCreationInputTokens
-		if resp.SessionID != "" {
-			sessionID = resp.SessionID
-		}
-
-		if !isEdit {
-			cleanupScaffoldPlaceholders(projectDir, appName, plan)
-		}
-
-		report, err = verifyPlannedFiles(projectDir, appName, plan)
-		if err != nil {
-			progress.StopWithError("File verification failed")
-			return nil, fmt.Errorf("file completion check failed: %w", err)
-		}
-
-		retry, retryErr := shouldRetryCompletion(report, pass, maxBuildCompletionPasses)
-		if retryErr != nil {
-			progress.StopWithError(passLabel + " incomplete")
-			return nil, retryErr
-		}
-		if !retry {
-			completionPasses = pass
-			break
-		}
-
-		// Plateau detection: if valid file count hasn't increased, fail early
-		if pass > 1 && report.ValidCount <= prevValidCount {
-			progress.StopWithError(fmt.Sprintf("No progress after pass %d (%d/%d files valid)", pass, report.ValidCount, report.TotalPlanned))
-			return nil, fmt.Errorf("file completion stalled after %d passes — %d/%d files valid, no improvement:\n%s",
-				pass, report.ValidCount, report.TotalPlanned, formatIncompleteReport(report))
-		}
-		prevValidCount = report.ValidCount
-
-		remaining := len(report.Missing) + len(report.Invalid)
-		progress.SetTotalFiles(report.TotalPlanned)
-		progress.ResetForRetry()
-		progress.SetStatus(fmt.Sprintf("%d planned files unresolved — pass %d...", remaining, pass+1))
-	}
-
-	if completionPasses == 0 {
-		progress.StopWithError("Build did not reach a terminal state")
-		return nil, fmt.Errorf("file completion check failed: build did not reach a terminal state")
-	}
-
-	progress.StopWithSuccess(fmt.Sprintf("Build complete — %d files", report.ValidCount))
-
-	// Phase 5: Post-build review — capture screenshots, evaluate UI, iterate fixes (iOS only, new builds only)
-	if !isEdit && plan.GetPlatform() == PlatformIOS {
-		reviewSessionID, reviewErr := p.reviewAndIterate(ctx, appName, projectDir, plan, sessionID)
-		if reviewSessionID != "" {
-			sessionID = reviewSessionID
-		}
-		if reviewErr != nil {
-			return nil, fmt.Errorf("post-build review failed: %w", reviewErr)
-		}
-	}
-
-	// Phase 6: Finalize (git init + commit — new builds only)
-	if !isEdit {
-		p.finalize(ctx, projectDir, appName)
-	}
-
-	var resultPlatforms []string
-	if plan.IsMultiPlatform() {
-		resultPlatforms = plan.GetPlatforms()
-	}
-
-	return &BuildResult{
-		AppName:           analysis.AppName,
-		Description:       analysis.Description,
-		ProjectDir:        projectDir,
-		BundleID:          fmt.Sprintf("%s.%s", bundleIDPrefix(), strings.ToLower(appName)),
-		DeviceFamily:      plan.GetDeviceFamily(),
-		Platform:          plan.GetPlatform(),
-		Platforms:         resultPlatforms,
-		WatchProjectShape: plan.GetWatchProjectShape(),
-		Features:          analysis.Features,
-		FileCount:         len(plan.Files),
-		PlannedFiles:      len(plan.Files),
-		CompletedFiles:    report.ValidCount,
-		CompletionPasses:  completionPasses,
-		SessionID:         sessionID,
-		TotalCostUSD:      totalCostUSD,
-		InputTokens:       totalInputTokens,
-		OutputTokens:      totalOutputTokens,
-		CacheRead:         totalCacheRead,
-		CacheCreated:      totalCacheCreate,
-	}, nil
-}
 

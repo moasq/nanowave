@@ -3,159 +3,10 @@ package orchestration
 import (
 	"fmt"
 	"io/fs"
-	"sort"
 	"strings"
 
 	"github.com/moasq/nanowave/internal/skills"
 )
-
-// loadPhaseSkillContent reads and combines all markdown content from a phase skill directory.
-// Phase skills live under data/phases/{skillName}/ in the embedded skills FS.
-func loadPhaseSkillContent(skillName string) (string, error) {
-	dirPath := "data/phases/" + skillName
-	if _, err := fs.ReadDir(skillsFS, dirPath); err != nil {
-		return "", fmt.Errorf("phase skill %q not found: %w", skillName, err)
-	}
-
-	var parts []string
-	if body, found := skills.ReadMarkdownBody("phases/" + skillName + "/SKILL.md"); found && strings.TrimSpace(body) != "" {
-		parts = append(parts, strings.TrimSpace(body))
-	}
-
-	seen := map[string]bool{
-		dirPath + "/SKILL.md": true,
-	}
-	orderedRefs := []string{
-		dirPath + "/references/workflow.md",
-		dirPath + "/references/output-format.md",
-		dirPath + "/references/common-mistakes.md",
-		dirPath + "/references/examples.md",
-	}
-	for _, p := range orderedRefs {
-		relPath := strings.TrimPrefix(p, "data/")
-		if body, found := skills.ReadMarkdownBody(relPath); found && strings.TrimSpace(body) != "" {
-			parts = append(parts, strings.TrimSpace(body))
-			seen[p] = true
-		}
-	}
-
-	var extras []string
-	_ = fs.WalkDir(skillsFS, dirPath, func(path string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
-			return nil
-		}
-		if !strings.HasSuffix(strings.ToLower(d.Name()), ".md") {
-			return nil
-		}
-		if seen[path] {
-			return nil
-		}
-		extras = append(extras, path)
-		return nil
-	})
-	sort.Strings(extras)
-	for _, p := range extras {
-		relPath := strings.TrimPrefix(p, "data/")
-		if body, found := skills.ReadMarkdownBody(relPath); found && strings.TrimSpace(body) != "" {
-			parts = append(parts, strings.TrimSpace(body))
-		}
-	}
-
-	content := strings.TrimSpace(strings.Join(parts, "\n\n"))
-	if content == "" {
-		return "", fmt.Errorf("phase skill %q has no loadable markdown content", skillName)
-	}
-	return content, nil
-}
-
-// formatIntentHintsForPrompt renders intent decision hints as a prompt section.
-func formatIntentHintsForPrompt(intent *IntentDecision) string {
-	if intent == nil {
-		return ""
-	}
-	var lines []string
-	if intent.PlatformHint != "" {
-		lines = append(lines, fmt.Sprintf("- platform_hint: %s", intent.PlatformHint))
-	}
-	if len(intent.PlatformHints) > 1 {
-		lines = append(lines, fmt.Sprintf("- platform_hints: [%s]", strings.Join(intent.PlatformHints, ", ")))
-	}
-	if intent.DeviceFamilyHint != "" {
-		lines = append(lines, fmt.Sprintf("- device_family_hint: %s", intent.DeviceFamilyHint))
-	}
-	if intent.WatchProjectShapeHint != "" {
-		lines = append(lines, fmt.Sprintf("- watch_project_shape_hint: %s", intent.WatchProjectShapeHint))
-	}
-	if intent.Operation != "" && intent.Operation != "unknown" {
-		lines = append(lines, fmt.Sprintf("- operation: %s", intent.Operation))
-	}
-	if intent.Confidence > 0 {
-		lines = append(lines, fmt.Sprintf("- confidence: %.2f", intent.Confidence))
-	}
-	if intent.Reason != "" {
-		lines = append(lines, fmt.Sprintf("- reason: %s", intent.Reason))
-	}
-	if len(lines) == 0 {
-		return ""
-	}
-	var b strings.Builder
-	b.WriteString("Intent hints (advisory only; explicit user request wins):\n")
-	for _, line := range lines {
-		b.WriteString(line)
-		b.WriteString("\n")
-	}
-	return strings.TrimSpace(b.String())
-}
-
-// composeAnalyzerSystemPrompt builds the system prompt for the analyzer phase.
-func composeAnalyzerSystemPrompt(intent *IntentDecision) (string, error) {
-	phaseSkill, err := loadPhaseSkillContent("analyzer")
-	if err != nil {
-		return "", err
-	}
-
-	var b strings.Builder
-	appendPromptSection(&b, "Analyzer Base", analyzerPrompt)
-	appendXMLSection(&b, "constraints", planningConstraints)
-	appendPromptSection(&b, "Phase Skill", phaseSkill)
-	if hints := formatIntentHintsForPrompt(intent); hints != "" {
-		appendPromptSection(&b, "Intent Hints", hints)
-	}
-	return b.String(), nil
-}
-
-// composePlannerSystemPrompt builds the system prompt for the planner phase.
-func composePlannerSystemPrompt(intent *IntentDecision, platform string) (string, error) {
-	phaseSkill, err := loadPhaseSkillContent("planner")
-	if err != nil {
-		return "", err
-	}
-
-	var b strings.Builder
-	appendPromptSection(&b, "Planner Base", plannerPromptForPlatform(platform))
-	appendXMLSection(&b, "constraints", planningConstraints)
-	appendPromptSection(&b, "Phase Skill", phaseSkill)
-	if hints := formatIntentHintsForPrompt(intent); hints != "" {
-		appendPromptSection(&b, "Intent Hints", hints)
-	}
-	return b.String(), nil
-}
-
-// composeCoderAppendPrompt builds the system prompt append for build/edit/fix/completion.
-func composeCoderAppendPrompt(phaseSkillName, platform string) (string, error) {
-	phaseSkill, err := loadPhaseSkillContent(phaseSkillName)
-	if err != nil {
-		return "", err
-	}
-
-	var b strings.Builder
-	appendPromptSection(&b, "Coder Base", coderPromptForPlatform(platform))
-	appendXMLSection(&b, "constraints", sharedConstraints)
-	appendPromptSection(&b, "Phase Skill", phaseSkill)
-	appendXMLSection(&b, "verification", composeSelfCheck(platform))
-
-	return b.String(), nil
-}
 
 func appendPromptSection(b *strings.Builder, title, content string) {
 	content = strings.TrimSpace(content)
@@ -219,19 +70,43 @@ func ComposeAgenticSystemPrompt(ac ActionContext, catalogRoot string) string {
 	}
 
 	if !ac.IsEdit() {
-		buildWorkflow := `For NEW builds, you MUST follow this exact workflow. Skipping steps is a critical failure.
+		buildWorkflow := fmt.Sprintf(`For NEW builds, you MUST follow this exact workflow. Do NOT explore, search for tools, or read existing files first. Start building IMMEDIATELY.
 
-1. **Plan mentally** — decide app name, 1–2 core screens, models, and which skill keys you need. Set the correct platform in your plan JSON (ios, watchos, tvos, visionos, or macos).
-2. **Call nw_get_skills** with list_available:true to see available skills, then load relevant feature skills (e.g. "media", "navigation-patterns", "charts") BEFORE writing any code.
-3. **Call nw_scaffold_project** with your plan JSON — this creates the project directory, project.yml, asset catalogs, .claude/rules/, CLAUDE.md, and runs xcodegen. Do NOT create these manually.
-4. **Write all Swift source files** following the rules loaded in .claude/rules/.
-5. **Call nw_xcode_build** to compile. Use the correct platform parameter (ios, watchos, tvos, visionos, macos).
-6. **For iOS apps:** Call nw_capture_screenshots to visually review the UI. Read the screenshot, load nw_get_skills with key "ui-review", and fix issues. **For macOS/watchOS/tvOS/visionOS:** Skip screenshots and carefully review your code for platform-specific correctness instead.
-7. **Call nw_finalize_project** to git init and commit.
+STEP 1 — CREATE THE XCODE PROJECT (do this FIRST, before anything else):
+  a. Create the project directory inside %[1]s. Example: mkdir -p %[1]s/MyApp/MyApp
+  b. Write project_config.json in the project root:
+     {"app_name":"MyApp","platform":"ios","bundle_id":"com.app.myapp","device_family":"iphone"}
+  c. Write project.yml (XcodeGen format). CRITICAL rules for project.yml:
+     - sources MUST use "type: syncedFolder" (creates real folder references, NOT Xcode groups)
+     - Use GENERATE_INFOPLIST_FILE: YES (do NOT create Info.plist manually)
+     - Set SWIFT_VERSION: "6.0" and deployment target 26.0
+     Example sources section:
+       sources:
+         - path: MyApp
+           type: syncedFolder
+     For SPM packages, add a top-level "packages:" section with url + from fields.
+  d. Create Assets.xcassets with AppIcon.appiconset and AccentColor.colorset
+  e. Run: cd <projectDir> && xcodegen generate
 
-CRITICAL: You MUST call nw_scaffold_project for new builds. Do NOT manually create project.yml, asset catalogs, or .claude/ directories. The scaffold tool handles all of this correctly.
-CRITICAL: You MUST call nw_get_skills to load feature-specific skills BEFORE implementing features. Do NOT rely on your training data alone.
-CRITICAL: Set "platform" correctly in your plan_json. The platform determines build destinations, asset catalogs, project.yml structure, and which APIs are available.`
+STEP 2 — WRITE ALL SWIFT FILES:
+  Follow the architecture and AppTheme rules from the system prompt.
+  File structure: AppName/App/, AppName/Theme/, AppName/Models/, AppName/Features/FeatureName/
+
+STEP 3 — BUILD:
+  If the project uses SPM packages, first resolve them separately (this can take several minutes):
+    xcodebuild -project MyApp.xcodeproj -scheme MyApp -resolvePackageDependencies
+  Then build:
+    xcodebuild -project MyApp.xcodeproj -scheme MyApp -destination 'generic/platform=iOS Simulator' -quiet build CODE_SIGNING_ALLOWED=NO
+  IMPORTANT: Use a timeout of at least 600 seconds (10 minutes) for build commands — SPM resolution and compilation of large packages like Lottie can be slow.
+  Fix any errors and rebuild until it succeeds.
+
+STEP 4 — SCREENSHOT & REVIEW (iOS only):
+  Build for simulator, boot sim, install, launch, capture screenshot, review UI, fix issues.
+
+STEP 5 — FINALIZE:
+  git init && git add -A && git commit -m "Initial commit"
+
+IMPORTANT: Do NOT spend time searching for MCP tools, reading other projects, or exploring the filesystem. Go directly to Step 1.`, catalogRoot)
 
 		// Add platform-specific build guidance
 		switch {
@@ -320,8 +195,10 @@ When the user pastes images, determine whether each image is a design reference 
 		appendPromptSection(&b, "Edit Context", editCtx)
 	} else if catalogRoot != "" {
 		appendPromptSection(&b, "Project Location", fmt.Sprintf(
-			"CRITICAL: Create the project directory inside `%s`. For example, if the app is called MyApp, create it at `%s/MyApp/`. Do NOT create projects anywhere else.",
-			catalogRoot, catalogRoot))
+			`CRITICAL: Create the project directory inside %[1]s. For example, if the app is called MyApp, create it at %[1]s/MyApp/. Do NOT create projects anywhere else.
+
+WARNING: The working directory %[1]s may contain other project directories from previous builds. Do NOT read, browse, or reference any existing directories. Start fresh — create your own new project directory and work exclusively inside it.`,
+			catalogRoot))
 	}
 
 	return b.String()
@@ -395,13 +272,36 @@ func integrationDisplayName(id string) string {
 	}
 }
 
+// PromptDiagnostics reports what was injected into the agentic system prompt.
+type PromptDiagnostics struct {
+	CoreRulesLoaded     int // rules from data/core/
+	AlwaysRulesLoaded   int // rules from data/always/
+	PlatformRulesLoaded int // rules from data/always-{platform}/
+	CoreRulesChars      int // total chars from all rules
+	Platform            string
+}
+
 // loadCoreRulesForPrompt reads all core rules from the embedded FS and returns
 // them as a single string for injection into the system prompt.
 // This ensures the agent always has the rules in context, even if it skips
 // nw_scaffold_project (which writes them to .claude/rules/ on disk).
 // Follows the same pattern as the old build_prompts.go <feature-rules> injection.
 func loadCoreRulesForPrompt(platform string) string {
+	content, _ := loadCoreRulesWithDiagnostics(platform)
+	return content
+}
+
+// LoadCoreRulesDiagnostics returns diagnostics about what rules would be injected
+// for the given platform, without building the full content string.
+func LoadCoreRulesDiagnostics(platform string) PromptDiagnostics {
+	_, diag := loadCoreRulesWithDiagnostics(platform)
+	return diag
+}
+
+func loadCoreRulesWithDiagnostics(platform string) (string, PromptDiagnostics) {
 	var b strings.Builder
+	var diag PromptDiagnostics
+	diag.Platform = platform
 
 	appendRule := func(content string) {
 		if content == "" {
@@ -422,12 +322,20 @@ func loadCoreRulesForPrompt(platform string) string {
 		"forbidden-patterns",
 	}
 	for _, key := range coreKeys {
-		appendRule(loadCoreRuleAdapted(key, platform, nil))
+		content := loadCoreRuleAdapted(key, platform, nil)
+		if content != "" {
+			diag.CoreRulesLoaded++
+		}
+		appendRule(content)
 	}
 
 	// Always-on rules from data/always/ (components, design-system, layout, navigation, swiftui, review)
 	for _, key := range []string{"components", "design-system", "layout", "navigation", "swiftui", "review"} {
-		appendRule(skills.LoadRuleContent(key))
+		content := skills.LoadRuleContent(key)
+		if content != "" {
+			diag.AlwaysRulesLoaded++
+		}
+		appendRule(content)
 	}
 
 	// Platform-conditional always rules from data/always-{platform}/
@@ -441,11 +349,13 @@ func loadCoreRulesForPrompt(platform string) string {
 					// Try loading SKILL.md from the subdirectory
 					body, found := skills.ReadMarkdownBody(platDir + "/" + entry.Name() + "/SKILL.md")
 					if found && body != "" {
+						diag.PlatformRulesLoaded++
 						appendRule(body)
 					}
 				} else if strings.HasSuffix(entry.Name(), ".md") {
 					body, found := skills.ReadMarkdownBody(platDir + "/" + entry.Name())
 					if found && body != "" {
+						diag.PlatformRulesLoaded++
 						appendRule(body)
 					}
 				}
@@ -453,5 +363,6 @@ func loadCoreRulesForPrompt(platform string) string {
 		}
 	}
 
-	return b.String()
+	diag.CoreRulesChars = b.Len()
+	return b.String(), diag
 }

@@ -27,6 +27,9 @@ func NewDefaultRegistry() *Registry {
 	r.Register(finalizeProjectTool())
 	r.Register(projectInfoTool())
 	r.Register(validatePlatformTool())
+	registerXcodeGenTools(r)
+	registerAppleDocsTool(r)
+	registerIntegrationTools(r)
 	return r
 }
 

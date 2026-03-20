@@ -1,31 +1,5 @@
 package orchestration
 
-// analyzerPrompt is the base prompt for the analyzer phase.
-const analyzerPrompt = `You are a senior mobile product manager. Turn user requests into a shippable MVP spec.
-
-CRITICAL: NEVER ask clarifying questions. Make all decisions yourself.
-USER INTENT IS KING — build EXACTLY what was asked for, nothing more.
-Return valid JSON for AnalysisResult. Follow the attached phase skill content for detailed rules.`
-
-// plannerPromptForPlatform returns the base prompt for the planner phase.
-func plannerPromptForPlatform(platform string) string {
-	role := "iOS app architect"
-	switch {
-	case IsMacOS(platform):
-		role = "macOS app architect"
-	case IsWatchOS(platform):
-		role = "watchOS app architect"
-	case IsTvOS(platform):
-		role = "tvOS app architect"
-	case IsVisionOS(platform):
-		role = "visionOS app architect"
-	}
-	return "You are a " + role + `. Receive an MVP spec and produce a file-level build plan as JSON.
-
-USER REQUESTS OVERRIDE DEFAULTS — if the user specifies design preferences, use them exactly.
-Return ONLY valid JSON for PlannerResult (no markdown). Follow the attached phase skill content.`
-}
-
 // coderPromptForPlatform returns the base prompt for build/edit/fix/completion phases.
 func coderPromptForPlatform(platform string) string {
 	target := "iOS 26+ (SwiftUI native)"
@@ -43,7 +17,8 @@ func coderPromptForPlatform(platform string) string {
 You have access to ALL tools — write files, edit files, run terminal commands, search Apple docs, and configure the Xcode project.
 
 NEVER guess API signatures — search Apple docs first if unsure.
-Do not manually edit project.yml — use xcodegen MCP tools instead.`
+Do not manually edit project.yml — use xcodegen MCP tools instead.
+If you must write project.yml manually, sources MUST use "type: syncedFolder" to create real folder references (not Xcode groups).`
 }
 
 // planningConstraints limits scope for the agentic prompt.
@@ -61,18 +36,19 @@ const planningConstraints = `PLATFORM & SCOPE:
 
 // sharedConstraints provides cross-phase safety and architecture guardrails.
 const sharedConstraints = `ARCHITECTURE:
-- App structure: @main App -> RootView -> MainView -> content.
+- App structure: @main App -> RootView -> MainView -> content. NEVER embed feature views directly in the @main App body. Always create RootView.swift and MainView.swift as intermediary layers.
 - Apple frameworks + approved SPM packages. No external services, external AI SDKs, or secrets.
 - App-wide settings (@AppStorage) must be wired at the root app level.
 - User-requested styling overrides defaults.
 
 APPTHEME — SINGLE SOURCE OF TRUTH (violating these rules is unacceptable):
 All visual tokens MUST come from AppTheme. Why: centralized tokens ensure consistency and enable theme changes without touching every view.
-- ALL colors via AppTheme.Colors.* — using raw .white, .black, Color.red, .foregroundStyle(.blue) is unacceptable
+- ALL colors via AppTheme.Colors.* — using raw .white, .black, Color.red, .foregroundStyle(.blue), or Color(hex:) inline is unacceptable
 - ALL fonts via AppTheme.Fonts.* — using .font(.title2), .font(.system(size:)), or raw font modifiers is unacceptable
 - ALL spacing via AppTheme.Spacing.* — using raw numeric padding/spacing values is unacceptable
 - AppTheme MUST include Colors (with textPrimary/textSecondary/textTertiary), Fonts, Spacing, and Style enums
-- If a needed token doesn't exist, add it to AppTheme first, then reference it
+- If a needed token doesn't exist (e.g. gradient colors, category colors), add it to AppTheme FIRST, then reference it
+- NEVER use Color(hex:) or Color(red:green:blue:) outside of AppTheme.swift
 
 OBSERVABLE PATTERN (violating this is unacceptable):
 - Use @Observable, NOT ObservableObject. Why: @Observable is Apple's modern replacement with better performance.

@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 )
@@ -65,10 +66,17 @@ func (r *Registry) Names() []string {
 // suitable for injecting into system prompts for non-MCP runtimes
 // (Codex, OpenCode) that invoke tools via `nanowave tool <name>`.
 func (r *Registry) ToolDescriptionsMarkdown() string {
+	// Use the absolute path to the running nanowave binary so Codex/OpenCode
+	// invoke the correct version, not whatever 'nanowave' is on PATH.
+	nanowaveBin := "nanowave"
+	if execPath, err := os.Executable(); err == nil {
+		nanowaveBin = execPath
+	}
+
 	var b strings.Builder
 	b.WriteString("\n\n## Nanowave Tools\n\n")
 	b.WriteString("These tools are available via CLI. Invoke them by piping JSON to stdin:\n")
-	b.WriteString("```\necho '{\"key\":\"value\"}' | nanowave tool <tool_name>\n```\n\n")
+	fmt.Fprintf(&b, "```\necho '{\"key\":\"value\"}' | %s tool <tool_name>\n```\n\n", nanowaveBin)
 
 	for _, t := range r.All() {
 		b.WriteString(fmt.Sprintf("### %s\n\n", t.Name))
