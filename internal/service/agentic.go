@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -52,6 +53,11 @@ func (s *Service) AgenticSend(ctx context.Context, prompt string, images []strin
 	var activeProviders []integrations.ActiveProvider
 	if s.manager != nil {
 		activeProviders = s.manager.ResolveExisting(ac.AppName)
+
+		// AI-driven backend detection: ask the LLM what integrations this prompt needs,
+		// then run interactive setup for any that aren't configured yet.
+		activeProviders = s.detectAndProvisionBackends(ctx, prompt, activeProviders, ac.AppName)
+
 		for _, ap := range activeProviders {
 			ac.ActiveIntegrations = append(ac.ActiveIntegrations, string(ap.Provider.ID()))
 		}
@@ -70,10 +76,41 @@ func (s *Service) AgenticSend(ctx context.Context, prompt string, images []strin
 		tools = append(tools, s.manager.AgentTools(activeProviders)...)
 	}
 
-	// Inject nanowave tool descriptions into the system prompt for all runtimes.
-	// nw_* tools (scaffold, setup_integration, etc.) are invoked via CLI:
-	//   echo '{"key":"value"}' | nanowave tool <tool_name>
-	systemPrompt += nwtool.NewDefaultRegistry().ToolDescriptionsMarkdown()
+	// For non-Claude runtimes (Codex, OpenCode), inject nw_* tool descriptions
+	// as markdown so the LLM can invoke them via CLI: echo JSON | nanowave tool <name>
+	// For Claude Code, nw_* tools are registered as MCP tools and don't need
+	// prompt-based descriptions — Claude Code discovers them via --mcp-config.
+	if s.runtimeKind != agentruntime.KindClaude {
+		systemPrompt += nwtool.NewDefaultRegistry().ToolDescriptionsMarkdown()
+	}
+
+	// --- Diagnostics: log what the agentic call will receive ---
+	platform := ac.Platform
+	if platform == "" {
+		platform = "ios"
+	}
+	ruleDiag := orchestration.LoadCoreRulesDiagnostics(platform)
+	terminal.Detail("System prompt", fmt.Sprintf("%d chars", len(systemPrompt)))
+	terminal.Detail("Skills injected", fmt.Sprintf("%d core, %d always, %d platform (%s) — %d chars",
+		ruleDiag.CoreRulesLoaded, ruleDiag.AlwaysRulesLoaded, ruleDiag.PlatformRulesLoaded, platform, ruleDiag.CoreRulesChars))
+	terminal.Detail("Model", s.phaseModel(agentruntime.PhaseBuild))
+
+	// Log MCP servers
+	var mcpServerNames []string
+	for _, srv := range reg.Servers() {
+		mcpServerNames = append(mcpServerNames, fmt.Sprintf("%s(%d)", srv.Name, len(srv.Tools)))
+	}
+	terminal.Detail("MCP servers", strings.Join(mcpServerNames, ", "))
+
+	// Log tool counts by category
+	coreToolCount := len(orchestration.CoreAgenticToolsList())
+	mcpToolCount := len(reg.AllTools())
+	nwToolCount := len(nwtool.NewDefaultRegistry().Names())
+	terminal.Detail("Tools", fmt.Sprintf("%d core + %d MCP + %d nw_*", coreToolCount, mcpToolCount, nwToolCount))
+
+	if len(ac.ActiveIntegrations) > 0 {
+		terminal.Detail("Integrations", strings.Join(ac.ActiveIntegrations, ", "))
+	}
 
 	var workDir string
 	// Snapshot existing projects before build so we can detect the new one after
@@ -89,7 +126,30 @@ func (s *Service) AgenticSend(ctx context.Context, prompt string, images []strin
 		workDir = s.config.CatalogRoot()
 		os.MkdirAll(workDir, 0o755)
 		preExistingProjects = listCatalogDirs(workDir)
+
+		// Write .mcp.json and .claude/settings.json to the catalog root BEFORE
+		// the agentic call so MCPs are available from turn 1, even before creating
+		// the project directory via nw_scaffold_project.
+		mcpErr := orchestration.WriteMCPConfigExternal(workDir)
+		settingsErr := orchestration.WriteSettingsSharedExternal(workDir)
+		if mcpErr != nil {
+			terminal.Warning(fmt.Sprintf("Failed to write .mcp.json: %v", mcpErr))
+		}
+		if settingsErr != nil {
+			terminal.Warning(fmt.Sprintf("Failed to write settings.json: %v", settingsErr))
+		}
+		terminal.Detail("MCP config", filepath.Join(workDir, ".mcp.json"))
+		terminal.Detail("Settings", filepath.Join(workDir, ".claude", "settings.json"))
 	}
+
+	// Explicitly pass the .mcp.json path so Claude Code loads MCP servers
+	// reliably — auto-discovery from WorkDir is not guaranteed.
+	mcpConfigPath := filepath.Join(workDir, ".mcp.json")
+	if _, err := os.Stat(mcpConfigPath); os.IsNotExist(err) {
+		mcpConfigPath = "" // don't pass if file doesn't exist
+	}
+
+	terminal.Detail("WorkDir", workDir)
 
 	// Progress display — "agentic" mode shows tool activity without rigid phase numbers
 	progress := terminal.NewProgressDisplay("agentic", 0)
@@ -105,6 +165,7 @@ func (s *Service) AgenticSend(ctx context.Context, prompt string, images []strin
 		Model:        s.phaseModel(agentruntime.PhaseBuild),
 		AllowedTools: tools,
 		WorkDir:      workDir,
+		MCPConfig:    mcpConfigPath,
 		Images:       images,
 		SessionID:    ac.SessionID,
 	}, streamCb)
@@ -124,6 +185,7 @@ func (s *Service) AgenticSend(ctx context.Context, prompt string, images []strin
 			Model:        s.phaseModel(agentruntime.PhaseBuild),
 			AllowedTools: tools,
 			WorkDir:      workDir,
+			MCPConfig:    mcpConfigPath,
 			Images:       images,
 		}, streamCb)
 	}
@@ -183,6 +245,7 @@ func (s *Service) AgenticSend(ctx context.Context, prompt string, images []strin
 					Name:        &appName,
 					Status:      "active",
 					ProjectPath: projectDir,
+					BundleID:    orchestration.ReadProjectBundleID(projectDir),
 					SessionID:   resp.SessionID,
 					RuntimeKind: string(s.runtimeKind),
 					ModelID:     s.CurrentModel(),
@@ -208,6 +271,117 @@ func (s *Service) AgenticSend(ctx context.Context, prompt string, images []strin
 	}
 
 	return nil
+}
+
+// backendNeedsResult is the structured output from the AI backend detection call.
+type backendNeedsResult struct {
+	NeedsSupabase  bool `json:"needs_supabase"`
+	NeedsRevenuecat bool `json:"needs_revenuecat"`
+}
+
+// detectAndProvisionBackends uses a fast LLM call to determine if the user's prompt
+// requires backend integrations (Supabase for auth/database/storage, RevenueCat for
+// subscriptions/in-app purchases). For any needed-but-unconfigured integration,
+// runs the interactive setup flow so credentials are available before the main build.
+func (s *Service) detectAndProvisionBackends(ctx context.Context, prompt string, existing []integrations.ActiveProvider, appName string) []integrations.ActiveProvider {
+	if s.manager == nil {
+		return existing
+	}
+
+	// Check what's already configured
+	configuredIDs := make(map[string]bool, len(existing))
+	for _, ap := range existing {
+		configuredIDs[string(ap.Provider.ID())] = true
+	}
+
+	// If both are already configured, nothing to detect
+	if configuredIDs["supabase"] && configuredIDs["revenuecat"] {
+		return existing
+	}
+
+	// Fast LLM call: detect backend needs from the prompt
+	needs := s.detectBackendNeeds(ctx, prompt)
+	if needs == nil {
+		return existing
+	}
+
+	// Determine which integrations need setup
+	var toSetup []string
+	if needs.NeedsSupabase && !configuredIDs["supabase"] {
+		toSetup = append(toSetup, "supabase")
+	}
+	if needs.NeedsRevenuecat && !configuredIDs["revenuecat"] {
+		toSetup = append(toSetup, "revenuecat")
+	}
+	if len(toSetup) == 0 {
+		return existing
+	}
+
+	// Run interactive setup for each needed integration
+	for _, providerID := range toSetup {
+		terminal.Info(fmt.Sprintf("Your app needs %s — starting setup...", integrationDisplayName(providerID)))
+		result, err := orchestration.SetupIntegrationExternal(ctx, providerID, appName, "")
+		if err != nil {
+			terminal.Warning(fmt.Sprintf("%s setup failed: %v", integrationDisplayName(providerID), err))
+			continue
+		}
+		if success, ok := result["success"].(bool); ok && success {
+			terminal.Success(fmt.Sprintf("%s configured", integrationDisplayName(providerID)))
+		} else {
+			terminal.Warning(fmt.Sprintf("%s setup skipped", integrationDisplayName(providerID)))
+		}
+	}
+
+	// Re-resolve all providers now that setup is done
+	return s.manager.ResolveExisting(appName)
+}
+
+// detectBackendNeeds runs a fast single-turn LLM call to determine if the user's
+// prompt requires Supabase (auth, database, storage, realtime, cloud sync) or
+// RevenueCat (subscriptions, in-app purchases, paywalls).
+func (s *Service) detectBackendNeeds(ctx context.Context, prompt string) *backendNeedsResult {
+	systemPrompt := `You are a backend requirements detector for an iOS app builder.
+Analyze the user's app description and determine if it needs:
+- Supabase: for authentication, user accounts, database, cloud storage, realtime sync, or multi-device data
+- RevenueCat: for subscriptions, in-app purchases, paywalls, premium features, or monetization
+
+Return ONLY valid JSON, no other text:
+{"needs_supabase": true/false, "needs_revenuecat": true/false}
+
+Rules:
+- needs_supabase=true ONLY if the app explicitly needs user accounts, cloud database, server-side storage, or multi-device sync
+- needs_supabase=false for apps that work with local-only data (notes, calculator, timer, etc.)
+- needs_revenuecat=true ONLY if the app explicitly mentions subscriptions, premium, paywall, in-app purchases, or paid features
+- needs_revenuecat=false unless monetization is explicitly requested
+- When in doubt, return false — don't over-provision backends`
+
+	resp, err := s.runtime.GenerateStreaming(ctx, prompt, agentruntime.GenerateOpts{
+		SystemPrompt: systemPrompt,
+		MaxTurns:     1,
+		Model:        s.phaseModel(agentruntime.PhaseIntent),
+	}, func(_ agentruntime.StreamEvent) {})
+	if err != nil || resp == nil || resp.Result == "" {
+		return nil
+	}
+
+	var needs backendNeedsResult
+	cleaned := orchestration.ExtractJSON(resp.Result)
+	if err := json.Unmarshal([]byte(cleaned), &needs); err != nil {
+		return nil
+	}
+
+	return &needs
+}
+
+func integrationDisplayName(id string) string {
+	switch id {
+	case "supabase":
+		return "Supabase"
+	case "revenuecat":
+		return "RevenueCat"
+	default:
+		return id
+	}
 }
 
 // listCatalogDirs returns a set of all directory names in the catalog root.

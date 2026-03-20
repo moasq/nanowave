@@ -132,3 +132,8 @@ func WriteMCPConfigWithIntegrationsExternal(projectDir string, reg *mcpregistry.
 func WriteSettingsWithIntegrationsExternal(projectDir string, reg *mcpregistry.Registry, integrationTools []string) error {
 	return writeSettingsShared(projectDir, reg, integrationTools)
 }
+
+// ExtractJSON finds and extracts the first JSON object from a string.
+func ExtractJSON(s string) string {
+	return extractJSON(s)
+}

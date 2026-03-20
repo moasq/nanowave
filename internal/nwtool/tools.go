@@ -8,8 +8,10 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/moasq/nanowave/internal/agentruntime"
+	"github.com/moasq/nanowave/internal/hooks"
 	"github.com/moasq/nanowave/internal/orchestration"
 )
 
@@ -21,9 +23,13 @@ func NewDefaultRegistry() *Registry {
 	r.Register(setupIntegrationTool())
 	r.Register(verifyFilesTool())
 	r.Register(xcodeBuildTool())
+	r.Register(captureScreenshotsTool())
 	r.Register(finalizeProjectTool())
 	r.Register(projectInfoTool())
 	r.Register(validatePlatformTool())
+	registerXcodeGenTools(r)
+	registerAppleDocsTool(r)
+	registerIntegrationTools(r)
 	return r
 }
 
@@ -32,7 +38,7 @@ func NewDefaultRegistry() *Registry {
 func getSkillsTool() *Tool {
 	return &Tool{
 		Name:        "nw_get_skills",
-		Description: "Load embedded skill/rule content by key. Returns markdown content for the requested skills. Use this to get architecture rules, feature guides, UI patterns, and platform-specific knowledge before writing code. Common keys: swift-conventions, mvvm-architecture, file-structure, forbidden-patterns, camera, storage, authentication, supabase, revenuecat, charts, localization, dark-mode, widgets, live-activities, animations, accessibility, navigation-patterns, gestures, etc.",
+		Description: "Load feature-specific skill content by key. Core rules (conventions, architecture, file structure, design system, layout, navigation, components) and platform rules are already loaded — use this tool for feature-specific skills like camera, authentication, supabase, charts, widgets, live-activities, animations, accessibility, navigation-patterns, gestures, etc.",
 		InputSchema: json.RawMessage(`{
   "type": "object",
   "properties": {
@@ -88,7 +94,7 @@ func scaffoldProjectTool() *Tool {
   "properties": {
     "project_dir":   {"type": "string", "description": "Absolute path to the project directory"},
     "app_name":      {"type": "string", "description": "PascalCase app name"},
-    "plan_json":     {"type": "string", "description": "JSON string of the PlannerResult"},
+    "plan_json":     {"type": "string", "description": "JSON string of the PlannerResult. MUST include: platform (ios|watchos|tvos|visionos|macos), device_family (iphone|ipad|universal, iOS only), rule_keys (array of feature skill keys), design (navigation, palette with primary/secondary/accent/background/surface, font_design, corner_radius, density, surfaces, app_mood), files (array of {path, type_name, purpose, components, data_access}), models (array of {name, storage, properties}). For watchOS: include watch_project_shape (watch_only|paired_ios_watch). For SPM packages: include packages (array of {name, reason})."},
     "runtime_kind":  {"type": "string", "description": "Agent runtime: claude, codex, or opencode", "default": "claude"}
   },
   "required": ["project_dir", "app_name", "plan_json"]
@@ -312,11 +318,268 @@ func handleXcodeBuild(ctx context.Context, input json.RawMessage) (json.RawMessa
 		outputStr = outputStr[len(outputStr)-8000:]
 	}
 
+	// Fire build hooks
+	hookVars := map[string]string{
+		"STATUS":   "success",
+		"APP_NAME": in.Scheme,
+	}
+	if success {
+		hooks.FireSafe(ctx, hooks.EventBuildCompileSuccess, hookVars)
+	} else {
+		hookVars["STATUS"] = "failure"
+		hooks.FireSafe(ctx, hooks.EventBuildCompileFailure, hookVars)
+	}
+
 	return jsonOK(map[string]any{
 		"success":   success,
 		"output":    outputStr,
 		"exit_code": exitCode,
 	})
+}
+
+// --- nw_capture_screenshots ---
+
+func captureScreenshotsTool() *Tool {
+	return &Tool{
+		Name:        "nw_capture_screenshots",
+		Description: "Build the app for iOS simulator, boot the simulator, install, launch, and capture a screenshot. Returns the screenshot file path so you can read it with your vision capability. Call this AFTER a successful nw_xcode_build. NOTE: This tool only works for iOS apps. For macOS, watchOS, tvOS, and visionOS apps, skip the screenshot step and proceed to nw_finalize_project after a successful build.",
+		InputSchema: json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "project_dir": {"type": "string", "description": "Absolute path to the project directory"},
+    "scheme":      {"type": "string", "description": "Xcode scheme name (usually the app name)"},
+    "screens":     {"type": "array", "items": {"type": "string"}, "description": "Optional list of screen names to capture. Default captures only the launch screen."}
+  },
+  "required": ["project_dir", "scheme"]
+}`),
+		Handler: handleCaptureScreenshots,
+	}
+}
+
+func handleCaptureScreenshots(ctx context.Context, input json.RawMessage) (json.RawMessage, error) {
+	var in struct {
+		ProjectDir string   `json:"project_dir"`
+		Scheme     string   `json:"scheme"`
+		Screens    []string `json:"screens"`
+	}
+	if err := json.Unmarshal(input, &in); err != nil {
+		return jsonError(fmt.Sprintf("invalid input: %v", err))
+	}
+	if in.ProjectDir == "" || in.Scheme == "" {
+		return jsonError("project_dir and scheme are required")
+	}
+
+	screenshotDir := filepath.Join(in.ProjectDir, "screenshots", "review")
+	if err := os.MkdirAll(screenshotDir, 0o755); err != nil {
+		return jsonError(fmt.Sprintf("create screenshot dir: %v", err))
+	}
+
+	// Find .xcodeproj
+	entries, err := os.ReadDir(in.ProjectDir)
+	if err != nil {
+		return jsonError(fmt.Sprintf("read project dir: %v", err))
+	}
+	var xcodeprojName string
+	for _, e := range entries {
+		if strings.HasSuffix(e.Name(), ".xcodeproj") {
+			xcodeprojName = e.Name()
+			break
+		}
+	}
+	if xcodeprojName == "" {
+		return jsonError("no .xcodeproj found in project directory")
+	}
+
+	// Find a suitable iPhone simulator
+	udid, simName, err := findSimulator()
+	if err != nil {
+		return jsonError(fmt.Sprintf("find simulator: %v", err))
+	}
+
+	// Boot simulator
+	bootCmd := exec.CommandContext(ctx, "xcrun", "simctl", "boot", udid)
+	bootOut, bootErr := bootCmd.CombinedOutput()
+	if bootErr != nil {
+		text := strings.ToLower(string(bootOut) + " " + bootErr.Error())
+		if !strings.Contains(text, "already booted") && !strings.Contains(text, "current state: booted") {
+			return jsonError(fmt.Sprintf("boot simulator: %s: %s", bootErr, bootOut))
+		}
+	}
+
+	// Build for simulator
+	derivedData := filepath.Join(in.ProjectDir, ".derivedData-review")
+	buildCmd := exec.CommandContext(ctx, "xcodebuild",
+		"-project", xcodeprojName,
+		"-scheme", in.Scheme,
+		"-destination", fmt.Sprintf("platform=iOS Simulator,id=%s", udid),
+		"-derivedDataPath", derivedData,
+		"-quiet", "build",
+	)
+	buildCmd.Dir = in.ProjectDir
+	buildOut, buildErr := buildCmd.CombinedOutput()
+	if buildErr != nil {
+		os.RemoveAll(derivedData)
+		outStr := string(buildOut)
+		if len(outStr) > 4000 {
+			outStr = outStr[len(outStr)-4000:]
+		}
+		return jsonError(fmt.Sprintf("simulator build failed: %s", outStr))
+	}
+
+	// Find the built .app
+	appPath, err := findApp(derivedData)
+	if err != nil {
+		os.RemoveAll(derivedData)
+		return jsonError(fmt.Sprintf("find built app: %v", err))
+	}
+
+	// Read bundle ID from project_config.json
+	configData, _ := os.ReadFile(filepath.Join(in.ProjectDir, "project_config.json"))
+	var cfg struct {
+		BundleID string `json:"bundle_id"`
+	}
+	json.Unmarshal(configData, &cfg)
+	bundleID := cfg.BundleID
+	if bundleID == "" {
+		// Fallback: derive from Info.plist or use scheme
+		bundleID = "com.app." + strings.ToLower(in.Scheme)
+	}
+
+	// Install app
+	installCmd := exec.CommandContext(ctx, "xcrun", "simctl", "install", udid, appPath)
+	if out, err := installCmd.CombinedOutput(); err != nil {
+		os.RemoveAll(derivedData)
+		return jsonError(fmt.Sprintf("install app: %s: %s", err, out))
+	}
+
+	// Launch app
+	launchCmd := exec.CommandContext(ctx, "xcrun", "simctl", "launch", udid, bundleID)
+	if out, err := launchCmd.CombinedOutput(); err != nil {
+		os.RemoveAll(derivedData)
+		return jsonError(fmt.Sprintf("launch app: %s: %s", err, out))
+	}
+
+	// Wait for the app to render
+	select {
+	case <-ctx.Done():
+		os.RemoveAll(derivedData)
+		return jsonError("context cancelled while waiting for app to render")
+	case <-time.After(4 * time.Second):
+	}
+
+	// Capture screenshot
+	screenshotPath := filepath.Join(screenshotDir, "launch.png")
+	captureCmd := exec.CommandContext(ctx, "xcrun", "simctl", "io", udid, "screenshot", screenshotPath)
+	if out, err := captureCmd.CombinedOutput(); err != nil {
+		os.RemoveAll(derivedData)
+		return jsonError(fmt.Sprintf("capture screenshot: %s: %s", err, out))
+	}
+
+	os.RemoveAll(derivedData)
+
+	return jsonOK(map[string]any{
+		"success":         true,
+		"screenshot_path": screenshotPath,
+		"simulator_name":  simName,
+		"simulator_udid":  udid,
+		"instructions":    "Read the screenshot file to visually evaluate the UI. The simulator is still running — you can use 'xcrun simctl io " + udid + " screenshot <path>' via Bash to capture additional screens after navigating with 'xcrun simctl launch' or UI automation.",
+	})
+}
+
+// findSimulator locates the best available iPhone simulator.
+func findSimulator() (udid, name string, err error) {
+	out, err := exec.Command("xcrun", "simctl", "list", "devices", "available", "-j").Output()
+	if err != nil {
+		return "", "", fmt.Errorf("list simulators: %w", err)
+	}
+
+	var result struct {
+		Devices map[string][]struct {
+			Name                 string `json:"name"`
+			UDID                 string `json:"udid"`
+			IsAvailable          bool   `json:"isAvailable"`
+			DeviceTypeIdentifier string `json:"deviceTypeIdentifier"`
+		} `json:"devices"`
+	}
+	if err := json.Unmarshal(out, &result); err != nil {
+		return "", "", fmt.Errorf("parse simulator list: %w", err)
+	}
+
+	type candidate struct {
+		name, udid, runtime string
+	}
+	var candidates []candidate
+	for runtime, devs := range result.Devices {
+		if !strings.Contains(runtime, "iOS") {
+			continue
+		}
+		for _, d := range devs {
+			if !d.IsAvailable {
+				continue
+			}
+			lower := strings.ToLower(d.DeviceTypeIdentifier)
+			if strings.Contains(lower, "iphone") {
+				candidates = append(candidates, candidate{d.Name, d.UDID, runtime})
+			}
+		}
+	}
+
+	if len(candidates) == 0 {
+		return "", "", fmt.Errorf("no iPhone simulator found")
+	}
+
+	// Prefer Pro Max, then Pro, then any iPhone — newest runtime
+	best := candidates[0]
+	for _, c := range candidates[1:] {
+		cLower := strings.ToLower(c.name)
+		bLower := strings.ToLower(best.name)
+		cScore := 0
+		bScore := 0
+		if strings.Contains(cLower, "pro max") {
+			cScore = 3
+		} else if strings.Contains(cLower, "pro") {
+			cScore = 2
+		} else {
+			cScore = 1
+		}
+		if strings.Contains(bLower, "pro max") {
+			bScore = 3
+		} else if strings.Contains(bLower, "pro") {
+			bScore = 2
+		} else {
+			bScore = 1
+		}
+		if cScore > bScore || (cScore == bScore && c.runtime > best.runtime) {
+			best = c
+		}
+	}
+
+	return best.udid, best.name, nil
+}
+
+// findApp locates the built .app inside derivedData.
+func findApp(derivedData string) (string, error) {
+	productsDir := filepath.Join(derivedData, "Build", "Products")
+	entries, err := os.ReadDir(productsDir)
+	if err != nil {
+		return "", fmt.Errorf("read products dir: %w", err)
+	}
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		subDir := filepath.Join(productsDir, e.Name())
+		subEntries, err := os.ReadDir(subDir)
+		if err != nil {
+			continue
+		}
+		for _, se := range subEntries {
+			if strings.HasSuffix(se.Name(), ".app") {
+				return filepath.Join(subDir, se.Name()), nil
+			}
+		}
+	}
+	return "", fmt.Errorf("no .app found in %s", productsDir)
 }
 
 // --- nw_finalize_project ---

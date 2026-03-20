@@ -95,7 +95,8 @@ func ReadMarkdownDirBodies(dirPath string) string {
 }
 
 // LoadRuleContent reads content for a given rule_key from the embedded FS.
-// Searches core/, always/, features/, ui/, extensions/ for the key.
+// Searches core/, always/, features/, ui/, extensions/, and platform dirs for the key.
+// Supports platform-prefixed keys like "watchos-biometrics" → watchos/biometrics/.
 func LoadRuleContent(ruleKey string) string {
 	corePath := fmt.Sprintf("core/%s.md", ruleKey)
 	if body, found := ReadMarkdownBody(corePath); found {
@@ -112,5 +113,23 @@ func LoadRuleContent(ruleKey string) string {
 			return combined
 		}
 	}
+
+	// Platform-specific skills: search watchos/, tvos/, visionos/, macos/
+	for _, plat := range []string{"watchos", "tvos", "visionos", "macos"} {
+		// Direct match: e.g. key="biometrics" in watchos/biometrics/
+		dirPath := fmt.Sprintf("%s/%s", plat, ruleKey)
+		if combined := ReadMarkdownDirBodies(dirPath); combined != "" {
+			return combined
+		}
+		// Platform-prefixed match: e.g. key="watchos-biometrics" → watchos/biometrics/
+		if strings.HasPrefix(ruleKey, plat+"-") {
+			subKey := strings.TrimPrefix(ruleKey, plat+"-")
+			dirPath := fmt.Sprintf("%s/%s", plat, subKey)
+			if combined := ReadMarkdownDirBodies(dirPath); combined != "" {
+				return combined
+			}
+		}
+	}
+
 	return ""
 }

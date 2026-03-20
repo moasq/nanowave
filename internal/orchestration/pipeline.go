@@ -33,6 +33,22 @@ func DetectProjectBuildHints(projectDir string) (platform string, platforms []st
 	return cfg.Platform, cfg.Platforms, cfg.WatchProjectShape
 }
 
+// ReadProjectBundleID reads bundle_id from project_config.json.
+// Returns empty string if not found.
+func ReadProjectBundleID(projectDir string) string {
+	data, err := os.ReadFile(filepath.Join(projectDir, "project_config.json"))
+	if err != nil {
+		return ""
+	}
+	var cfg struct {
+		BundleID string `json:"bundle_id"`
+	}
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		return ""
+	}
+	return cfg.BundleID
+}
+
 // ReadProjectAppName returns the Xcode app name for an existing project.
 // It reads app_name from project_config.json (the canonical source of truth written at build time).
 // Falls back to filepath.Base(projectDir) for projects predating the suffixed-dir feature.
@@ -145,4 +161,5 @@ func (p *Pipeline) modelForPhase(phase agentruntime.Phase) string {
 	}
 	return p.runtime.DefaultModel(phase)
 }
+
 

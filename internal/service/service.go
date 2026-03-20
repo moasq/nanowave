@@ -125,6 +125,7 @@ func (s *Service) Send(ctx context.Context, prompt string, images []string) erro
 	return s.AgenticSend(ctx, prompt, images)
 }
 
+
 // SetModel changes the model at runtime.
 func (s *Service) SetModel(model string) {
 	s.model = strings.TrimSpace(model)
@@ -603,6 +604,10 @@ func (s *Service) Run(ctx context.Context) error {
 
 	bundleID := project.BundleID
 	if bundleID == "" {
+		// Try reading from project_config.json (canonical source)
+		bundleID = orchestration.ReadProjectBundleID(project.ProjectPath)
+	}
+	if bundleID == "" {
 		bundleID = fmt.Sprintf("com.%s.%s", sanitizeBundleID(currentUsername()), strings.ToLower(appName))
 	}
 	if len(project.Platforms) > 1 {
@@ -672,8 +677,22 @@ func (s *Service) Run(ctx context.Context) error {
 
 		launchCmd := exec.CommandContext(ctx, "xcrun", "simctl", "launch", "booted", bundleID)
 		if launchOutput, launchErr := launchCmd.CombinedOutput(); launchErr != nil {
-			spinner.Stop()
-			return fmt.Errorf("failed to launch app %s on simulator: %w%s", bundleID, launchErr, commandOutputSuffix(launchOutput))
+			// If launch fails, try reading the actual bundle ID from the built .app's Info.plist
+			if actualBundleID := readBundleIDFromApp(appPath); actualBundleID != "" && actualBundleID != bundleID {
+				terminal.Warning(fmt.Sprintf("Bundle ID mismatch: stored=%s, actual=%s — retrying with actual", bundleID, actualBundleID))
+				bundleID = actualBundleID
+				// Update project store so future runs use the correct ID
+				project.BundleID = actualBundleID
+				s.projectStore.Save(project)
+				retryCmd := exec.CommandContext(ctx, "xcrun", "simctl", "launch", "booted", actualBundleID)
+				if retryOutput, retryErr := retryCmd.CombinedOutput(); retryErr != nil {
+					spinner.Stop()
+					return fmt.Errorf("failed to launch app %s on simulator: %w%s", actualBundleID, retryErr, commandOutputSuffix(retryOutput))
+				}
+			} else {
+				spinner.Stop()
+				return fmt.Errorf("failed to launch app %s on simulator: %w%s", bundleID, launchErr, commandOutputSuffix(launchOutput))
+			}
 		}
 
 		spinner.Stop()
@@ -935,6 +954,16 @@ func commandOutputSuffix(output []byte) string {
 		return ""
 	}
 	return "\n" + trimmed
+}
+
+// readBundleIDFromApp reads CFBundleIdentifier from a .app bundle's Info.plist.
+func readBundleIDFromApp(appPath string) string {
+	plistPath := filepath.Join(appPath, "Info.plist")
+	out, err := exec.Command("defaults", "read", plistPath, "CFBundleIdentifier").Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
 }
 
 func currentUsername() string {
