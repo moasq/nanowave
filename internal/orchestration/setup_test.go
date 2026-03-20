@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/moasq/nanowave/internal/instructions"
 	"github.com/moasq/nanowave/internal/mcpregistry"
 )
 
@@ -52,32 +53,27 @@ func TestLoadRuleContent(t *testing.T) {
 		wantHas   string
 	}{
 		{
-			name:    "core rule loads",
-			key:     "swift-conventions",
-			wantHas: "Swift",
-		},
-		{
-			name:    "feature rule loads",
+			name:    "feature rule loads (camera)",
 			key:     "camera",
 			wantHas: "Camera",
 		},
 		{
-			name:    "ui rule loads",
+			name:    "ui rule loads (gestures)",
 			key:     "gestures",
 			wantHas: "Gesture",
 		},
 		{
-			name:    "extension rule loads",
+			name:    "merged extension+feature rule loads (widgets)",
 			key:     "widgets",
 			wantHas: "Widget",
 		},
 		{
-			name:    "always rule loads",
-			key:     "design-system",
-			wantHas: "AppTheme",
+			name:    "demoted always skill loads (review)",
+			key:     "review",
+			wantHas: "review",
 		},
 		{
-			name:    "multi-file always skill loads nested reference content",
+			name:    "multi-file skill loads nested reference content (swiftui)",
 			key:     "swiftui",
 			wantHas: "Animation Process:",
 		},
@@ -97,14 +93,14 @@ func TestLoadRuleContent(t *testing.T) {
 			wantHas: "NavigationSplitView",
 		},
 		{
-			name:    "navigation includes iPad content",
-			key:     "navigation",
-			wantHas: "NavigationSplitView",
+			name:    "renamed swift-conventions-ui loads",
+			key:     "swift-conventions-ui",
+			wantHas: "Swift",
 		},
 		{
-			name:    "navigation includes base content",
-			key:     "navigation",
-			wantHas: "NavigationStack",
+			name:    "watchos-biometrics loads (platform-prefixed skill)",
+			key:     "watchos-biometrics",
+			wantHas: "Biometrics",
 		},
 	}
 
@@ -128,6 +124,105 @@ func TestLoadRuleContent(t *testing.T) {
 				t.Errorf("content for %q should have frontmatter stripped", tc.key)
 			}
 		})
+	}
+}
+
+func TestLoadRule(t *testing.T) {
+	tests := []struct {
+		name    string
+		rule    string
+		wantHas string
+	}{
+		{"swift-conventions", "swift-conventions", "Swift"},
+		{"mvvm-architecture", "mvvm-architecture", "MVVM"},
+		{"file-structure", "file-structure", "file"},
+		{"forbidden-patterns", "forbidden-patterns", "Forbidden"},
+		{"components (from always)", "components", "Component"},
+		{"design-system (from always)", "design-system", "AppTheme"},
+		{"layout (from always)", "layout", "Layout"},
+		{"navigation (from always)", "navigation", "Navigation"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			body, found := instructions.LoadRule(tc.rule)
+			if !found {
+				t.Fatalf("expected rule %q to be found", tc.rule)
+			}
+			if !strings.Contains(body, tc.wantHas) {
+				t.Errorf("rule %q should contain %q", tc.rule, tc.wantHas)
+			}
+		})
+	}
+}
+
+func TestLoadPlatformRules(t *testing.T) {
+	tests := []struct {
+		platform string
+		wantKeys []string
+	}{
+		{"watchos", []string{"components", "layout", "navigation", "watchos-patterns"}},
+		{"tvos", []string{"components", "layout", "navigation", "tvos-patterns"}},
+		{"visionos", []string{"components", "layout", "navigation", "visionos-patterns"}},
+		{"macos", []string{"components", "layout", "navigation", "macos-patterns"}},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.platform, func(t *testing.T) {
+			rules := instructions.LoadPlatformRules(tc.platform)
+			if len(rules) == 0 {
+				t.Fatalf("expected platform rules for %q, got none", tc.platform)
+			}
+			for _, key := range tc.wantKeys {
+				if _, ok := rules[key]; !ok {
+					t.Errorf("expected platform rule %q for %q", key, tc.platform)
+				}
+			}
+		})
+	}
+}
+
+func TestListAvailableSkillKeys(t *testing.T) {
+	keys := listAvailableSkillKeys()
+	if len(keys) == 0 {
+		t.Fatal("expected non-empty skill keys list")
+	}
+
+	// Check for expected keys
+	wantKeys := map[string]bool{
+		"camera": false, "authentication": false, "charts": false,
+		"swiftui": false, "review": false, "watchos-biometrics": false,
+		"keyboard-shortcuts": false, "spatial-gestures": false,
+		"swift-conventions-ui": false,
+	}
+	for _, k := range keys {
+		if _, ok := wantKeys[k]; ok {
+			wantKeys[k] = true
+		}
+	}
+	for k, found := range wantKeys {
+		if !found {
+			t.Errorf("expected skill key %q in list", k)
+		}
+	}
+}
+
+func TestPlatformRuleDir(t *testing.T) {
+	tests := []struct {
+		platform string
+		want     string
+	}{
+		{PlatformWatchOS, "watchos"},
+		{PlatformTvOS, "tvos"},
+		{PlatformVisionOS, "visionos"},
+		{PlatformMacOS, "macos"},
+		{PlatformIOS, ""},
+		{"", ""},
+	}
+	for _, tc := range tests {
+		if got := platformRuleDir(tc.platform); got != tc.want {
+			t.Errorf("platformRuleDir(%q) = %q, want %q", tc.platform, got, tc.want)
+		}
 	}
 }
 
@@ -293,5 +388,39 @@ func TestMultiPlatformBuildCommands(t *testing.T) {
 	}
 	if !hasTV {
 		t.Error("expected tvOS device build command with CODE_SIGNING_ALLOWED=NO")
+	}
+}
+
+func TestWriteSkillsForClaude(t *testing.T) {
+	projectDir := t.TempDir()
+
+	if err := writeSkillsForClaude(projectDir, PlatformWatchOS, nil); err != nil {
+		t.Fatalf("writeSkillsForClaude() error: %v", err)
+	}
+
+	rulesDir := filepath.Join(projectDir, ".claude", "rules")
+	entries, err := os.ReadDir(rulesDir)
+	if err != nil {
+		t.Fatalf("failed to read rules dir: %v", err)
+	}
+
+	// Should have top-level rules + watchos platform rules
+	names := make(map[string]bool)
+	for _, e := range entries {
+		names[e.Name()] = true
+	}
+
+	// Top-level rules
+	for _, rule := range []string{"swift-conventions.md", "mvvm-architecture.md", "file-structure.md", "forbidden-patterns.md", "components.md", "design-system.md", "layout.md", "navigation.md"} {
+		if !names[rule] {
+			t.Errorf("expected rule file %q in .claude/rules/", rule)
+		}
+	}
+
+	// Platform rules should be prefixed
+	for _, rule := range []string{"watchos-components.md", "watchos-layout.md", "watchos-navigation.md", "watchos-watchos-patterns.md"} {
+		if !names[rule] {
+			t.Errorf("expected platform rule file %q in .claude/rules/", rule)
+		}
 	}
 }

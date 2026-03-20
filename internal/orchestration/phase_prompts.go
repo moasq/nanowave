@@ -34,7 +34,11 @@ func ComposeAgenticSystemPrompt(ac ActionContext, catalogRoot string) string {
 
 	appendPromptSection(&b, "Coder", coderPromptForPlatform(platform))
 
-	appendPromptSection(&b, "Skills", `Feature-specific skills (camera, authentication, supabase, charts, widgets, etc.) are available via the nw_get_skills tool. Call it with the relevant keys before implementing features you're unfamiliar with. Call nw_get_skills with list_available:true to discover all available skills.`)
+	skillsHint := `Core rules (conventions, architecture, file structure, design system, layout, navigation, components) are already loaded in your context. Feature-specific skills (camera, authentication, supabase, charts, widgets, etc.) are available via the nw_get_skills tool. Call it with the relevant keys before implementing features you're unfamiliar with. Call nw_get_skills with list_available:true to discover all available skills.`
+	if platform != PlatformIOS {
+		skillsHint += fmt.Sprintf("\n\nPlatform-specific rules for %s are also already loaded in your context.", PlatformDisplayName(platform))
+	}
+	appendPromptSection(&b, "Skills", skillsHint)
 
 	appendPromptSection(&b, "Backend Integrations", composeIntegrationSection(ac.ActiveIntegrations))
 

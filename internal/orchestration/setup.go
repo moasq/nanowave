@@ -6,11 +6,11 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/moasq/nanowave/internal/skills"
+	"github.com/moasq/nanowave/internal/instructions"
 )
 
-// skillsFS aliases the skills package FS for backward compatibility within orchestration.
-var skillsFS = skills.FS
+// instructionsFS aliases the instructions package FS for use within orchestration.
+var instructionsFS = instructions.FS
 
 func platformSummary(platform, deviceFamily string) string {
 	if IsWatchOS(platform) {

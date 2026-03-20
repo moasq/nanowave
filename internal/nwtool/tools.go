@@ -32,7 +32,7 @@ func NewDefaultRegistry() *Registry {
 func getSkillsTool() *Tool {
 	return &Tool{
 		Name:        "nw_get_skills",
-		Description: "Load embedded skill/rule content by key. Returns markdown content for the requested skills. Use this to get architecture rules, feature guides, UI patterns, and platform-specific knowledge before writing code. Common keys: swift-conventions, mvvm-architecture, file-structure, forbidden-patterns, camera, storage, authentication, supabase, revenuecat, charts, localization, dark-mode, widgets, live-activities, animations, accessibility, navigation-patterns, gestures, etc.",
+		Description: "Load feature-specific skill content by key. Core rules (conventions, architecture, file structure, design system, layout, navigation, components) and platform rules are already loaded — use this tool for feature-specific skills like camera, authentication, supabase, charts, widgets, live-activities, animations, accessibility, navigation-patterns, gestures, etc.",
 		InputSchema: json.RawMessage(`{
   "type": "object",
   "properties": {
