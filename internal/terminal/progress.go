@@ -340,10 +340,8 @@ func (pd *ProgressDisplay) OnAssistantText(text string) {
 	}
 }
 
-// OnAgentMessage processes any agent text and prints it as a permanent log line.
-// This is the primary display: the agent's own words appear as they come.
-// If tokens were already streamed via OnStreamingText, this is a no-op for display
-// (the text was already printed token-by-token). We just clean up state.
+// OnAgentMessage processes agent text and prints it as permanent log lines.
+// The full markdown-rendered text is shown so the user sees the complete response.
 func (pd *ProgressDisplay) OnAgentMessage(text string) {
 	pd.mu.Lock()
 	defer pd.mu.Unlock()
@@ -363,7 +361,6 @@ func (pd *ProgressDisplay) OnAgentMessage(text string) {
 		return
 	}
 
-	// Always track in activities (for non-interactive mode and tests)
 	label := extractStatus(text)
 	if label != "" && !looksLikeCode(label) {
 		label = truncateActivity(label)
@@ -374,7 +371,6 @@ func (pd *ProgressDisplay) OnAgentMessage(text string) {
 
 	pd.streamingBuf.Reset()
 
-	// Interactive: print the full agent message (wasn't streamed token-by-token)
 	if pd.interactive {
 		pd.printAgentText(text)
 	} else if label != "" && !looksLikeCode(label) {
@@ -407,6 +403,32 @@ func (pd *ProgressDisplay) OnAgentCommentary(text string) {
 	if pd.interactive {
 		pd.printAgentText(text)
 	}
+}
+
+// OnRuntimeLog prints a runtime stderr/stdout line when runtime log streaming is enabled.
+func (pd *ProgressDisplay) OnRuntimeLog(text string) {
+	if !runtimeLogsEnabled() {
+		return
+	}
+
+	pd.mu.Lock()
+	defer pd.mu.Unlock()
+
+	text = strings.TrimSpace(stripAnsi(text))
+	if text == "" {
+		return
+	}
+
+	pd.flushToolCollapse()
+	pd.streamingBuf.Reset()
+	pd.statusText = ""
+
+	if pd.interactive {
+		pd.printLogLine(fmt.Sprintf("  %s[runtime]%s %s", Dim, Reset, text))
+		return
+	}
+
+	pd.addActivity("Runtime log: " + truncateActivity(text))
 }
 
 
@@ -443,14 +465,13 @@ func (pd *ProgressDisplay) flushToolCollapse() {
 
 // printAgentText renders agent text as permanent log lines with markdown formatting.
 // Long runs of dimmed lines (tool output, code) are collapsed for readability.
+// Deduplicates against lastLogLine to avoid reprinting spinner preview text.
 // MUST be called with pd.mu held.
 func (pd *ProgressDisplay) printAgentText(text string) {
-	// Flush any pending tool collapse before printing agent text
 	pd.flushToolCollapse()
 	rendered := RenderMarkdown(text)
 	lines := strings.Split(rendered, "\n")
 
-	// Collapse: if many consecutive dim (code/output) lines, show first few + summary
 	const maxDimRun = 3
 	var printed bool
 	dimRunCount := 0
@@ -467,7 +488,6 @@ func (pd *ProgressDisplay) printAgentText(text string) {
 		if isDim {
 			dimRunCount++
 			if dimRunCount > maxDimRun {
-				// Count remaining dim lines to show total hidden
 				continue
 			}
 		} else {
@@ -487,7 +507,6 @@ func (pd *ProgressDisplay) printAgentText(text string) {
 		printed = true
 	}
 
-	// Handle trailing dim run
 	if dimRunCount > maxDimRun {
 		hidden := dimRunCount - maxDimRun
 		pd.doPrintLine(fmt.Sprintf("  %s... %d lines collapsed%s", Dim, hidden, Reset))
@@ -1004,8 +1023,19 @@ func extractStreamingPreview(text, mode string) string {
 		return "Preparing analysis output..."
 	case "plan":
 		return "Preparing build plan..."
+	case "agentic":
+		return "Composing response..."
 	default:
 		return extractLastLine(text)
+	}
+}
+
+func runtimeLogsEnabled() bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("NANOWAVE_RUNTIME_LOGS"))) {
+	case "1", "true", "yes", "on":
+		return true
+	default:
+		return false
 	}
 }
 

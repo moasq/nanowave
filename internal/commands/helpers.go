@@ -11,6 +11,7 @@ import (
 // loadConfigWithProject loads config and selects the most recent project.
 // Returns an error if no projects exist in the catalog.
 func loadConfigWithProject() (*config.Config, error) {
+	applyRuntimeLogsFlag()
 	cfg, err := config.Load()
 	if err != nil {
 		return nil, err
@@ -28,6 +29,7 @@ func loadConfigWithProject() (*config.Config, error) {
 }
 
 func loadProjectService(opts ...service.ServiceOpts) (*service.Service, error) {
+	applyRuntimeLogsFlag()
 	cfg, err := loadConfigWithProject()
 	if err != nil {
 		return nil, err

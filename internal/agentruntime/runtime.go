@@ -38,6 +38,10 @@ type InteractiveOpts = claude.InteractiveOpts
 type Runtime interface {
 	Kind() Kind
 	DisplayName() string
+	Descriptor() Descriptor
+	BinaryPath() string
+	Version() string
+	AuthStatus() *AuthStatus
 	DefaultModel(phase Phase) string
 	SuggestedModels() []ModelOption
 	SupportsInteractive() bool

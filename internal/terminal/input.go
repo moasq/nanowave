@@ -67,7 +67,7 @@ type inputToken struct {
 var imageExtensions = map[string]bool{
 	".png": true, ".jpg": true, ".jpeg": true, ".gif": true,
 	".webp": true, ".bmp": true, ".tiff": true, ".tif": true,
-	".heic": true, ".heif": true, ".svg": true,
+	".heic": true, ".heif": true, ".svg": true, ".pdf": true,
 }
 
 var imageIndicatorPattern = regexp.MustCompile(`\[(?i:image)\d+\]\s*`)

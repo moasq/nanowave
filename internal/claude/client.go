@@ -125,6 +125,29 @@ func streamNDJSONLines(r io.Reader, onLine func([]byte) error) error {
 	}
 }
 
+func streamTextLines(r io.Reader, onLine func(string) error) error {
+	br := bufio.NewReader(r)
+
+	for {
+		line, err := br.ReadBytes('\n')
+		if len(line) > 0 {
+			text := strings.TrimSpace(string(bytes.TrimRight(line, "\r\n")))
+			if text != "" {
+				if onErr := onLine(text); onErr != nil {
+					return onErr
+				}
+			}
+		}
+
+		if err != nil {
+			if err == io.EOF {
+				return nil
+			}
+			return err
+		}
+	}
+}
+
 // Generate sends a prompt to Claude Code and returns the response.
 func (c *Client) Generate(ctx context.Context, userMessage string, opts GenerateOpts) (*Response, error) {
 	userMessage = buildImageContext(userMessage, opts.Images)
@@ -279,8 +302,10 @@ func (c *Client) GenerateStreaming(ctx context.Context, userMessage string, opts
 	if err != nil {
 		return nil, fmt.Errorf("failed to create stdout pipe: %w", err)
 	}
-	var stderrBuf bytes.Buffer
-	cmd.Stderr = &stderrBuf
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create stderr pipe: %w", err)
+	}
 
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("failed to start claude: %w", err)
@@ -290,6 +315,24 @@ func (c *Client) GenerateStreaming(ctx context.Context, userMessage string, opts
 	var sessionID string
 	var assistantText strings.Builder // accumulate text from assistant events
 	var resultErr error
+	var stderrBuf bytes.Buffer
+	var stderrErr error
+
+	var stderrWG sync.WaitGroup
+	stderrWG.Add(1)
+	go func() {
+		defer stderrWG.Done()
+		stderrErr = streamTextLines(stderr, func(line string) error {
+			if stderrBuf.Len() > 0 {
+				stderrBuf.WriteByte('\n')
+			}
+			stderrBuf.WriteString(line)
+			if onEvent != nil {
+				onEvent(StreamEvent{Type: "runtime_log", Subtype: "stderr", Text: line})
+			}
+			return nil
+		})
+	}()
 
 	streamErr := streamNDJSONLines(stdout, func(line []byte) error {
 		trimmed := bytes.TrimSpace(line)
@@ -373,8 +416,12 @@ func (c *Client) GenerateStreaming(ctx context.Context, userMessage string, opts
 	}
 	if streamErr != nil {
 		_ = cmd.Wait()
+		stderrWG.Wait()
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
+		}
+		if stderrErr != nil {
+			return nil, fmt.Errorf("failed to read claude logs: %w", stderrErr)
 		}
 		stderrMsg := strings.TrimSpace(stderrBuf.String())
 		if stderrMsg != "" {
@@ -384,13 +431,21 @@ func (c *Client) GenerateStreaming(ctx context.Context, userMessage string, opts
 	}
 
 	if err := cmd.Wait(); err != nil {
+		stderrWG.Wait()
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
+		}
+		if stderrErr != nil {
+			return nil, fmt.Errorf("failed to read claude logs: %w", stderrErr)
 		}
 		if stderrMsg := stderrBuf.String(); stderrMsg != "" {
 			return nil, fmt.Errorf("claude command failed: %w\nstderr: %s", err, stderrMsg)
 		}
 		return nil, fmt.Errorf("claude command failed: %w", err)
+	}
+	stderrWG.Wait()
+	if stderrErr != nil {
+		return nil, fmt.Errorf("failed to read claude logs: %w", stderrErr)
 	}
 
 	if lastResponse != nil {
@@ -556,13 +611,16 @@ func (c *Client) StartInteractiveStreaming(ctx context.Context, userMessage stri
 	if err != nil {
 		return nil, fmt.Errorf("failed to create stdout pipe: %w", err)
 	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create stderr pipe: %w", err)
+	}
 
 	session := &InteractiveSession{
 		cmd:        cmd,
 		stdin:      stdinPipe,
 		responseCh: make(chan interactiveResult, 1),
 	}
-	cmd.Stderr = &session.stderrBuf
 
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("failed to start claude: %w", err)
@@ -579,6 +637,21 @@ func (c *Client) StartInteractiveStreaming(ctx context.Context, userMessage stri
 		var lastResponse *Response
 		var sessionID string
 		var assistantText strings.Builder
+		var stderrErr error
+
+		var stderrWG sync.WaitGroup
+		stderrWG.Add(1)
+		go func() {
+			defer stderrWG.Done()
+			stderrErr = streamTextLines(stderr, func(line string) error {
+				session.stderrBuf.WriteString(line)
+				session.stderrBuf.WriteByte('\n')
+				if onEvent != nil {
+					onEvent(StreamEvent{Type: "runtime_log", Subtype: "stderr", Text: line})
+				}
+				return nil
+			})
+		}()
 
 		streamErr := streamNDJSONLines(stdout, func(line []byte) error {
 			trimmed := bytes.TrimSpace(line)
@@ -634,6 +707,7 @@ func (c *Client) StartInteractiveStreaming(ctx context.Context, userMessage stri
 
 		// Wait for process to finish
 		waitErr := cmd.Wait()
+		stderrWG.Wait()
 
 		if streamErr != nil {
 			if ctx.Err() != nil {
@@ -641,6 +715,10 @@ func (c *Client) StartInteractiveStreaming(ctx context.Context, userMessage stri
 			} else {
 				session.responseCh <- interactiveResult{err: fmt.Errorf("failed to read claude stream: %w", streamErr)}
 			}
+			return
+		}
+		if stderrErr != nil {
+			session.responseCh <- interactiveResult{err: fmt.Errorf("failed to read claude logs: %w", stderrErr)}
 			return
 		}
 		if waitErr != nil {

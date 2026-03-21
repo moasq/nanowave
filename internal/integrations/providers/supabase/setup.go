@@ -8,8 +8,13 @@ import (
 )
 
 // Setup delegates to the existing integrations.SetupSupabase/SetupSupabaseManual functions.
+// For auto-setup, ensures the Supabase CLI is installed first.
 func (s *supabaseProvider) Setup(_ context.Context, req integrations.SetupRequest) error {
 	if req.Manual {
+		return integrations.SetupSupabaseManual(req.Store, req.AppName, req.ReadLineFn, req.PrintFn)
+	}
+	if !config.EnsureSupabaseCLI(req.PrintFn) {
+		req.PrintFn("info", "Falling back to manual setup")
 		return integrations.SetupSupabaseManual(req.Store, req.AppName, req.ReadLineFn, req.PrintFn)
 	}
 	return integrations.SetupSupabase(req.Store, req.AppName, req.PrintFn, req.PickFn)

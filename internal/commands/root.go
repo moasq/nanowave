@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -40,6 +41,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&agentFlag, "agent", "", "AI runtime to use (claude, codex, opencode)")
 	rootCmd.PersistentFlags().StringVar(&modelFlag, "model", "", "Model to use for code generation inside the selected runtime")
 	rootCmd.PersistentFlags().BoolVar(&agenticFlag, "agentic", false, "Use agentic mode: LLM drives the build via tool calling")
+	rootCmd.PersistentFlags().BoolVar(&runtimeLogsFlag, "runtime-logs", false, "Show raw AI runtime logs while the agent is running")
 
 	rootCmd.AddCommand(fixCmd)
 	rootCmd.AddCommand(runCmd)
@@ -63,6 +65,9 @@ var agentFlag string
 // agenticFlag holds the --agentic flag value.
 var agenticFlag bool
 
+// runtimeLogsFlag holds the --runtime-logs flag value.
+var runtimeLogsFlag bool
+
 // ModelFlag returns the current --model flag value.
 func ModelFlag() string {
 	return modelFlag
@@ -76,4 +81,15 @@ func AgentFlag() string {
 // AgenticFlag returns the current --agentic flag value.
 func AgenticFlag() bool {
 	return agenticFlag
+}
+
+// RuntimeLogsFlag returns the current --runtime-logs flag value.
+func RuntimeLogsFlag() bool {
+	return runtimeLogsFlag
+}
+
+func applyRuntimeLogsFlag() {
+	if runtimeLogsFlag {
+		_ = os.Setenv("NANOWAVE_RUNTIME_LOGS", "1")
+	}
 }

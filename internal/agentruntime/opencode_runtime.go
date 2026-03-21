@@ -27,6 +27,22 @@ func (r *OpenCodeRuntime) DisplayName() string {
 	return DescriptorForKind(KindOpenCode).DisplayName
 }
 
+func (r *OpenCodeRuntime) Descriptor() Descriptor {
+	return DescriptorForKind(KindOpenCode)
+}
+
+func (r *OpenCodeRuntime) BinaryPath() string {
+	return r.path
+}
+
+func (r *OpenCodeRuntime) Version() string {
+	return OpenCodeVersion(r.path)
+}
+
+func (r *OpenCodeRuntime) AuthStatus() *AuthStatus {
+	return CheckOpenCodeAuth(r.path)
+}
+
 func (r *OpenCodeRuntime) DefaultModel(_ Phase) string {
 	return openCodeModelCatalog().Default
 }

@@ -121,11 +121,33 @@ func (ic *imageCache) add(imagePath string) (string, error) {
 	return cachedPath, nil
 }
 
+// addPDF converts a PDF to PNG images and returns the cached PNG paths.
+func (ic *imageCache) addPDF(pdfPath string) ([]string, error) {
+	absPath, err := filepath.Abs(pdfPath)
+	if err != nil {
+		absPath = pdfPath
+	}
+
+	pages, err := terminal.ConvertPDFToImages(absPath, ic.dir)
+	if err != nil {
+		return nil, fmt.Errorf("cannot convert PDF %s: %w", absPath, err)
+	}
+	for _, p := range pages {
+		ic.cached[p] = p
+	}
+	return pages, nil
+}
+
 // addAll copies multiple images and returns their cached paths.
+// PDFs are converted to PNG images automatically.
 func (ic *imageCache) addAll(images []string) []string {
 	var cached []string
 	for _, img := range images {
-		if path, err := ic.add(img); err == nil {
+		if terminal.IsPDF(img) {
+			if pages, err := ic.addPDF(img); err == nil {
+				cached = append(cached, pages...)
+			}
+		} else if path, err := ic.add(img); err == nil {
 			cached = append(cached, path)
 		}
 	}
@@ -153,6 +175,8 @@ func (ic *imageCache) clear() {
 }
 
 func runInteractive(cmd *cobra.Command) error {
+	applyRuntimeLogsFlag()
+
 	// Print welcome banner first (before config load which may fail)
 	terminal.Banner(Version)
 
@@ -168,28 +192,22 @@ func runInteractive(cmd *cobra.Command) error {
 	}
 	cfg.Agentic = AgenticFlag()
 
-	runtimeKind := cfg.RuntimeKind
-	if AgentFlag() != "" {
-		runtimeKind = agentruntime.NormalizeKind(AgentFlag())
-	}
-	runtimePath := cfg.RuntimePath
-	if runtimeKind != cfg.RuntimeKind || strings.TrimSpace(runtimePath) == "" {
-		runtimePath, _ = agentruntime.FindBinary(runtimeKind)
-	}
-	runtimeVersion := config.RuntimeVersion(runtimeKind, runtimePath)
-	authStatus := config.RuntimeAuthStatus(runtimeKind, runtimePath)
+	runtimeStatus := service.ResolveRuntimeStatus(cfg, service.ServiceOpts{
+		Runtime: AgentFlag(),
+		Model:   ModelFlag(),
+	})
 
 	toolOpts := terminal.ToolStatusOpts{
-		RuntimeVersion: runtimeVersion,
+		RuntimeVersion: runtimeStatus.Version,
 		HasXcode:       config.CheckXcode(),
 		HasSimulator:   config.CheckSimulator(),
 		HasXcodegen:    config.CheckXcodegen(),
 	}
-	if authStatus != nil {
-		toolOpts.AuthLoggedIn = authStatus.LoggedIn
-		toolOpts.AuthEmail = authStatus.Email
-		toolOpts.AuthPlan = authStatus.Plan
-		toolOpts.AuthDetail = authStatus.Detail
+	if runtimeStatus.Auth != nil {
+		toolOpts.AuthLoggedIn = runtimeStatus.Auth.LoggedIn
+		toolOpts.AuthEmail = runtimeStatus.Auth.Email
+		toolOpts.AuthPlan = runtimeStatus.Auth.Plan
+		toolOpts.AuthDetail = runtimeStatus.Auth.Detail
 	}
 	terminal.ToolStatus(toolOpts)
 
@@ -205,13 +223,13 @@ func runInteractive(cmd *cobra.Command) error {
 	}
 
 	// Auto-run setup on first launch if critical dependencies are missing
-	if needsSetupForRuntime(runtimeKind) {
+	if needsSetupForRuntime(runtimeStatus.Kind) {
 		if err := runSetup(); err != nil {
 			return err
 		}
 		fmt.Println()
 		// Re-check after setup — if still missing, exit
-		if needsSetupForRuntime(runtimeKind) {
+		if needsSetupForRuntime(runtimeStatus.Kind) {
 			terminal.Error("Some dependencies are still missing. Please install them and try again.")
 			return fmt.Errorf("setup incomplete")
 		}
@@ -350,14 +368,12 @@ func runInteractive(cmd *cobra.Command) error {
 		}
 		terminal.EchoInput(displayInput, nil)
 
-		currentRuntime := svc.CurrentRuntime()
-		currentRuntimePath, _ := agentruntime.FindBinary(currentRuntime)
-		currentAuth := config.RuntimeAuthStatus(currentRuntime, currentRuntimePath)
+		currentRuntimeStatus := svc.CurrentRuntimeStatus()
+		currentAuth := currentRuntimeStatus.Auth
 
 		// Check auth before sending
 		if currentAuth == nil || !currentAuth.LoggedIn {
-			desc := agentruntime.DescriptorForKind(currentRuntime)
-			switch currentRuntime {
+			switch currentRuntimeStatus.Kind {
 			case agentruntime.KindClaude:
 				terminal.Warning("Not signed in to Claude Code. Run `claude auth login` to authenticate.")
 				fmt.Println()
@@ -371,7 +387,7 @@ func runInteractive(cmd *cobra.Command) error {
 				fmt.Println()
 				continue
 			default:
-				terminal.Warning(fmt.Sprintf("%s is not authenticated.", desc.DisplayName))
+				terminal.Warning(fmt.Sprintf("%s is not authenticated.", currentRuntimeStatus.DisplayName))
 				fmt.Println()
 				continue
 			}
@@ -437,8 +453,8 @@ func handleSlashCommand(input string, cfg *config.Config, svc *service.Service, 
 	if len(parts) > 1 {
 		arg = strings.TrimSpace(parts[1])
 	}
-	runtimePath, _ := agentruntime.FindBinary(svc.CurrentRuntime())
-	authStatus := config.RuntimeAuthStatus(svc.CurrentRuntime(), runtimePath)
+	runtimeStatus := svc.CurrentRuntimeStatus()
+	authStatus := runtimeStatus.Auth
 
 	switch command {
 	case "/quit", "/exit":
@@ -452,12 +468,19 @@ func handleSlashCommand(input string, cfg *config.Config, svc *service.Service, 
 
 	case "/agent":
 		if arg == "" {
-			descs := agentruntime.AllDescriptors()
-			options := make([]terminal.PickerOption, 0, len(descs))
-			for _, desc := range descs {
+			statuses := svc.SupportedRuntimes()
+			options := make([]terminal.PickerOption, 0, len(statuses))
+			for _, desc := range statuses {
+				description := desc.InstallCommand
+				if desc.Installed {
+					description = "installed"
+					if desc.Version != "" {
+						description = "installed (" + desc.Version + ")"
+					}
+				}
 				options = append(options, terminal.PickerOption{
 					Label: string(desc.Kind),
-					Desc:  desc.DisplayName,
+					Desc:  desc.DisplayName + " • " + description,
 				})
 			}
 			picked := terminal.Pick("AI Runtime", options, string(svc.CurrentRuntime()))

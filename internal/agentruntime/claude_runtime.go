@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -12,11 +13,15 @@ import (
 )
 
 type ClaudeRuntime struct {
+	path   string
 	client *claude.Client
 }
 
 func NewClaude(path string) *ClaudeRuntime {
-	return &ClaudeRuntime{client: claude.NewClient(path)}
+	return &ClaudeRuntime{
+		path:   path,
+		client: claude.NewClient(path),
+	}
 }
 
 func (r *ClaudeRuntime) Kind() Kind {
@@ -25,6 +30,22 @@ func (r *ClaudeRuntime) Kind() Kind {
 
 func (r *ClaudeRuntime) DisplayName() string {
 	return DescriptorForKind(KindClaude).DisplayName
+}
+
+func (r *ClaudeRuntime) Descriptor() Descriptor {
+	return DescriptorForKind(KindClaude)
+}
+
+func (r *ClaudeRuntime) BinaryPath() string {
+	return r.path
+}
+
+func (r *ClaudeRuntime) Version() string {
+	return ClaudeVersion(r.path)
+}
+
+func (r *ClaudeRuntime) AuthStatus() *AuthStatus {
+	return CheckClaudeAuth(r.path)
 }
 
 func (r *ClaudeRuntime) DefaultModel(_ Phase) string {
@@ -158,4 +179,44 @@ func rankedModelOptionsFromCounts(counts map[string]int64, description string) [
 		})
 	}
 	return models
+}
+
+func CheckClaudeAuth(path string) *AuthStatus {
+	if strings.TrimSpace(path) == "" {
+		return nil
+	}
+	cmd := exec.Command(path, "auth", "status", "--json")
+	out, err := cmd.Output()
+	if err != nil {
+		return nil
+	}
+
+	var raw struct {
+		LoggedIn         bool   `json:"loggedIn"`
+		Email            string `json:"email"`
+		SubscriptionType string `json:"subscriptionType"`
+		AuthMethod       string `json:"authMethod"`
+	}
+	if err := json.Unmarshal(out, &raw); err != nil {
+		return nil
+	}
+
+	return &AuthStatus{
+		LoggedIn: raw.LoggedIn,
+		Email:    strings.TrimSpace(raw.Email),
+		Plan:     strings.TrimSpace(raw.SubscriptionType),
+		Detail:   strings.TrimSpace(raw.AuthMethod),
+	}
+}
+
+func ClaudeVersion(path string) string {
+	if strings.TrimSpace(path) == "" {
+		return ""
+	}
+	cmd := exec.Command(path, "--version")
+	out, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
 }

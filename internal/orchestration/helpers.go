@@ -453,6 +453,11 @@ func newProgressCallback(progress *terminal.ProgressDisplay) func(agentruntime.S
 					progress.OnAgentMessage(ev.Text)
 				}
 			}
+
+		case "runtime_log":
+			if ev.Text != "" {
+				progress.OnRuntimeLog(ev.Text)
+			}
 		}
 	}
 }

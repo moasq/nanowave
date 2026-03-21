@@ -316,38 +316,27 @@ func CheckRuntime(kind agentruntime.Kind) bool {
 }
 
 func RuntimeVersion(kind agentruntime.Kind, runtimePath string) string {
-	switch agentruntime.NormalizeKind(string(kind)) {
-	case agentruntime.KindClaude:
-		return ClaudeVersion(runtimePath)
-	case agentruntime.KindCodex:
-		return agentruntime.CodexVersion(runtimePath)
-	case agentruntime.KindOpenCode:
-		return agentruntime.OpenCodeVersion(runtimePath)
-	default:
+	runtimePath = strings.TrimSpace(runtimePath)
+	if runtimePath == "" {
 		return ""
 	}
+	runtimeClient, err := agentruntime.New(kind, runtimePath)
+	if err != nil {
+		return ""
+	}
+	return runtimeClient.Version()
 }
 
 func RuntimeAuthStatus(kind agentruntime.Kind, runtimePath string) *agentruntime.AuthStatus {
-	switch agentruntime.NormalizeKind(string(kind)) {
-	case agentruntime.KindClaude:
-		status := CheckClaudeAuth(runtimePath)
-		if status == nil {
-			return nil
-		}
-		return &agentruntime.AuthStatus{
-			LoggedIn: status.LoggedIn,
-			Email:    status.Email,
-			Plan:     status.SubscriptionType,
-			Detail:   status.AuthMethod,
-		}
-	case agentruntime.KindCodex:
-		return agentruntime.CheckCodexAuth(runtimePath)
-	case agentruntime.KindOpenCode:
-		return agentruntime.CheckOpenCodeAuth(runtimePath)
-	default:
+	runtimePath = strings.TrimSpace(runtimePath)
+	if runtimePath == "" {
 		return nil
 	}
+	runtimeClient, err := agentruntime.New(kind, runtimePath)
+	if err != nil {
+		return nil
+	}
+	return runtimeClient.AuthStatus()
 }
 
 func DetectInstalledRuntimes() []RuntimeStatus {
@@ -407,6 +396,28 @@ func CheckXcodegen() bool {
 func CheckSupabaseCLI() bool {
 	_, err := exec.LookPath("supabase")
 	return err == nil
+}
+
+// EnsureSupabaseCLI checks if the Supabase CLI is installed and installs it
+// via Homebrew if missing. Returns true if the CLI is available after the check.
+func EnsureSupabaseCLI(printFn func(level, msg string)) bool {
+	if CheckSupabaseCLI() {
+		return true
+	}
+	printFn("warning", "Supabase CLI not found — installing...")
+	brewPath, err := exec.LookPath("brew")
+	if err != nil || brewPath == "" {
+		printFn("error", "Homebrew not found — install Supabase CLI manually: brew install supabase/tap/supabase")
+		return false
+	}
+	cmd := exec.Command("brew", "install", "supabase/tap/supabase")
+	if err := cmd.Run(); err != nil {
+		printFn("error", fmt.Sprintf("Failed to install Supabase CLI: %v", err))
+		printFn("info", "Install manually: brew install supabase/tap/supabase")
+		return false
+	}
+	printFn("success", "Supabase CLI installed")
+	return true
 }
 
 // ClaudeAuthStatus holds the user's Claude authentication state.

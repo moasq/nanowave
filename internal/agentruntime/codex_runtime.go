@@ -30,6 +30,22 @@ func (r *CodexRuntime) DisplayName() string {
 	return DescriptorForKind(KindCodex).DisplayName
 }
 
+func (r *CodexRuntime) Descriptor() Descriptor {
+	return DescriptorForKind(KindCodex)
+}
+
+func (r *CodexRuntime) BinaryPath() string {
+	return r.path
+}
+
+func (r *CodexRuntime) Version() string {
+	return CodexVersion(r.path)
+}
+
+func (r *CodexRuntime) AuthStatus() *AuthStatus {
+	return CheckCodexAuth(r.path)
+}
+
 func (r *CodexRuntime) DefaultModel(_ Phase) string {
 	return codexModelCatalog().Default
 }

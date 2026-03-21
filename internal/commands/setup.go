@@ -9,6 +9,7 @@ import (
 
 	"github.com/moasq/nanowave/internal/agentruntime"
 	"github.com/moasq/nanowave/internal/config"
+	"github.com/moasq/nanowave/internal/service"
 	"github.com/moasq/nanowave/internal/terminal"
 	"github.com/spf13/cobra"
 )
@@ -44,16 +45,91 @@ func runSetup() error {
 	if err != nil {
 		return err
 	}
+	reader := bufio.NewReader(os.Stdin)
+
+	// ── 1. Select AI agent ─────────────────────────────────────
 	runtimeKind := cfg.RuntimeKind
 	if AgentFlag() != "" {
 		runtimeKind = agentruntime.NormalizeKind(AgentFlag())
+	} else {
+		allStatuses := service.SupportedRuntimeStatuses()
+		agentOptions := make([]terminal.PickerOption, 0, len(allStatuses))
+		for _, d := range allStatuses {
+			agentOptions = append(agentOptions, terminal.PickerOption{
+				Label: d.DisplayName,
+				Desc:  d.InstallCommand,
+			})
+		}
+		defaultLabel := agentruntime.DescriptorForKind(runtimeKind).DisplayName
+		picked := terminal.Pick("Select AI agent", agentOptions, defaultLabel)
+		if picked != "" {
+			for _, d := range allStatuses {
+				if d.DisplayName == picked {
+					runtimeKind = d.Kind
+					break
+				}
+			}
+		}
 	}
 	desc := agentruntime.DescriptorForKind(runtimeKind)
+	runtimeStatus := service.ResolveRuntimeStatus(cfg, service.ServiceOpts{Runtime: string(runtimeKind)})
 
 	allGood := true
-	reader := bufio.NewReader(os.Stdin)
 
-	// ── 1. Xcode (manual only) ─────────────────────────────────
+	// ── 2. Selected AI runtime ─────────────────────────────────
+	fmt.Printf("  Checking %s... ", desc.DisplayName)
+	runtimePath := runtimeStatus.BinaryPath
+	if runtimeStatus.Installed {
+		if runtimeStatus.Version != "" {
+			terminal.Success(fmt.Sprintf("installed (%s)", runtimeStatus.Version))
+		} else {
+			terminal.Success("installed")
+		}
+	} else {
+		terminal.Warning("not found")
+		if askConfirm(reader, fmt.Sprintf("    Install %s?", desc.DisplayName)) {
+			fmt.Printf("    Installing %s...\n", desc.DisplayName)
+			if err := runRuntimeInstall(runtimeKind); err != nil {
+				terminal.Error(err.Error())
+				terminal.Detail("Install manually", desc.InstallCommand)
+				allGood = false
+			} else {
+				runtimeStatus = service.ResolveRuntimeStatus(cfg, service.ServiceOpts{Runtime: string(runtimeKind)})
+				runtimePath = runtimeStatus.BinaryPath
+				if runtimePath == "" {
+					terminal.Warning(desc.DisplayName + " installed but not found in the current shell PATH")
+					terminal.Detail("Retry", "Restart the shell or run `hash -r`, then re-run `nanowave setup`")
+					allGood = false
+				} else {
+					terminal.Success(desc.DisplayName + " installed")
+				}
+			}
+		} else {
+			terminal.Detail("Install manually", desc.InstallCommand)
+			allGood = false
+		}
+	}
+
+	if runtimePath == "" {
+		runtimeStatus = service.ResolveRuntimeStatus(cfg, service.ServiceOpts{Runtime: string(runtimeKind)})
+		runtimePath = runtimeStatus.BinaryPath
+	}
+	if runtimePath != "" {
+		auth := runtimeStatus.Auth
+		if auth != nil && !auth.LoggedIn {
+			terminal.Warning(desc.DisplayName + " is not authenticated")
+			switch runtimeKind {
+			case agentruntime.KindClaude:
+				terminal.Detail("Login", "claude auth login")
+			case agentruntime.KindCodex:
+				terminal.Detail("Login", "codex login")
+			case agentruntime.KindOpenCode:
+				terminal.Detail("Login", "opencode auth login")
+			}
+		}
+	}
+
+	// ── 3. Xcode (manual only) ─────────────────────────────────
 	fmt.Print("  Checking Xcode... ")
 	if config.CheckXcode() {
 		terminal.Success("installed")
@@ -64,7 +140,7 @@ func runSetup() error {
 		allGood = false
 	}
 
-	// ── 2. Xcode Command Line Tools ────────────────────────────
+	// ── 4. Xcode Command Line Tools ────────────────────────────
 	fmt.Print("  Checking Xcode Command Line Tools... ")
 	if config.CheckXcodeCLT() {
 		terminal.Success("installed")
@@ -85,7 +161,7 @@ func runSetup() error {
 		allGood = false
 	}
 
-	// ── 3. iOS Simulator ───────────────────────────────────────
+	// ── 5. iOS Simulator ───────────────────────────────────────
 	fmt.Print("  Checking iOS Simulator... ")
 	if config.CheckSimulator() {
 		terminal.Success("available")
@@ -99,59 +175,7 @@ func runSetup() error {
 		allGood = false
 	}
 
-	// ── 4. Selected AI runtime ─────────────────────────────────
-	fmt.Printf("  Checking %s... ", desc.DisplayName)
-	runtimePath, err := agentruntime.FindBinary(runtimeKind)
-	if err == nil && runtimePath != "" {
-		version := config.RuntimeVersion(runtimeKind, runtimePath)
-		if version != "" {
-			terminal.Success(fmt.Sprintf("installed (%s)", version))
-		} else {
-			terminal.Success("installed")
-		}
-	} else {
-		terminal.Warning("not found")
-		if askConfirm(reader, fmt.Sprintf("    Install %s?", desc.DisplayName)) {
-			fmt.Printf("    Installing %s...\n", desc.DisplayName)
-			if err := runRuntimeInstall(runtimeKind); err != nil {
-				terminal.Error(err.Error())
-				terminal.Detail("Install manually", desc.InstallCommand)
-				allGood = false
-			} else {
-				runtimePath, _ = agentruntime.FindBinary(runtimeKind)
-				if runtimePath == "" {
-					terminal.Warning(desc.DisplayName + " installed but not found in the current shell PATH")
-					terminal.Detail("Retry", "Restart the shell or run `hash -r`, then re-run `nanowave setup`")
-					allGood = false
-				} else {
-					terminal.Success(desc.DisplayName + " installed")
-				}
-			}
-		} else {
-			terminal.Detail("Install manually", desc.InstallCommand)
-			allGood = false
-		}
-	}
-
-	if runtimePath == "" {
-		runtimePath, _ = agentruntime.FindBinary(runtimeKind)
-	}
-	if runtimePath != "" {
-		auth := config.RuntimeAuthStatus(runtimeKind, runtimePath)
-		if auth != nil && !auth.LoggedIn {
-			terminal.Warning(desc.DisplayName + " is not authenticated")
-			switch runtimeKind {
-			case agentruntime.KindClaude:
-				terminal.Detail("Login", "claude auth login")
-			case agentruntime.KindCodex:
-				terminal.Detail("Login", "codex login")
-			case agentruntime.KindOpenCode:
-				terminal.Detail("Login", "opencode auth login")
-			}
-		}
-	}
-
-	// ── 5. XcodeGen ────────────────────────────────────────────
+	// ── 6. XcodeGen ────────────────────────────────────────────
 	fmt.Print("  Checking XcodeGen... ")
 	if config.CheckXcodegen() {
 		terminal.Success("installed")
@@ -186,32 +210,6 @@ func runSetup() error {
 			terminal.Detail("Install via Mint", "mint install yonaskolb/XcodeGen")
 			terminal.Detail("Or via Homebrew", "brew install xcodegen")
 			allGood = false
-		}
-	}
-
-	// ── 6. Supabase CLI (optional — for backend integration) ──
-	fmt.Print("  Checking Supabase CLI... ")
-	if config.CheckSupabaseCLI() {
-		terminal.Success("installed")
-	} else {
-		terminal.Warning("not found (optional — needed for backend integration)")
-		if askConfirm(reader, "    Install Supabase CLI?") {
-			fmt.Print("    Installing Supabase CLI... ")
-			if _, err := exec.LookPath("brew"); err == nil {
-				tapCmd := exec.Command("brew", "install", "supabase/tap/supabase")
-				if err := tapCmd.Run(); err != nil {
-					terminal.Error(fmt.Sprintf("failed: %v", err))
-					terminal.Detail("Install manually", "brew install supabase/tap/supabase")
-				} else {
-					terminal.Success("installed")
-				}
-			} else {
-				terminal.Error("Homebrew not found")
-				terminal.Detail("Install Homebrew", "https://brew.sh")
-				terminal.Detail("Then run", "brew install supabase/tap/supabase")
-			}
-		} else {
-			terminal.Detail("Install later", "brew install supabase/tap/supabase")
 		}
 	}
 

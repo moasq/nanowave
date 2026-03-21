@@ -293,11 +293,12 @@ func TestInputEditorPromotesRawImagePathWithSpacesIntoAttachment(t *testing.T) {
 
 func TestInputEditorKeepsNonImagePasteAsText(t *testing.T) {
 	root := t.TempDir()
-	pdfPath := filepath.Join(root, "mockup.pdf")
-	if err := os.WriteFile(pdfPath, []byte("pdf-data"), 0o644); err != nil {
+	// Use .txt which is never an image extension.
+	txtPath := filepath.Join(root, "notes.txt")
+	if err := os.WriteFile(txtPath, []byte("text-data"), 0o644); err != nil {
 		t.Fatalf("WriteFile() error = %v", err)
 	}
-	pasted := finderQuotedPath(pdfPath)
+	pasted := finderQuotedPath(txtPath)
 
 	editor := &inputEditor{}
 	for _, r := range pasted {
@@ -309,6 +310,28 @@ func TestInputEditorKeepsNonImagePasteAsText(t *testing.T) {
 	}
 	if got := string(editor.buffer); got != pasted {
 		t.Fatalf("buffer = %q, want %q", got, pasted)
+	}
+}
+
+func TestInputEditorPromotesPDFPasteIntoAttachment(t *testing.T) {
+	root := t.TempDir()
+	pdfPath := filepath.Join(root, "mockup.pdf")
+	if err := os.WriteFile(pdfPath, []byte("pdf-data"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	pasted := finderQuotedPath(pdfPath)
+
+	editor := &inputEditor{}
+	for _, r := range pasted {
+		editor.insertText(string(r))
+	}
+
+	got := editor.imagePaths()
+	if len(got) != 1 {
+		t.Fatalf("imagePaths() = %#v, want 1 PDF path", got)
+	}
+	if got[0] != pdfPath {
+		t.Fatalf("imagePaths()[0] = %q, want %q", got[0], pdfPath)
 	}
 }
 
