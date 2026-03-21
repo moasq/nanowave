@@ -8,7 +8,7 @@ import (
 )
 
 // Version is set at build time.
-var Version = "0.35.0"
+var Version = "0.35.2"
 
 var rootCmd = &cobra.Command{
 	Use:     "nanowave",
