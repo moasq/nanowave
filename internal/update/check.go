@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -19,6 +21,20 @@ type Result struct {
 // NeedsUpdate returns true if the latest version is newer than current.
 func (r *Result) NeedsUpdate() bool {
 	return r != nil && compareVersions(r.Latest, r.Current) > 0
+}
+
+// UpgradeCommand returns the best-effort command to update the current installation.
+func (r *Result) UpgradeCommand() string {
+	if r == nil {
+		return ""
+	}
+	exe, err := os.Executable()
+	if err == nil {
+		if cmd := upgradeCommandForPath(exe); cmd != "" {
+			return cmd
+		}
+	}
+	return "brew upgrade moasq/tap/nanowave"
 }
 
 // ghRelease is the minimal GitHub release JSON we care about.
@@ -83,4 +99,70 @@ func parseVersion(v string) [3]int {
 		parts[i] = n
 	}
 	return parts
+}
+
+func upgradeCommandForPath(exePath string) string {
+	exePath = strings.TrimSpace(exePath)
+	if exePath == "" {
+		return ""
+	}
+
+	candidates := []string{filepath.Clean(exePath)}
+	if resolved, err := filepath.EvalSymlinks(exePath); err == nil && strings.TrimSpace(resolved) != "" {
+		resolved = filepath.Clean(resolved)
+		if resolved != candidates[0] {
+			candidates = append(candidates, resolved)
+		}
+	}
+
+	for _, candidate := range candidates {
+		slashed := filepath.ToSlash(candidate)
+		switch {
+		case strings.Contains(slashed, "/Cellar/nanowave/"):
+			return "brew upgrade moasq/tap/nanowave"
+		case strings.HasPrefix(slashed, "/opt/homebrew/bin/"), strings.HasPrefix(slashed, "/usr/local/bin/"):
+			return "brew upgrade moasq/tap/nanowave"
+		}
+
+		if root := repoRootForExecutable(candidate); root != "" {
+			return fmt.Sprintf("git -C %s pull && make -C %s build", shellQuote(root), shellQuote(root))
+		}
+	}
+
+	return ""
+}
+
+func repoRootForExecutable(exePath string) string {
+	dir := filepath.Dir(filepath.Clean(exePath))
+	for i := 0; i < 6; i++ {
+		if isRepoBuildRoot(dir) {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	return ""
+}
+
+func isRepoBuildRoot(dir string) bool {
+	if dir == "" {
+		return false
+	}
+	if _, err := os.Stat(filepath.Join(dir, "go.mod")); err != nil {
+		return false
+	}
+	if _, err := os.Stat(filepath.Join(dir, "Makefile")); err != nil {
+		return false
+	}
+	return true
+}
+
+func shellQuote(value string) string {
+	if value == "" {
+		return "''"
+	}
+	return "'" + strings.ReplaceAll(value, "'", `'\''`) + "'"
 }

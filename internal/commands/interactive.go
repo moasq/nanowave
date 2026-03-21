@@ -216,6 +216,9 @@ func runInteractive(cmd *cobra.Command) error {
 	case res := <-updateCh:
 		if res.NeedsUpdate() {
 			terminal.Warning(fmt.Sprintf("Update available: v%s → v%s", res.Current, res.Latest))
+			if cmd := strings.TrimSpace(res.UpgradeCommand()); cmd != "" {
+				terminal.Detail("Run", fmt.Sprintf("%s%s%s", terminal.Yellow, cmd, terminal.Reset))
+			}
 			fmt.Println()
 		}
 	case <-time.After(3 * time.Second):
