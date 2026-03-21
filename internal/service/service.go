@@ -89,7 +89,6 @@ func (s *Service) Send(ctx context.Context, prompt string, images []string) erro
 	return s.AgenticSend(ctx, prompt, images)
 }
 
-
 // SetModel changes the model at runtime.
 func (s *Service) SetModel(model string) {
 	s.model = strings.TrimSpace(model)
@@ -171,7 +170,15 @@ func (s *Service) RuntimeModels() []agentruntime.ModelOption {
 	if s.runtime == nil {
 		return nil
 	}
-	return s.config.RuntimeModelOptions(s.runtimeKind, s.runtime.SuggestedModels())
+	models := s.config.RuntimeModelOptions(s.runtimeKind, s.runtime.SuggestedModels())
+	current := strings.TrimSpace(s.CurrentModel())
+	if current == "" {
+		return models
+	}
+	return agentruntime.MergeModelOptions([]agentruntime.ModelOption{{
+		ID:          current,
+		Description: "Current model",
+	}}, models)
 }
 
 func (s *Service) SetRuntime(kind string) error {
@@ -302,7 +309,6 @@ func platformBundleIDSuffix(platform string) string {
 		return ""
 	}
 }
-
 
 // ASC runs the App Store Connect flow directly in the terminal.
 func (s *Service) ASC(ctx context.Context, prompt string) error {

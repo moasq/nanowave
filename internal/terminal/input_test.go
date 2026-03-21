@@ -5,8 +5,12 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
+	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/rivo/uniseg"
 )
@@ -526,6 +530,259 @@ func TestRenderAttachmentLineUsesInputBoxStyling(t *testing.T) {
 	if !strings.Contains(line, "[Image #1]") {
 		t.Fatalf("renderAttachmentLine() = %q, want attachment text", line)
 	}
+}
+
+func TestInputEditorRenderRepaintsWithoutCursorSaveRestore(t *testing.T) {
+	editor := newRenderTestEditor()
+
+	out := captureStdout(t, func() {
+		withTerminalOutputLock(func() {
+			editor.reserveRegionLocked()
+			editor.renderLocked()
+			editor.insertText("f")
+			editor.renderLocked()
+			editor.insertText("d")
+			editor.renderLocked()
+			editor.insertText("s")
+			editor.renderLocked()
+			editor.insertText("f")
+			editor.renderLocked()
+		})
+	})
+
+	if ansi := regexp.MustCompile(`\x1b\[[0-9;?]*[suLM]`); ansi.MatchString(out) {
+		t.Fatalf("render output = %q, want no cursor save/restore or insert/delete line sequences", out)
+	}
+
+	screen := renderTerminalSnapshot(out)
+	visible := strings.Join(screen.visibleLines(), "\n")
+	if strings.Count(visible, "Ctrl+V attach image") != 1 {
+		t.Fatalf("final screen = %q, want one input region", visible)
+	}
+	if strings.Count(visible, "fdsf") != 1 {
+		t.Fatalf("final screen = %q, want final input text once", visible)
+	}
+}
+
+func TestInputEditorRenderShrinksWithoutLeavingStaleLines(t *testing.T) {
+	editor := newRenderTestEditor()
+	editor.insertText("line 1\nline 2\nline 3")
+
+	out := captureStdout(t, func() {
+		withTerminalOutputLock(func() {
+			editor.reserveRegionLocked()
+			editor.renderLocked()
+			editor.buffer = []rune("ok")
+			editor.cursor = len(editor.buffer)
+			editor.scrollTop = 0
+			editor.renderLocked()
+		})
+	})
+
+	screen := renderTerminalSnapshot(out)
+	visible := strings.Join(screen.visibleLines(), "\n")
+	if strings.Contains(visible, "line 2") || strings.Contains(visible, "line 3") {
+		t.Fatalf("final screen = %q, want old multiline content cleared", visible)
+	}
+	if strings.Count(visible, "ok") != 1 {
+		t.Fatalf("final screen = %q, want short replacement text once", visible)
+	}
+}
+
+func TestInputEditorCleanupClearsRenderedRegion(t *testing.T) {
+	editor := newRenderTestEditor()
+	editor.insertText("keep screen clean")
+
+	out := captureStdout(t, func() {
+		withTerminalOutputLock(func() {
+			editor.reserveRegionLocked()
+			editor.renderLocked()
+			editor.cleanupRegionLocked()
+		})
+	})
+
+	screen := renderTerminalSnapshot(out)
+	if visible := screen.visibleLines(); len(visible) != 0 {
+		t.Fatalf("cleanup screen = %q, want cleared input region", strings.Join(visible, "\n"))
+	}
+}
+
+func TestInputEditorBackgroundOutputStaysInOneRegion(t *testing.T) {
+	editor := newRenderTestEditor()
+
+	out := captureStdout(t, func() {
+		withTerminalOutputLock(func() {
+			lastBackgroundRenderAt = time.Time{}
+			setActiveInputEditor(editor)
+			defer clearActiveInputEditor(editor)
+
+			editor.reserveRegionLocked()
+			editor.renderLocked()
+			printTerminalLineLocked("[sim-log] newest line")
+		})
+	})
+
+	screen := renderTerminalSnapshot(out)
+	visible := strings.Join(screen.visibleLines(), "\n")
+	if strings.Count(visible, "[sim-log] newest line") != 1 {
+		t.Fatalf("final screen = %q, want one background log line", visible)
+	}
+	if strings.Count(visible, "Ctrl+V attach image") != 1 {
+		t.Fatalf("final screen = %q, want one input region", visible)
+	}
+}
+
+func newRenderTestEditor() *inputEditor {
+	return &inputEditor{
+		width:          80,
+		padding:        1,
+		contentWidth:   78,
+		maxVisibleRows: 5,
+		helperRows:     3,
+		preferredCol:   -1,
+	}
+}
+
+type terminalSnapshot struct {
+	lines [][]rune
+	row   int
+	col   int
+}
+
+func renderTerminalSnapshot(output string) terminalSnapshot {
+	screen := terminalSnapshot{lines: [][]rune{{}}}
+
+	for i := 0; i < len(output); {
+		if output[i] == 0x1b && i+1 < len(output) && output[i+1] == '[' {
+			j := i + 2
+			for j < len(output) && (output[j] < 0x40 || output[j] > 0x7e) {
+				j++
+			}
+			if j >= len(output) {
+				break
+			}
+			screen.handleCSI(output[i+2:j], output[j])
+			i = j + 1
+			continue
+		}
+
+		r, size := utf8.DecodeRuneInString(output[i:])
+		switch r {
+		case '\r':
+			screen.col = 0
+		case '\n':
+			screen.row++
+			screen.ensureRow(screen.row)
+		default:
+			if unicode.IsGraphic(r) || unicode.IsSpace(r) {
+				screen.writeRune(r)
+			}
+		}
+		i += size
+	}
+
+	return screen
+}
+
+func (s *terminalSnapshot) handleCSI(params string, final byte) {
+	switch final {
+	case 'A':
+		s.row = maxInt(0, s.row-parseCSIInt(params, 1))
+	case 'B':
+		s.row += parseCSIInt(params, 1)
+		s.ensureRow(s.row)
+	case 'C':
+		s.col += parseCSIInt(params, 1)
+	case 'J':
+		s.clearBelow()
+	case 'K':
+		s.clearLine(parseCSIInt(params, 0))
+	case 'h', 'l', 'm':
+		// Ignore terminal modes and styling sequences in the snapshot.
+	default:
+		// Unsupported control sequences are intentionally ignored to simulate
+		// terminals that do not honor advanced cursor save/restore behavior.
+	}
+}
+
+func (s *terminalSnapshot) ensureRow(row int) {
+	for len(s.lines) <= row {
+		s.lines = append(s.lines, []rune{})
+	}
+}
+
+func (s *terminalSnapshot) writeRune(r rune) {
+	s.ensureRow(s.row)
+	line := s.lines[s.row]
+	for len(line) < s.col {
+		line = append(line, ' ')
+	}
+	if s.col < len(line) {
+		line[s.col] = r
+	} else {
+		line = append(line, r)
+	}
+	s.lines[s.row] = line
+	s.col++
+}
+
+func (s *terminalSnapshot) clearBelow() {
+	s.ensureRow(s.row)
+	line := s.lines[s.row]
+	if s.col < len(line) {
+		line = line[:s.col]
+	}
+	s.lines[s.row] = line
+	for i := s.row + 1; i < len(s.lines); i++ {
+		s.lines[i] = []rune{}
+	}
+}
+
+func (s *terminalSnapshot) clearLine(mode int) {
+	s.ensureRow(s.row)
+	switch mode {
+	case 2:
+		s.lines[s.row] = []rune{}
+	default:
+		line := s.lines[s.row]
+		if s.col < len(line) {
+			line = line[:s.col]
+		}
+		s.lines[s.row] = line
+	}
+}
+
+func (s terminalSnapshot) visibleLines() []string {
+	lines := make([]string, len(s.lines))
+	last := -1
+	for i, line := range s.lines {
+		trimmed := strings.TrimRightFunc(string(line), unicode.IsSpace)
+		lines[i] = trimmed
+		if trimmed != "" {
+			last = i
+		}
+	}
+	if last < 0 {
+		return nil
+	}
+	return lines[:last+1]
+}
+
+func parseCSIInt(raw string, fallback int) int {
+	if raw == "" {
+		return fallback
+	}
+	value := 0
+	for _, r := range raw {
+		if r < '0' || r > '9' {
+			return fallback
+		}
+		value = value*10 + int(r-'0')
+	}
+	if value <= 0 {
+		return fallback
+	}
+	return value
 }
 
 func createTestImage(t *testing.T, dir, name string) string {

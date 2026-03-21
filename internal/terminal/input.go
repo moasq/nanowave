@@ -152,6 +152,7 @@ type inputEditor struct {
 	maxVisibleRows int
 	helperRows     int
 	regionRows     int
+	renderCursor   cursorCoord
 	buffer         []rune
 	cursor         int
 	preferredCol   int
@@ -974,9 +975,9 @@ func (e *inputEditor) renderLocked() {
 	boxRows := e.boxRows(layout)
 	e.ensureCursorVisible(layout, boxRows)
 	helperLines := e.helperLines(layout)
-	e.adjustReservedRowsLocked(e.totalRows(boxRows, len(helperLines)))
+	totalRows := e.totalRows(boxRows, len(helperLines))
 
-	lines := make([]string, 0, e.regionRows)
+	lines := make([]string, 0, totalRows)
 	for i := 0; i < inputBoxVerticalPadding; i++ {
 		lines = append(lines, e.renderBlankBoxLine())
 	}
@@ -997,15 +998,6 @@ func (e *inputEditor) renderLocked() {
 	}
 
 	writeStdoutUnlocked("\033[?25l")
-	writeStdoutUnlocked("\033[u")
-	clearReservedRowsLocked(e.regionRows)
-	for i, line := range lines {
-		writeStdoutUnlocked(line)
-		if i < len(lines)-1 {
-			writeStdoutUnlocked("\r\n")
-		}
-	}
-
 	cursor := layout.positions[e.cursor]
 	cursorRow := inputBoxVerticalPadding + (cursor.row - e.scrollTop)
 	cursorCol := e.padding + cursor.col
@@ -1016,63 +1008,51 @@ func (e *inputEditor) renderLocked() {
 		cursorRow = inputBoxVerticalPadding + boxRows - 1
 	}
 
-	writeStdoutUnlocked("\033[u")
-	if cursorRow > 0 {
-		writeStdoutUnlocked(fmt.Sprintf("\033[%dB", cursorRow))
+	e.moveToRenderOriginLocked()
+	writeStdoutUnlocked("\033[J")
+	for i, line := range lines {
+		writeStdoutUnlocked(line)
+		if i < len(lines)-1 {
+			writeStdoutUnlocked("\r\n")
+		}
+	}
+
+	if lastRow := len(lines) - 1; lastRow > cursorRow {
+		writeStdoutUnlocked(fmt.Sprintf("\033[%dA", lastRow-cursorRow))
 	}
 	writeStdoutUnlocked("\r")
 	if cursorCol > 0 {
 		writeStdoutUnlocked(fmt.Sprintf("\033[%dC", cursorCol))
 	}
 	writeStdoutUnlocked("\033[?25h")
-}
 
-func clearReservedRowsLocked(rows int) {
-	if rows <= 0 {
-		return
-	}
-	for i := 0; i < rows; i++ {
-		writeStdoutUnlocked("\r\033[2K")
-		if i < rows-1 {
-			writeStdoutUnlocked("\n")
-		}
-	}
-	if rows > 1 {
-		writeStdoutUnlocked(fmt.Sprintf("\033[%dA", rows-1))
-	}
-	writeStdoutUnlocked("\r")
-}
-
-func (e *inputEditor) adjustReservedRowsLocked(rows int) {
-	if rows < 1 {
-		rows = 1
-	}
-	if rows == e.regionRows {
-		return
-	}
-
-	writeStdoutUnlocked("\033[u\r")
-	switch {
-	case rows > e.regionRows:
-		writeStdoutUnlocked(fmt.Sprintf("\033[%dL", rows-e.regionRows))
-	case rows < e.regionRows:
-		writeStdoutUnlocked(fmt.Sprintf("\033[%dM", e.regionRows-rows))
-	}
-	e.regionRows = rows
+	e.regionRows = len(lines)
+	e.renderCursor = cursorCoord{row: cursorRow, col: cursorCol}
 }
 
 func (e *inputEditor) reserveRegionLocked() {
-	writeStdoutUnlocked("\r\033[s")
 	writeStdoutUnlocked("\033[?2004h")
+	e.regionRows = 0
+	e.renderCursor = cursorCoord{}
 }
 
 func (e *inputEditor) cleanupRegionLocked() {
-	writeStdoutUnlocked("\033[u")
-	clearReservedRowsLocked(e.regionRows)
-	writeStdoutUnlocked(fmt.Sprintf("\033[%dM", e.regionRows))
+	writeStdoutUnlocked("\033[?25l")
+	e.moveToRenderOriginLocked()
+	writeStdoutUnlocked("\033[J")
 	writeStdoutUnlocked("\r")
 	writeStdoutUnlocked("\033[?2004l")
 	writeStdoutUnlocked("\033[?25h")
+	e.regionRows = 0
+	e.renderCursor = cursorCoord{}
+}
+
+func (e *inputEditor) moveToRenderOriginLocked() {
+	writeStdoutUnlocked("\r")
+	if e.renderCursor.row > 0 {
+		writeStdoutUnlocked(fmt.Sprintf("\033[%dA", e.renderCursor.row))
+		writeStdoutUnlocked("\r")
+	}
 }
 
 func (e *inputEditor) pushBackgroundLineLocked(line string) {
