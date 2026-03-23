@@ -30,6 +30,8 @@ const planningConstraints = `PLATFORM & SCOPE:
 - visionOS only if user EXPLICITLY mentions Vision Pro, visionOS, spatial, or Apple Vision.
 - macOS only if user EXPLICITLY mentions Mac, macOS, desktop app, or Mac app.
 - iPadOS / universal only if user EXPLICITLY mentions iPad, iPadOS, or universal.
+- For 2D games (arcade, sports, puzzle, platformer, shooter, 2D racing): use SpriteKit with SpriteView for gameplay, not plain SwiftUI views, Canvas, or timer loops.
+- For 3D games (racing, 3D sports, board games, marble maze, bowling, tower defense): use SceneKit with SceneView, not SpriteKit.
 - Apple frameworks preferred. SPM packages allowed when they provide a significantly better experience than native frameworks alone (e.g. complex animations, rich media processing, advanced UI effects). No external services. No API keys/secrets.
 - All functionality must work 100% offline using local data and on-device frameworks UNLESS the user explicitly requests cloud/backend/multi-device features.
 - Build the minimum product that matches user intent. User wording overrides defaults.`
@@ -37,6 +39,7 @@ const planningConstraints = `PLATFORM & SCOPE:
 // sharedConstraints provides cross-phase safety and architecture guardrails.
 const sharedConstraints = `ARCHITECTURE:
 - App structure: @main App -> RootView -> MainView -> content. NEVER embed feature views directly in the @main App body. Always create RootView.swift and MainView.swift as intermediary layers.
+- 2D game apps use SpriteKit scenes embedded via SpriteView for gameplay. 3D game apps use SceneKit scenes embedded via SceneView. SwiftUI is for app shell, menus, HUD, and settings.
 - Apple frameworks + approved SPM packages. No external services, external AI SDKs, or secrets.
 - App-wide settings (@AppStorage) must be wired at the root app level.
 - User-requested styling overrides defaults.
@@ -113,4 +116,3 @@ func composeSelfCheck(platform string) string {
 	}
 	return base
 }
-
