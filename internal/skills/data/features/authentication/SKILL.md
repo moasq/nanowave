@@ -1,27 +1,41 @@
 ---
 name: "authentication"
-description: "Authentication architecture: auth methods, services, guards, and session management. Use when implementing app features related to authentication."
+description: "Authentication architecture with email/password, Apple Sign In, Google Sign In, and anonymous guest modes. Covers AuthService as @Observable @MainActor, AuthGuardView gate pattern, optional auth flow, Supabase delegation, and session lifecycle management. Use when implementing user authentication, login flows, or session management in an iOS app."
 ---
+
 # Authentication Architecture
 
 ## Auth Method Selection
 
 Default is email/password + anonymous guest. Only add other methods when the user explicitly asks:
 
-- Nothing specified → email/password + anonymous guest
-- "Apple Sign In" or "Sign in with Apple" → Apple Sign In
-- "Google Sign In" → Google Sign In (requires GoogleSignIn package)
-- "social login" → Apple + Google
-- "guest mode" or "browse without account" → anonymous only
-- Methods combine: user can request email + Apple + anonymous
+| User Says | Auth Methods |
+|-----------|-------------|
+| *(nothing specified)* | email/password + anonymous guest |
+| "Apple Sign In" / "Sign in with Apple" | Apple Sign In |
+| "Google Sign In" | Google Sign In (requires GoogleSignIn package) |
+| "social login" | Apple + Google |
+| "guest mode" / "browse without account" | anonymous only |
+
+Methods combine — a user can request email + Apple + anonymous together.
 
 ## Service Architecture
 
-`AuthService` is `@Observable @MainActor` — it owns all auth state and lives in `Services/Auth/`, NOT inside `Features/`.
+`AuthService` is `@Observable @MainActor` — it owns all auth state and lives in `Services/Auth/`, never inside `Features/`.
 
-ViewModels consume `AuthService` via init injection. Views access it through `@Environment`.
+```swift
+// ViewModels consume AuthService via init injection
+@Observable @MainActor
+class ProfileViewModel {
+    private let authService: AuthService
+    init(authService: AuthService) { self.authService = authService }
+}
 
-When the Supabase skill is also loaded, `AuthService` delegates to `SupabaseService.shared.client.auth` for all backend calls. Without a backend skill, `AuthService` uses placeholder implementation.
+// Views access AuthService through @Environment
+@Environment(AuthService.self) private var authService
+```
+
+When the Supabase skill is also loaded, `AuthService` delegates to `SupabaseService.shared.client.auth` for all backend calls. Without a backend skill, `AuthService` uses a placeholder implementation.
 
 ## Auth Modes
 
@@ -31,11 +45,11 @@ When the Supabase skill is also loaded, `AuthService` delegates to `SupabaseServ
 
 ## Key Rules
 
-- Services live in `Services/Auth/` — NEVER inside `Features/`
-- ViewModels consume `AuthService` via init, never call auth APIs directly
+- Services live in `Services/Auth/` — never inside `Features/`
+- ViewModels consume `AuthService` via init injection, never call auth APIs directly
 - Never manage tokens manually — the backend SDK handles token storage and refresh
 - Always restore session on app launch
-- Always handle sign-out gracefully — clear local state even if server call fails
+- Always handle sign-out gracefully — clear local state even if the server call fails
 
 ## References
 

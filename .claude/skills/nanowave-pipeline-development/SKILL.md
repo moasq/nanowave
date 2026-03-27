@@ -1,16 +1,18 @@
 ---
 name: nanowave-pipeline-development
-description: "Use when modifying the build pipeline, adding new phases, changing prompt composition, or working with the Claude client integration."
+description: "Nanowave build pipeline architecture covering the 6-phase flow (Intent → Analyze → Plan → Build → Fix → Finalize), type contracts parsed via parseClaudeJSON[T], prompt composition with ComposeAgenticSystemPrompt, and Claude client integration. Use when modifying the build pipeline, adding new phases, changing prompt composition, or working with the Claude client integration."
 ---
 
 # Pipeline Development Guide
 
 ## 6-Phase Pipeline
 
+The build pipeline processes a user prompt through six sequential phases:
+
 ```
 User Prompt
     ↓
-1. Intent Router  → IntentDecision (advisory hints: operation, platform, device_family)
+1. Intent Router  → IntentDecision (advisory: operation, platform, device_family)
     ↓
 2. Analyzer       → AnalysisResult (app_name, description, features, core_flow)
     ↓
@@ -55,13 +57,14 @@ composeCoderAppendPrompt(phaseSkillName) → coder base + shared constraints + p
 ```
 
 Key helper:
+
 ```go
 func appendPromptSection(b *strings.Builder, title, content string)
 ```
 
 ### Why AppendSystemPrompt for Build Phase
 
-The build phase runs inside the generated project workspace which has its own CLAUDE.md with design tokens, architecture rules, and memory modules. Using `AppendSystemPrompt` adds pipeline instructions without overriding the workspace CLAUDE.md.
+The build phase runs inside the generated project workspace which has its own `CLAUDE.md` with design tokens, architecture rules, and memory modules. Using `AppendSystemPrompt` adds pipeline instructions without overriding the workspace `CLAUDE.md`.
 
 ## Claude Client Integration
 
@@ -83,12 +86,14 @@ client.GenerateStreaming(ctx, prompt, opts, progressCallback)
 ## Build Phase Details
 
 In `pipeline.go`:
+
 - Up to `maxBuildCompletionPasses` (6) completion passes
 - Deterministic file completion gate via `FileCompletionReport`
 - Plateau detection: if no new files complete across passes, terminate early
 - `retryPhase[T]()` handles transient API failures with exponential backoff
 
 In `build_prompts.go`:
+
 - `buildPrompts()` — constructs append prompt + user message with plan context
 - `completionPrompts()` — targeted prompts for unresolved files only
 - Multi-platform vs single-platform variants for build commands
@@ -113,6 +118,7 @@ In `build_prompts.go`:
 ## Available Tools for Build Phase
 
 Defined as `agenticTools` in `pipeline.go`:
+
 - Write, Edit, Read, Bash, Glob, Grep — file operations
 - WebFetch, WebSearch — research (rate-limited)
 - Apple Docs MCP — framework documentation

@@ -1,23 +1,33 @@
 ---
 name: "share-extension"
-description: "Share extension: NSExtensionActivationRule, data handling, UI. Use when implementing app features related to share extensions."
+description: "Share extension with NSExtensionActivationRule filtering, SLComposeServiceViewController handling, App Group data sharing, and shared content processing for URLs, text, and images. Use when adding share sheet integration to an iOS app."
 tags: "swiftui, ios, extensions"
 platforms: "ios"
 ---
 # Share Extension
 
-SHARE EXTENSION:
-SETUP: Requires separate extension target (kind: "share" in plan extensions array).
-The extension receives shared content (URLs, text, images) from other apps via the share sheet.
+## Overview
 
-PRINCIPAL CLASS (in extension target):
+The share extension receives content (URLs, text, images) from other apps via the system share sheet. It runs as a separate process with limited memory and no direct access to the main app's data unless App Groups are configured.
+
+## Setup
+
+Requires a separate extension target configured as `kind: "share"` in the plan extensions array.
+
+## Principal View Controller
+
+Implement `SLComposeServiceViewController` to handle shared content:
+
+```swift
+import Social
+import UniformTypeIdentifiers
+
 class ShareViewController: SLComposeServiceViewController {
     override func isContentValid() -> Bool {
-        return contentText.count > 0    // Validate before enabling Post button
+        return contentText.count > 0
     }
 
     override func didSelectPost() {
-        // Access shared items
         guard let item = extensionContext?.inputItems.first as? NSExtensionItem,
               let provider = item.attachments?.first else {
             extensionContext?.completeRequest(returningItems: [], completionHandler: nil)
@@ -26,66 +36,29 @@ class ShareViewController: SLComposeServiceViewController {
 
         if provider.hasItemConformingToTypeIdentifier("public.url") {
             provider.loadItem(forTypeIdentifier: "public.url") { [weak self] url, _ in
-                // Handle URL
+                // Process the shared URL
                 self?.extensionContext?.completeRequest(returningItems: [], completionHandler: nil)
             }
         }
     }
 
     override func configurationItems() -> [Any]! {
-        return []    // Return SLComposeSheetConfigurationItem array for optional UI
+        return []  // Return SLComposeSheetConfigurationItem array for extra UI rows
     }
 }
+```
 
-INFO.PLIST KEYS (in extension's Info.plist via XcodeGen):
+## Info.plist Configuration
+
+Set these keys in the extension target's Info.plist (via XcodeGen):
+
+```
 NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
 NSExtensionActivationRule:
   NSExtensionActivationSupportsWebURLWithMaxCount: 1
   NSExtensionActivationSupportsText: true
+```
 
-APP GROUP: Use AppGroup entitlement to share data between main app and extension.
+## Data Sharing via App Groups
 
----
-
-## Extension Configuration
-
-# Share Extension
-
-SHARE EXTENSION:
-SETUP: Requires separate extension target (kind: "share" in plan extensions array).
-The extension receives shared content (URLs, text, images) from other apps via the share sheet.
-
-PRINCIPAL CLASS (in extension target):
-class ShareViewController: SLComposeServiceViewController {
-    override func isContentValid() -> Bool {
-        return contentText.count > 0    // Validate before enabling Post button
-    }
-
-    override func didSelectPost() {
-        // Access shared items
-        guard let item = extensionContext?.inputItems.first as? NSExtensionItem,
-              let provider = item.attachments?.first else {
-            extensionContext?.completeRequest(returningItems: [], completionHandler: nil)
-            return
-        }
-
-        if provider.hasItemConformingToTypeIdentifier("public.url") {
-            provider.loadItem(forTypeIdentifier: "public.url") { [weak self] url, _ in
-                // Handle URL
-                self?.extensionContext?.completeRequest(returningItems: [], completionHandler: nil)
-            }
-        }
-    }
-
-    override func configurationItems() -> [Any]! {
-        return []    // Return SLComposeSheetConfigurationItem array for optional UI
-    }
-}
-
-INFO.PLIST KEYS (in extension's Info.plist via XcodeGen):
-NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
-NSExtensionActivationRule:
-  NSExtensionActivationSupportsWebURLWithMaxCount: 1
-  NSExtensionActivationSupportsText: true
-
-APP GROUP: Use AppGroup entitlement to share data between main app and extension.
+Use the App Group entitlement to share data between the main app and the extension. Both targets must belong to the same App Group to access shared `UserDefaults` or a shared container directory.
