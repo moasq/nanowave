@@ -1,18 +1,27 @@
 ---
 name: "safari-extension"
-description: "Safari web extension: content scripts, background scripts, native messaging. Use when implementing app features related to safari extensions."
+description: "Safari Web Extension integration with content scripts, background service workers, native messaging via SFSafariExtensionHandler, and manifest v3 configuration. Use when adding a Safari browser extension target to an iOS or macOS app."
 tags: "swiftui, ios, extensions"
 platforms: "ios"
 ---
-# Safari Extension
+# Safari Web Extension
 
-SAFARI WEB EXTENSION:
-SETUP: Requires separate extension target (kind: "safari" in plan extensions array).
-Safari Web Extensions use web technologies (JS/HTML/CSS) plus a native Swift wrapper.
+## Overview
 
-SWIFT EXTENSION HANDLER (optional — for native communication):
+Safari Web Extensions use web technologies (JS/HTML/CSS) plus a native Swift wrapper for browser integration. The extension runs as a separate target alongside the main app.
+
+## Setup
+
+Requires a separate extension target configured as `kind: "safari"` in the plan extensions array.
+
+## Native Communication Handler
+
+Implement `SFSafariExtensionHandler` for bidirectional messaging between Swift and JavaScript:
+
+```swift
+import SafariServices
+
 class SafariExtensionHandler: SFSafariExtensionHandler {
-    // Called when toolbar button is clicked
     override func toolbarItemClicked(in window: SFSafariWindow) {
         window.getActiveTab { tab in
             tab?.getActivePage { page in
@@ -21,61 +30,31 @@ class SafariExtensionHandler: SFSafariExtensionHandler {
         }
     }
 
-    // Receive messages from JavaScript content scripts
     override func messageReceived(withName messageName: String, from page: SFSafariPage, userInfo: [String: Any]?) {
-        // Handle message from JS: page.dispatchMessageToExtension(...)
+        // Handle messages sent from JS via browser.runtime.sendNativeMessage()
     }
 }
+```
 
-INFO.PLIST KEYS (extension):
+## Info.plist Configuration
+
+Set these keys in the extension target's Info.plist (via XcodeGen):
+
+```
 NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).SafariExtensionHandler
 NSExtensionAttributes:
   SFSafariWebsiteAccess: { Level: All }
+```
 
-WEB EXTENSION RESOURCES (in extension bundle):
-- manifest.json (Web Extension manifest v3)
-- background.js (service worker)
-- content.js (injected into pages)
-- popup.html (toolbar popup)
+## Web Extension Resources
 
-ENABLE IN SAFARI: User must enable in Safari → Settings → Extensions.
+Place these files in the extension bundle:
 
----
+- `manifest.json` — Web Extension manifest v3
+- `background.js` — service worker for background logic
+- `content.js` — injected into web pages for DOM access
+- `popup.html` — toolbar popup UI (optional)
 
-## Extension Configuration
+## User Activation
 
-# Safari Extension
-
-SAFARI WEB EXTENSION:
-SETUP: Requires separate extension target (kind: "safari" in plan extensions array).
-Safari Web Extensions use web technologies (JS/HTML/CSS) plus a native Swift wrapper.
-
-SWIFT EXTENSION HANDLER (optional — for native communication):
-class SafariExtensionHandler: SFSafariExtensionHandler {
-    // Called when toolbar button is clicked
-    override func toolbarItemClicked(in window: SFSafariWindow) {
-        window.getActiveTab { tab in
-            tab?.getActivePage { page in
-                page?.dispatchMessageToScript(withName: "buttonClicked", userInfo: [:])
-            }
-        }
-    }
-
-    // Receive messages from JavaScript content scripts
-    override func messageReceived(withName messageName: String, from page: SFSafariPage, userInfo: [String: Any]?) {
-        // Handle message from JS: page.dispatchMessageToExtension(...)
-    }
-}
-
-INFO.PLIST KEYS (extension):
-NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).SafariExtensionHandler
-NSExtensionAttributes:
-  SFSafariWebsiteAccess: { Level: All }
-
-WEB EXTENSION RESOURCES (in extension bundle):
-- manifest.json (Web Extension manifest v3)
-- background.js (service worker)
-- content.js (injected into pages)
-- popup.html (toolbar popup)
-
-ENABLE IN SAFARI: User must enable in Safari → Settings → Extensions.
+The user must manually enable the extension in Safari → Settings → Extensions before it becomes active.
