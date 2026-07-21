@@ -30,6 +30,7 @@ func NewDefaultRegistry() *Registry {
 	registerXcodeGenTools(r)
 	registerAppleDocsTool(r)
 	registerIntegrationTools(r)
+	registerGameAssetTools(r)
 	return r
 }
 

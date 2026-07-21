@@ -84,3 +84,21 @@ func TestComposeAgenticSystemPromptNoIntegrationsMentionsSetup(t *testing.T) {
 		t.Fatal("expected setup instruction in system prompt")
 	}
 }
+
+func TestComposeAgenticSystemPromptIncludesSpriteKitRuleForGames(t *testing.T) {
+	ac := ActionContext{}
+	prompt := ComposeAgenticSystemPrompt(ac, "/tmp/projects")
+
+	if !strings.Contains(prompt, "For 2D games") {
+		t.Fatal("expected 2D game planning rule in system prompt")
+	}
+	if !strings.Contains(prompt, "SpriteKit with SpriteView") {
+		t.Fatal("expected SpriteKit requirement in system prompt")
+	}
+	if !strings.Contains(prompt, "2D game apps use SpriteKit scenes embedded via SpriteView") {
+		t.Fatal("expected game architecture rule in system prompt")
+	}
+	if !strings.Contains(prompt, "3D game apps use SceneKit scenes embedded via SceneView") {
+		t.Fatal("expected 3D game architecture rule in system prompt")
+	}
+}

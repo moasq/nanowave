@@ -3,6 +3,8 @@ package orchestration
 import (
 	"fmt"
 	"io/fs"
+	"os"
+	"sort"
 	"strings"
 
 	"github.com/moasq/nanowave/internal/skills"
@@ -88,11 +90,14 @@ STEP 1 — CREATE THE XCODE PROJECT (do this FIRST, before anything else):
   d. Create Assets.xcassets with AppIcon.appiconset and AccentColor.colorset
   e. Run: cd <projectDir> && xcodegen generate
 
-STEP 2 — WRITE ALL SWIFT FILES:
-  Follow the architecture and AppTheme rules from the system prompt.
+STEP 2 — LOAD SKILLS:
+  Call nw_get_skills with list_available:true. Review the returned keys and load ALL skills relevant to the app you are building. Skills provide architecture patterns, framework guidance, and tool instructions that may override defaults. Do this BEFORE writing any Swift files.
+
+STEP 3 — WRITE ALL SWIFT FILES:
+  Follow the architecture and AppTheme rules from the system prompt, UNLESS a loaded skill specifies an override.
   File structure: AppName/App/, AppName/Theme/, AppName/Models/, AppName/Features/FeatureName/
 
-STEP 3 — BUILD:
+STEP 4 — BUILD:
   If the project uses SPM packages, first resolve them separately (this can take several minutes):
     xcodebuild -project MyApp.xcodeproj -scheme MyApp -resolvePackageDependencies
   Then build:
@@ -100,13 +105,13 @@ STEP 3 — BUILD:
   IMPORTANT: Use a timeout of at least 600 seconds (10 minutes) for build commands — SPM resolution and compilation of large packages like Lottie can be slow.
   Fix any errors and rebuild until it succeeds.
 
-STEP 4 — SCREENSHOT & REVIEW (iOS only):
+STEP 5 — SCREENSHOT & REVIEW (iOS only):
   Build for simulator, boot sim, install, launch, capture screenshot, review UI, fix issues.
 
-STEP 5 — FINALIZE:
+STEP 6 — FINALIZE:
   git init && git add -A && git commit -m "Initial commit"
 
-IMPORTANT: Do NOT spend time searching for MCP tools, reading other projects, or exploring the filesystem. Go directly to Step 1.`, catalogRoot)
+IMPORTANT: Do NOT read other projects or explore the filesystem. Go directly to Step 1.`, catalogRoot)
 
 		// Add platform-specific build guidance
 		switch {
@@ -157,7 +162,7 @@ VISIONOS BUILD NOTES:
 		appendPromptSection(&b, "Build Workflow — MANDATORY", buildWorkflow)
 	}
 
-	skillsHint := `Feature-specific skills (camera, authentication, media, charts, widgets, navigation-patterns, etc.) are available via the nw_get_skills tool. Call nw_get_skills with list_available:true to discover all available skills. Load relevant skills BEFORE implementing features.
+	skillsHint := `Skills provide architecture guidance, framework-specific patterns, and tool usage instructions for specialized features. ALWAYS call nw_get_skills with list_available:true to discover available skills, then load ALL relevant skills BEFORE writing any code. Skills may override default architecture patterns (e.g. a skill may specify a different app structure than standard MVVM).
 
 When the user pastes images, determine whether each image is a design reference (visual guide) or an asset to embed in the app (icon, logo, background). For assets, call nw_get_skills with key "user-assets" for step-by-step integration instructions.`
 	if platform != PlatformIOS {
@@ -194,11 +199,18 @@ When the user pastes images, determine whether each image is a design reference 
 		}
 		appendPromptSection(&b, "Edit Context", editCtx)
 	} else if catalogRoot != "" {
-		appendPromptSection(&b, "Project Location", fmt.Sprintf(
+		locationHint := fmt.Sprintf(
 			`CRITICAL: Create the project directory inside %[1]s. For example, if the app is called MyApp, create it at %[1]s/MyApp/. Do NOT create projects anywhere else.
 
 WARNING: The working directory %[1]s may contain other project directories from previous builds. Do NOT read, browse, or reference any existing directories. Start fresh — create your own new project directory and work exclusively inside it.`,
-			catalogRoot))
+			catalogRoot)
+
+		// List existing project names so the agent avoids collisions
+		if existing := listExistingProjectNames(catalogRoot); len(existing) > 0 {
+			locationHint += "\n\nThese project names are already taken — you MUST choose a different name: " + strings.Join(existing, ", ")
+		}
+
+		appendPromptSection(&b, "Project Location", locationHint)
 	}
 
 	return b.String()
@@ -365,4 +377,20 @@ func loadCoreRulesWithDiagnostics(platform string) (string, PromptDiagnostics) {
 
 	diag.CoreRulesChars = b.Len()
 	return b.String(), diag
+}
+
+// listExistingProjectNames returns sorted directory names in catalogRoot.
+func listExistingProjectNames(catalogRoot string) []string {
+	entries, err := os.ReadDir(catalogRoot)
+	if err != nil {
+		return nil
+	}
+	var names []string
+	for _, e := range entries {
+		if e.IsDir() && !strings.HasPrefix(e.Name(), ".") {
+			names = append(names, e.Name())
+		}
+	}
+	sort.Strings(names)
+	return names
 }

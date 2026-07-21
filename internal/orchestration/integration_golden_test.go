@@ -68,7 +68,7 @@ func TestGolden_WriteMCPConfig_NoIntegrations(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read .mcp.json: %v", err)
 	}
-	// Normalize to stable JSON
+	// Normalize to stable JSON and replace the resolved binary path with "nanowave"
 	got := normalizeJSON(t, data)
 	assertGolden(t, "mcp_config_none", got)
 }
